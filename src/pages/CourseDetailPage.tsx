@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BookOpen, Play, Eye, Clock, Loader2, CheckCircle2, Circle, Lock, Award, BarChart3, ChevronLeft } from 'lucide-react';
+import { BookOpen, Play, Eye, Clock, Loader2, Lock, Award, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import type { Course, Video, CourseEnrollment } from '@/types';
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [enrollment, setEnrollment] = useState<CourseEnrollment | null>(null);

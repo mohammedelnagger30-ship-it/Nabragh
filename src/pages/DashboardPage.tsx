@@ -1,16 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, User, Video as VideoIcon, Upload, Star, Eye, Trash2,
+  LayoutDashboard, User, Video as VideoIcon, Upload, Eye, Trash2,
   Plus, Save, Loader2, FileText, Calendar, Crown, Play, BookOpen,
-  TrendingUp, Users, Heart, Clock, Award, ChevronLeft, ChevronRight,
+  TrendingUp, Heart, Clock, Award,
   BarChart3, FolderPlus, Settings
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { uploadFile } from '@/lib/storage';
-import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem } from '@/types';
+import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem } from '@/types';
 
 type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'subscriptions' | 'favorites' | 'history';
 

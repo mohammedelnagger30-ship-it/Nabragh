@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  ArrowRight, Play, Eye, Lock, Loader2, Star, User, Heart, MessageSquare,
+  ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare,
   Send, Trash2, Clock, BookOpen, CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -104,10 +104,7 @@ export default function VideoPlayerPage() {
     if (!hasAccess || !user || !video || !videoRef.current) return;
 
     const handleTimeUpdate = () => {
-      const v = videoRef.current;
-      if (!v) return;
-      const watched = Math.floor(v.currentTime);
-      const total = Math.floor(v.duration || 0);
+      const total = Math.floor(videoRef.current?.duration || 0);
 
       if (progressIntervalRef.current === null) {
         progressIntervalRef.current = setInterval(async () => {

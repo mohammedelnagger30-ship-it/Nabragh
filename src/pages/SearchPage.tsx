@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Video as VideoIcon, Users, BookOpen, X, Play, Eye, Star } from 'lucide-react';
+import { Search, Video as VideoIcon, Users, BookOpen, X, Play, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Video, Course } from '@/types';
 

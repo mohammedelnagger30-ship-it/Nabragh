@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import type { SubscriptionPlan } from '@/types';
 
 export default function PricingPage() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);

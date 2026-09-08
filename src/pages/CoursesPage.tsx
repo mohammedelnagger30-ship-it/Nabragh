@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Search, Filter, Play, Eye, Loader2, Crown } from 'lucide-react';
+import { BookOpen, Search, Filter } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Course, Category } from '@/types';
 
@@ -16,11 +16,10 @@ export default function CoursesPage() {
     (async () => {
       const { data: catData } = await supabase.from('categories').select('*').order('sort_order', { ascending: true });
       setCategories(catData as Category[] ?? []);
-      await fetchCourses();
     })();
   }, []);
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from('courses')
@@ -38,11 +37,11 @@ export default function CoursesPage() {
     const { data } = await query;
     setCourses(data as Course[] ?? []);
     setLoading(false);
-  };
+  }, [selectedCategory, selectedLevel]);
 
   useEffect(() => {
     fetchCourses();
-  }, [selectedCategory, selectedLevel]);
+  }, [fetchCourses]);
 
   const filtered = courses.filter((c) => {
     if (!search) return true;
