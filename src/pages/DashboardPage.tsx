@@ -3,16 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, User, Video as VideoIcon, Upload, Eye, Trash2,
   Plus, Save, Loader2, FileText, Calendar, Crown, Play, BookOpen,
-  TrendingUp, Heart, Clock, Award,
+  TrendingUp, Heart, Clock, Award, Bell,
   BarChart3, FolderPlus, Settings
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { uploadFile } from '@/lib/storage';
-import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem } from '@/types';
+import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'subscriptions' | 'favorites' | 'history';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
 
 export default function DashboardPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [subscriberCount, setSubscriberCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [showVideoForm, setShowVideoForm] = useState(false);
@@ -97,6 +99,13 @@ export default function DashboardPage() {
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
       setCourses(courseData as Course[] ?? []);
+
+      const { count } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('teacher_id', user.id)
+        .eq('status', 'active');
+      setSubscriberCount(count ?? 0);
     }
 
     // Subscriptions
@@ -131,6 +140,14 @@ export default function DashboardPage() {
       .order('watched_at', { ascending: false })
       .limit(20);
     setHistory(histData as WatchHistoryItem[] ?? []);
+
+    const { data: notificationData } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    setNotifications(notificationData as Notification[] ?? []);
   }, [user, profile]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
@@ -248,7 +265,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="pt-16 min-h-screen flex items-center justify-center">
+      <div className="pt-[4.5rem] min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
@@ -273,12 +290,13 @@ export default function DashboardPage() {
     { id: 'subscriptions', label: 'اشتراكاتي', icon: Crown },
     { id: 'favorites', label: 'المفضلة', icon: Heart },
     { id: 'history', label: 'سجل المشاهدة', icon: Clock },
+    { id: 'notifications', label: 'الإشعارات', icon: Bell },
   ];
 
   const tabs = profile.is_teacher ? teacherTabs : studentTabs;
 
   return (
-    <div className="pt-16 min-h-screen bg-slate-50">
+    <div className="pt-[4.5rem] min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-800">لوحة التحكم</h1>
@@ -325,12 +343,13 @@ export default function DashboardPage() {
           <div className="lg:col-span-3">
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid gap-4 sm:grid-cols-3">
                   {profile.is_teacher ? (
                     <>
                       <StatCard icon={VideoIcon} label="الفيديوهات" value={videos.length} color="blue" />
                       <StatCard icon={Eye} label="إجمالي المشاهدات" value={totalViews} color="cyan" />
                       <StatCard icon={BookOpen} label="الدورات" value={courses.length} color="emerald" />
+                      <StatCard icon={Crown} label="المشتركون النشطون" value={subscriberCount} color="amber" />
                     </>
                   ) : (
                     <>
@@ -416,6 +435,39 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'notifications' && !profile.is_teacher && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <h3 className="flex items-center gap-2 font-bold text-slate-800"><Bell className="h-5 w-5 text-blue-500" /> الإشعارات</h3>
+                  {notifications.some((notification) => !notification.is_read) && (
+                    <button type="button" onClick={async () => {
+                      await supabase.from('notifications').update({ is_read: true }).eq('user_id', user!.id).eq('is_read', false);
+                      setNotifications((items) => items.map((item) => ({ ...item, is_read: true })));
+                    }} className="text-xs font-semibold text-blue-600 hover:text-blue-700">تحديد الكل كمقروء</button>
+                  )}
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-slate-500">لا توجد إشعارات جديدة.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.map((notification) => (
+                      <Link key={notification.id} to={notification.link ?? '#'} onClick={() => {
+                        if (!notification.is_read) {
+                          supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
+                          setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, is_read: true } : item));
+                        }
+                      }} className={`block rounded-xl border p-4 transition hover:border-blue-200 ${notification.is_read ? 'border-slate-100 bg-white' : 'border-blue-100 bg-blue-50/50'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div><p className="font-semibold text-slate-800">{notification.title}</p>{notification.body && <p className="mt-1 text-sm leading-6 text-slate-500">{notification.body}</p>}</div>
+                          <span className="shrink-0 text-xs text-slate-400">{new Date(notification.created_at).toLocaleDateString('ar-EG')}</span>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>

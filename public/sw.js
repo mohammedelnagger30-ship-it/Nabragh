@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manhatalilm-v1';
+const CACHE_NAME = 'manhatalilm-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -29,15 +29,47 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
+    (async () => {
+      const request = event.request;
+      const cached = await caches.match(request);
+
+      // Pages: دايماً جيب الأحدث من النت، والكاش بس للدورة (offline)
+      if (request.mode === 'navigate') {
+        try {
+          const response = await fetch(request);
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return response;
+        } catch (err) {
+          return cached || Response.error();
+        }
+      }
+
+      // Static hashed assets (build output /assets/*): كاش أولاً مع تحديث في الخلفية
+      if (url.pathname.startsWith('/assets/')) {
+        const fetchPromise = fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return response;
+        }).catch(() => cached);
+        return cached || fetchPromise;
+      }
+
+      // Everything else (dev modules, /src/, /@vite/...): network-first دايماً
+      try {
+        const response = await fetch(request);
         if (response && response.status === 200) {
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
         }
         return response;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
+      } catch (err) {
+        return cached || Response.error();
+      }
+    })()
   );
 });

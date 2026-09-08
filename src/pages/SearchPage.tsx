@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Video as VideoIcon, Users, BookOpen, X, Play, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -14,42 +14,44 @@ export default function SearchPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
-    if (initialQuery) {
-      performSearch(initialQuery);
-    }
-  }, [initialQuery]);
-
-  const performSearch = async (q: string) => {
+  const performSearch = useCallback(async (q: string) => {
     if (!q.trim()) return;
     setLoading(true);
     setHasSearched(true);
+    setHasError(false);
+    const safeQuery = q.trim().replace(/[,%()]/g, ' ');
 
-    const { data: teacherData } = await supabase
+    const { data: teacherData, error: teacherError } = await supabase
       .from('profiles')
       .select('*')
       .eq('is_teacher', true)
-      .or(`full_name.ilike.%${q}%,specialization.ilike.%${q}%,bio.ilike.%${q}%`)
+      .or(`full_name.ilike.%${safeQuery}%,specialization.ilike.%${safeQuery}%,bio.ilike.%${safeQuery}%`)
       .limit(10);
     setTeachers(teacherData as Profile[] ?? []);
 
-    const { data: vidData } = await supabase
+    const { data: vidData, error: videoError } = await supabase
       .from('videos')
       .select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*)')
-      .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
+      .or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`)
       .limit(10);
     setVideos(vidData as Video[] ?? []);
 
-    const { data: courseData } = await supabase
+    const { data: courseData, error: courseError } = await supabase
       .from('courses')
       .select('*, category:categories(*), teacher:profiles!courses_teacher_id_fkey(*)')
-      .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
+      .or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`)
       .limit(10);
     setCourses(courseData as Course[] ?? []);
 
+    setHasError(!!teacherError || !!videoError || !!courseError);
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (initialQuery) performSearch(initialQuery);
+  }, [initialQuery, performSearch]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,9 +61,10 @@ export default function SearchPage() {
   const totalResults = teachers.length + videos.length + courses.length;
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-3xl font-bold text-slate-800 mb-6">البحث</h1>
+        <h1 className="mb-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">البحث</h1>
+        <p className="mb-6 text-sm text-slate-500">ابحث في المدرسين والدروس والدورات من مكان واحد.</p>
 
         {/* Search bar */}
         <form onSubmit={handleSearch} className="relative mb-6">
@@ -101,6 +104,8 @@ export default function SearchPage() {
             ))}
           </div>
         )}
+
+        {hasError && <div role="alert" className="mb-5 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">حدث خطأ أثناء البحث. حاول مرة أخرى.</div>}
 
         {/* Results */}
         {loading ? (

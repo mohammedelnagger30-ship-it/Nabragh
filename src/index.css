@@ -6,15 +6,51 @@
 
 :root {
   font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  color: #172033;
+  background: #f7f9fc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  min-width: 320px;
+  margin: 0;
+  background: #f7f9fc;
+  color: #172033;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  background: #f7f9fc;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #bfdbfe;
+  color: #172033;
 }
 
 /* Custom scrollbar */
@@ -70,4 +106,10 @@ html {
 /* Smooth page transitions */
 main {
   animation: fadeIn 0.3s ease-out;
+}
+
+@media (max-width: 767px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { BookOpen, Play, Eye, Clock, Loader2, Lock, Award, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import CourseQuiz from '@/components/CourseQuiz';
 import type { Course, Video, CourseEnrollment } from '@/types';
 
 export default function CourseDetailPage() {
@@ -60,12 +61,12 @@ export default function CourseDetailPage() {
   };
 
   if (loading) {
-    return <div className="pt-16 min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+    return <div className="pt-[4.5rem] min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
   }
 
   if (!course) {
     return (
-      <div className="pt-16 min-h-screen flex flex-col items-center justify-center">
+      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center">
         <p className="text-slate-500 mb-4">الدورة غير موجودة</p>
         <Link to="/" className="text-blue-600 hover:underline">العودة للرئيسية</Link>
       </div>
@@ -78,7 +79,7 @@ export default function CourseDetailPage() {
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
       {/* Course Header */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -199,6 +200,7 @@ export default function CourseDetailPage() {
                 })}
               </div>
             )}
+            {enrollment && user && <div className="mt-8"><CourseQuiz courseId={course.id} studentId={user.id} /></div>}
           </div>
 
           <div>

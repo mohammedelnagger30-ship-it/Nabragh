@@ -21,3 +21,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+android/keystore.properties
+android/manhatalilm-release.keystore

@@ -55,15 +55,15 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">الدورات التدريبية</h1>
-          <p className="text-slate-500">تصفح جميع الدورات المتاحة على المنصة</p>
+          <h1 className="mb-1.5 text-2xl font-extrabold text-slate-900 sm:text-4xl">الدورات التدريبية</h1>
+          <p className="text-sm leading-6 text-slate-500 sm:text-base">تصفح جميع الدورات المتاحة على المنصة</p>
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
+        <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm sm:p-5">
           <div className="relative mb-4">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -71,11 +71,11 @@ export default function CoursesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ابحث عن دورة..."
-              className="w-full pr-11 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+              className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-11 text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
             <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <button
               onClick={() => setSelectedCategory(null)}
@@ -94,7 +94,7 @@ export default function CoursesPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 mt-3">
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
             <button
               onClick={() => setSelectedLevel(null)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${!selectedLevel ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
@@ -115,7 +115,7 @@ export default function CoursesPage() {
 
         {/* Results */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-pulse">
                 <div className="aspect-video bg-slate-200" />
@@ -135,7 +135,7 @@ export default function CoursesPage() {
         ) : (
           <>
             <p className="text-sm text-slate-500 mb-4">{filtered.length} دورة</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {filtered.map((course) => (
                 <Link
                   key={course.id}

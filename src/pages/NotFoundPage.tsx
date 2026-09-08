@@ -3,7 +3,7 @@ import { Home, Search } from 'lucide-react';
 
 export default function NotFoundPage() {
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center px-4">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center px-4">
       <div className="text-center">
         <div className="relative inline-block mb-8">
           <h1 className="text-[120px] sm:text-[180px] font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent leading-none">

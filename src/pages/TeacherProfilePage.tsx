@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Star, Award, Mail, Phone, Globe, MapPin, Calendar, Video as VideoIcon,
-  Play, ArrowRight, FileText, Loader2, MessageSquare, BookOpen
+  Play, ArrowRight, FileText, Loader2, MessageSquare, BookOpen, Bell, BellOff
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import type { Profile, Video, Review, Course } from '@/types';
 
 export default function TeacherProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [teacher, setTeacher] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -20,6 +22,8 @@ export default function TeacherProfilePage() {
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -55,9 +59,37 @@ export default function TeacherProfilePage() {
       if (revList.length > 0) {
         setAvgRating(revList.reduce((sum, r) => sum + r.rating, 0) / revList.length);
       }
+      if (user && id && !profile?.is_teacher) {
+        const { data: follow } = await supabase
+          .from('teacher_follows')
+          .select('id')
+          .eq('student_id', user.id)
+          .eq('teacher_id', id)
+          .maybeSingle();
+        setIsFollowing(!!follow);
+      }
       setLoading(false);
     })();
-  }, [id]);
+  }, [id, profile?.is_teacher, user]);
+
+  const toggleFollow = async () => {
+    if (!user || !id) return;
+    setFollowLoading(true);
+    if (isFollowing) {
+      const { error } = await supabase.from('teacher_follows').delete().eq('student_id', user.id).eq('teacher_id', id);
+      if (!error) {
+        setIsFollowing(false);
+        toast('تم إلغاء متابعة المدرس', 'info');
+      }
+    } else {
+      const { error } = await supabase.from('teacher_follows').insert({ student_id: user.id, teacher_id: id });
+      if (!error) {
+        setIsFollowing(true);
+        toast('ستصلك تنبيهات عند نشر دروس جديدة', 'success');
+      }
+    }
+    setFollowLoading(false);
+  };
 
   const submitReview = async () => {
     if (!user || !profile || !id) return;
@@ -85,7 +117,7 @@ export default function TeacherProfilePage() {
 
   if (loading) {
     return (
-      <div className="pt-16 min-h-screen flex items-center justify-center">
+      <div className="pt-[4.5rem] min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
@@ -93,7 +125,7 @@ export default function TeacherProfilePage() {
 
   if (!teacher) {
     return (
-      <div className="pt-16 min-h-screen flex flex-col items-center justify-center">
+      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center">
         <p className="text-slate-500 mb-4">المدرس غير موجود</p>
         <Link to="/teachers" className="text-blue-600 hover:underline">العودة للمدرسين</Link>
       </div>
@@ -101,7 +133,7 @@ export default function TeacherProfilePage() {
   }
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
       {/* Cover */}
       <div className="h-48 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 relative">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30" />
@@ -150,6 +182,12 @@ export default function TeacherProfilePage() {
                   <VideoIcon className="w-4 h-4" /> {videos.length} فيديو
                 </span>
               </div>
+              {user && !profile?.is_teacher && user.id !== teacher.id && (
+                <button type="button" onClick={toggleFollow} disabled={followLoading} className={`mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${isFollowing ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:opacity-60`}>
+                  {isFollowing ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                  {isFollowing ? 'إلغاء المتابعة' : 'متابعة المدرس'}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -68,17 +68,17 @@ export default function TeachersPage() {
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2">المدرسون</h1>
-          <p className="text-slate-500">اكتشف نخبة من أفضل المدرسين في جميع التخصصات</p>
+        <div className="mb-6 sm:mb-8">
+              <h1 className="mb-1.5 text-2xl font-extrabold text-slate-900 sm:text-4xl">المدرسون</h1>
+          <p className="text-sm leading-6 text-slate-500 sm:text-base">اكتشف نخبة من أفضل المدرسين في جميع التخصصات</p>
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+        <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row">
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
@@ -86,14 +86,14 @@ export default function TeachersPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ابحث عن مدرس بالاسم أو التخصص..."
-                className="w-full pr-11 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-11 text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               />
             </div>
             <div className="flex gap-3">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
+                className="min-h-12 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 lg:w-auto"
               >
                 <option value="newest">الأحدث</option>
                 <option value="name">الاسم</option>
@@ -103,11 +103,11 @@ export default function TeachersPage() {
           </div>
 
           {/* Category Pills */}
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
+            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 sm:mt-4 sm:flex-wrap sm:overflow-visible">
             <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <button
               onClick={() => handleCategoryClick(null)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 !selectedCategory ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -117,7 +117,7 @@ export default function TeachersPage() {
               <button
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.id)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                   selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -127,7 +127,7 @@ export default function TeachersPage() {
             {selectedCategory && (
               <button
                 onClick={() => handleCategoryClick(null)}
-                className="px-3 py-1.5 rounded-full text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-1"
+                  className="flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold text-red-500 transition-colors hover:bg-red-50"
               >
                 <X className="w-4 h-4" /> إزالة الفلتر
               </button>
@@ -137,7 +137,7 @@ export default function TeachersPage() {
 
         {/* Results */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 animate-pulse">
                 <div className="w-20 h-20 rounded-full bg-slate-200 mx-auto mb-4" />
@@ -155,7 +155,7 @@ export default function TeachersPage() {
         ) : (
           <>
             <p className="text-sm text-slate-500 mb-4">{filtered.length} مدرس</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {filtered.map((teacher) => {
                 const review = reviews[teacher.id];
                 return (
@@ -164,7 +164,7 @@ export default function TeachersPage() {
                     to={`/teacher/${teacher.id}`}
                     className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                   >
-                    <div className="p-6 text-center">
+                    <div className="p-5 text-center sm:p-6">
                       <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
                         {teacher.avatar_url ? (
                           <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" />

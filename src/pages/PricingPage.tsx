@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Check, Zap, Crown, Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import type { SubscriptionPlan } from '@/types';
 
 export default function PricingPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,35 +36,14 @@ export default function PricingPage() {
       return;
     }
     setSubscribing(plan.id);
-    // For demo: create a subscription with first available teacher
-    // In production this would go through Stripe checkout
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + plan.duration_months);
-
-    const { data: teachers } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('is_teacher', true)
-      .limit(1)
-      .maybeSingle();
-
-    if (teachers) {
-      await supabase.from('subscriptions').insert({
-        student_id: user.id,
-        teacher_id: teachers.id,
-        plan_id: plan.id,
-        end_date: endDate.toISOString(),
-        status: 'active',
-      });
-    }
+    toast('الدفع الإلكتروني قيد التجهيز. لن يتم تفعيل الاشتراك قبل إتمام عملية الدفع.', 'info');
     setSubscribing(null);
-    navigate('/dashboard');
   };
 
   const planIcons: Record<string, typeof Zap> = { Free: Sparkles, Monthly: Zap, Annual: Crown };
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Header */}
         <div className="text-center mb-12">
@@ -144,7 +125,7 @@ export default function PricingPage() {
         )}
 
         {/* FAQ */}
-        <div className="max-w-3xl mx-auto mt-20">
+        <div id="faq" className="max-w-3xl mx-auto mt-20">
           <h2 className="text-2xl font-bold text-slate-800 text-center mb-8">الأسئلة الشائعة</h2>
           <div className="space-y-4">
             {[

@@ -117,16 +117,16 @@ CREATE POLICY "categories_select_all" ON categories FOR SELECT
   TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "categories_insert_any" ON categories;
-CREATE POLICY "categories_insert_any" ON categories FOR INSERT
-  TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "categories_insert_admin" ON categories FOR INSERT
+  TO service_role WITH CHECK (true);
 
 DROP POLICY IF EXISTS "categories_update_any" ON categories;
-CREATE POLICY "categories_update_any" ON categories FOR UPDATE
-  TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "categories_update_admin" ON categories FOR UPDATE
+  TO service_role USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "categories_delete_any" ON categories;
-CREATE POLICY "categories_delete_any" ON categories FOR DELETE
-  TO anon, authenticated USING (true);
+CREATE POLICY "categories_delete_admin" ON categories FOR DELETE
+  TO service_role USING (true);
 
 -- =====================
 -- VIDEOS TABLE
@@ -216,12 +216,12 @@ CREATE POLICY "plans_select_all" ON subscription_plans FOR SELECT
   TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "plans_insert_any" ON subscription_plans;
-CREATE POLICY "plans_insert_any" ON subscription_plans FOR INSERT
-  TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "plans_insert_admin" ON subscription_plans FOR INSERT
+  TO service_role WITH CHECK (true);
 
 DROP POLICY IF EXISTS "plans_update_any" ON subscription_plans;
-CREATE POLICY "plans_update_any" ON subscription_plans FOR UPDATE
-  TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "plans_update_admin" ON subscription_plans FOR UPDATE
+  TO service_role USING (true) WITH CHECK (true);
 
 -- =====================
 -- SUBSCRIPTIONS TABLE

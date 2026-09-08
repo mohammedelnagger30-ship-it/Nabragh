@@ -24,42 +24,42 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white/90 shadow-[0_8px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-[4.5rem] items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-blue-600 via-blue-600 to-cyan-500 shadow-lg shadow-blue-500/25 transition-transform group-hover:scale-105">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-800">منصة العلم</span>
+            <span className="text-lg font-extrabold tracking-normal text-slate-800 sm:text-xl">منصة العلم</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
                 aria-current={location.pathname === link.to ? 'page' : undefined}
-                className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
                   location.pathname === link.to ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50/50'
                 }`}
               >
-                {link.to === '/search' ? <Search className="w-5 h-5" /> : link.label}
+                {link.to === '/search' ? <Search className="h-5 w-5" aria-label="البحث" /> : link.label}
               </Link>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden items-center gap-2 md:flex">
             {user ? (
               <>
                 <Link
                   to="/dashboard"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   لوحة التحكم
                 </Link>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
+                <div className="flex items-center gap-2 rounded-xl bg-slate-100/90 px-2.5 py-1.5">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-sm font-bold">
                     {profile?.full_name?.charAt(0) ?? 'U'}
                   </div>
@@ -69,7 +69,7 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  className="rounded-xl p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
                   title="تسجيل الخروج"
                 >
                   <LogOut className="w-5 h-5" />
@@ -79,14 +79,14 @@ export default function Navbar() {
               <>
                 <Link
                   to="/signin"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
                 >
                   <User className="w-4 h-4" />
                   تسجيل الدخول
                 </Link>
                 <Link
                   to="/signup"
-                  className="px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all"
+                  className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30"
                 >
                   انضم الآن
                 </Link>
@@ -96,7 +96,7 @@ export default function Navbar() {
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            className="rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
             aria-label={mobileOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
             aria-expanded={mobileOpen}
           >
@@ -105,7 +105,7 @@ export default function Navbar() {
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden border-t border-slate-200 py-4 space-y-1">
+          <div className="space-y-1 border-t border-slate-200/80 py-4 md:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.to}

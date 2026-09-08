@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare,
+  ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare, Share2,
   Send, Trash2, Clock, BookOpen, CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +24,7 @@ export default function VideoPlayerPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [progress, setProgress] = useState<VideoProgress | null>(null);
   const [activeTab, setActiveTab] = useState<'comments' | 'related'>('comments');
+  const [playbackRate, setPlaybackRate] = useState(1);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -158,6 +159,16 @@ export default function VideoPlayerPage() {
     }
   };
 
+  const shareVideo = async () => {
+    const shareData = { title: video?.title ?? 'فيديو تعليمي', url: window.location.href };
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+      toast('تم نسخ رابط الفيديو', 'success');
+    }
+  };
+
   const submitComment = async () => {
     if (!user || !video || !commentText.trim()) return;
     setSubmittingComment(true);
@@ -184,12 +195,12 @@ export default function VideoPlayerPage() {
   };
 
   if (loading) {
-    return <div className="pt-16 min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+    return <div className="pt-[4.5rem] min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
   }
 
   if (!video) {
     return (
-      <div className="pt-16 min-h-screen flex flex-col items-center justify-center">
+      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center">
         <p className="text-slate-500 mb-4">الفيديو غير موجود</p>
         <Link to="/" className="text-blue-600 hover:underline">العودة للرئيسية</Link>
       </div>
@@ -197,7 +208,7 @@ export default function VideoPlayerPage() {
   }
 
   return (
-    <div className="pt-16 min-h-screen bg-slate-950">
+    <div className="pt-[4.5rem] min-h-screen bg-slate-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-slate-400 mb-4 flex-wrap">
@@ -224,6 +235,7 @@ export default function VideoPlayerPage() {
                   autoPlay
                   className="w-full h-full"
                   controlsList="nodownload"
+                  onLoadedMetadata={(event) => { event.currentTarget.playbackRate = playbackRate; }}
                 />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
@@ -250,18 +262,36 @@ export default function VideoPlayerPage() {
 
             {/* Video Info */}
             <div className="mt-4">
-              <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="mb-3 flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-bold text-white">{video.title}</h1>
-                {user && !profile?.is_teacher && (
-                  <button onClick={toggleFavorite}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all flex-shrink-0 ${
-                      isFavorited ? 'bg-rose-500/20 text-rose-400' : 'bg-white/10 text-slate-300 hover:bg-white/20'
-                    }`}>
-                    <Heart className={`w-5 h-5 ${isFavorited ? 'fill-rose-400' : ''}`} />
-                    <span className="hidden sm:inline">{isFavorited ? 'في المفضلة' : 'أضف للمفضلة'}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button onClick={shareVideo} aria-label="مشاركة الفيديو" className="rounded-xl bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white">
+                    <Share2 className="h-5 w-5" />
                   </button>
-                )}
+                  {user && !profile?.is_teacher && (
+                    <button onClick={toggleFavorite}
+                      className={`flex items-center gap-2 rounded-xl px-3 py-2 font-medium transition-all ${
+                        isFavorited ? 'bg-rose-500/20 text-rose-400' : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                      }`}>
+                      <Heart className={`h-5 w-5 ${isFavorited ? 'fill-rose-400' : ''}`} />
+                      <span className="hidden sm:inline">{isFavorited ? 'في المفضلة' : 'أضف للمفضلة'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {hasAccess && (
+                <div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
+                  <label htmlFor="playback-rate">سرعة التشغيل</label>
+                  <select id="playback-rate" value={playbackRate} onChange={(event) => {
+                    const rate = Number(event.target.value);
+                    setPlaybackRate(rate);
+                    if (videoRef.current) videoRef.current.playbackRate = rate;
+                  }} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-slate-200 outline-none">
+                    {[0.75, 1, 1.25, 1.5, 2].map((rate) => <option key={rate} value={rate}>{rate}x</option>)}
+                  </select>
+                </div>
+              )}
 
               <div className="flex items-center gap-4 text-sm text-slate-400 mb-4 flex-wrap">
                 <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> {video.views_count + 1} مشاهدة</span>

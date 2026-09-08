@@ -20,7 +20,10 @@ export default function Footer() {
               {[Facebook, Twitter, Youtube, Instagram].map((Icon, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href={['https://www.facebook.com', 'https://twitter.com', 'https://www.youtube.com', 'https://www.instagram.com'][i]}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={['Facebook', 'Twitter', 'YouTube', 'Instagram'][i]}
                   className="w-10 h-10 rounded-lg bg-slate-800 hover:bg-blue-600 flex items-center justify-center transition-colors"
                 >
                   <Icon className="w-5 h-5" />
@@ -42,10 +45,10 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">المنصة</h3>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="hover:text-blue-400 transition-colors">من نحن</a></li>
-              <li><a href="#" className="hover:text-blue-400 transition-colors">سياسة الخصوصية</a></li>
-              <li><a href="#" className="hover:text-blue-400 transition-colors">الشروط والأحكام</a></li>
-              <li><a href="#" className="hover:text-blue-400 transition-colors">الأسئلة الشائعة</a></li>
+              <li><Link to="/about" className="hover:text-blue-400 transition-colors">من نحن</Link></li>
+              <li><Link to="/privacy" className="hover:text-blue-400 transition-colors">سياسة الخصوصية</Link></li>
+              <li><Link to="/terms" className="hover:text-blue-400 transition-colors">الشروط والأحكام</Link></li>
+              <li><Link to="/pricing#faq" className="hover:text-blue-400 transition-colors">الأسئلة الشائعة</Link></li>
             </ul>
           </div>
 

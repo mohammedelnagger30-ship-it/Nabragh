@@ -39,19 +39,19 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-gradient-to-br from-slate-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="text-center mb-12">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
+        <div className="mb-8 text-center sm:mb-12">
           <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
             <BookOpen className="w-4 h-4" />
             التخصصات الدراسية
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3">جميع التخصصات</h1>
-          <p className="text-slate-500 max-w-2xl mx-auto">اختر التخصص الذي يناسبك وابدأ التعلم مع أفضل المدرسين</p>
+          <h1 className="mb-2 text-2xl font-extrabold text-slate-900 sm:text-4xl">جميع التخصصات</h1>
+          <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">اختر التخصص الذي يناسبك وابدأ التعلم مع أفضل المدرسين</p>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
             {[...Array(9)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200 p-8 animate-pulse">
                 <div className="w-14 h-14 rounded-xl bg-slate-200 mb-4" />
@@ -61,7 +61,7 @@ export default function CategoriesPage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
             {categories.map((cat) => {
               const colors = colorMap[cat.color] ?? colorMap.blue;
               const count = videoCounts[cat.id] ?? 0;
@@ -69,7 +69,7 @@ export default function CategoriesPage() {
                 <Link
                   key={cat.id}
                   to={`/teachers?category=${cat.id}`}
-                  className="group bg-white rounded-2xl shadow-sm border border-slate-200 p-8 hover:shadow-xl hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl sm:p-7"
                 >
                   <div className={`w-14 h-14 rounded-xl ${colors.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                     <BookOpen className={`w-7 h-7 ${colors.text}`} />

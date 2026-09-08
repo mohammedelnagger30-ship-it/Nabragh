@@ -18,6 +18,8 @@ import DashboardPage from '@/pages/DashboardPage';
 import SearchPage from '@/pages/SearchPage';
 import SignInPage from '@/pages/SignInPage';
 import SignUpPage from '@/pages/SignUpPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import InfoPage from '@/pages/InfoPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 function App() {
@@ -43,6 +45,10 @@ function App() {
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/signin" element={<SignInPage />} />
                   <Route path="/signup" element={<SignUpPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/about" element={<InfoPage />} />
+                  <Route path="/privacy" element={<InfoPage />} />
+                  <Route path="/terms" element={<InfoPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </main>
