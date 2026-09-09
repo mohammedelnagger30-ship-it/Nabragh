@@ -4,15 +4,18 @@ import {
   LayoutDashboard, User, Video as VideoIcon, Upload, Eye, Trash2,
   Plus, Save, Loader2, FileText, Calendar, Crown, Play, BookOpen,
   TrendingUp, Heart, Clock, Award, Bell,
-  BarChart3, FolderPlus, Settings
+  BarChart3, FolderPlus, Settings, Palette, Medal, Users as UsersIcon
+  , Gamepad2, ListPlus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { uploadFile } from '@/lib/storage';
-import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification } from '@/types';
+import { curricula, educationStages } from '@/lib/education';
+import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherStudents, TeacherHonors, TeacherLeaderboards } from '@/components/TeacherManagerTools';
+import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'honors' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
 
 export default function DashboardPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -43,6 +46,8 @@ export default function DashboardPage() {
   const [website, setWebsite] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [cvUrl, setCvUrl] = useState('');
+  const [profileStage, setProfileStage] = useState('');
+  const [profileCurriculum, setProfileCurriculum] = useState('');
 
   // Video form state
   const [videoTitle, setVideoTitle] = useState('');
@@ -53,6 +58,8 @@ export default function DashboardPage() {
   const [videoCourse, setVideoCourse] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoIsFree, setVideoIsFree] = useState(true);
+  const [videoStage, setVideoStage] = useState('');
+  const [videoCurriculum, setVideoCurriculum] = useState('');
 
   // Course form state
   const [courseTitle, setCourseTitle] = useState('');
@@ -61,6 +68,8 @@ export default function DashboardPage() {
   const [courseLevel, setCourseLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
   const [coursePrice, setCoursePrice] = useState(0);
   const [courseThumb, setCourseThumb] = useState('');
+  const [courseStage, setCourseStage] = useState('');
+  const [courseCurriculum, setCourseCurriculum] = useState('');
 
   useEffect(() => {
     if (!loading && !user) navigate('/signin');
@@ -77,6 +86,8 @@ export default function DashboardPage() {
       setWebsite(profile.website ?? '');
       setAvatarUrl(profile.avatar_url ?? '');
       setCvUrl(profile.cv_url ?? '');
+      setProfileStage(profile.education_stage ?? profile.teaching_stages?.[0] ?? '');
+      setProfileCurriculum(profile.curriculum ?? profile.teaching_curricula?.[0] ?? '');
     }
   }, [profile]);
 
@@ -157,6 +168,10 @@ export default function DashboardPage() {
     const { error } = await supabase.from('profiles').update({
       full_name: fullName, bio, specialization, years_experience: yearsExp,
       phone, location, website, avatar_url: avatarUrl, cv_url: cvUrl,
+      education_stage: profile?.is_teacher ? null : profileStage || null,
+      curriculum: profile?.is_teacher ? null : profileCurriculum || null,
+      teaching_stages: profile?.is_teacher && profileStage ? [profileStage] : [],
+      teaching_curricula: profile?.is_teacher && profileCurriculum ? [profileCurriculum] : [],
       updated_at: new Date().toISOString(),
     }).eq('id', user!.id);
     setSaving(false);
@@ -191,6 +206,8 @@ export default function DashboardPage() {
       course_id: videoCourse || null,
       duration_seconds: videoDuration,
       is_free: videoIsFree,
+      education_stage: videoStage || null,
+      curriculum: videoCurriculum || null,
     });
 
     setSaving(false);
@@ -199,7 +216,7 @@ export default function DashboardPage() {
     if (!error) {
       setShowVideoForm(false);
       setVideoTitle(''); setVideoDesc(''); setVideoFile(null); setVideoThumb('');
-      setVideoCategory(null); setVideoCourse(null); setVideoDuration(0); setVideoIsFree(true);
+      setVideoCategory(null); setVideoCourse(null); setVideoDuration(0); setVideoIsFree(true); setVideoStage(''); setVideoCurriculum('');
       fetchDashboardData();
       toast('تم رفع الفيديو بنجاح', 'success');
     } else {
@@ -218,12 +235,14 @@ export default function DashboardPage() {
       level: courseLevel,
       price: coursePrice,
       thumbnail_url: courseThumb || null,
+      education_stage: courseStage || null,
+      curriculum: courseCurriculum || null,
     });
     setSaving(false);
     if (!error) {
       setShowCourseForm(false);
       setCourseTitle(''); setCourseDesc(''); setCourseCategory(null);
-      setCourseLevel('beginner'); setCoursePrice(0); setCourseThumb('');
+      setCourseLevel('beginner'); setCoursePrice(0); setCourseThumb(''); setCourseStage(''); setCourseCurriculum('');
       fetchDashboardData();
       toast('تم إنشاء الدورة بنجاح', 'success');
     } else {
@@ -282,6 +301,12 @@ export default function DashboardPage() {
     { id: 'profile', label: 'الملف الشخصي', icon: User },
     { id: 'videos', label: 'الفيديوهات', icon: VideoIcon },
     { id: 'courses', label: 'الدورات', icon: BookOpen },
+    { id: 'competitions', label: 'المنافسات', icon: Gamepad2 },
+    ...(profile.is_manager ? [
+      { id: 'page' as Tab, label: 'إعدادات صفحتي', icon: Palette },
+      { id: 'students' as Tab, label: 'طلابي', icon: UsersIcon },
+      { id: 'honors' as Tab, label: 'التكريم', icon: Medal },
+    ] : []),
   ];
 
   const studentTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -481,6 +506,8 @@ export default function DashboardPage() {
                 <div className="grid sm:grid-cols-2 gap-5">
                   <Field label="الاسم الكامل" value={fullName} onChange={setFullName} />
                   <Field label="التخصص" value={specialization} onChange={setSpecialization} placeholder="مثال: مدرس رياضيات" />
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1.5">{profile.is_teacher ? 'الصف الذي تدرّسه' : 'الصف الدراسي'}</label><select value={profileStage} onChange={(e) => setProfileStage(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1.5">{profile.is_teacher ? 'المنهج الذي تدرّسه' : 'نوع المنهج'}</label><select value={profileCurriculum} onChange={(e) => setProfileCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                   <Field label="الهاتف" value={phone} onChange={setPhone} placeholder="+966..." dir="ltr" />
                   <Field label="الموقع" value={location} onChange={setLocation} placeholder="الرياض، السعودية" />
                   <Field label="الموقع الإلكتروني" value={website} onChange={setWebsite} placeholder="https://..." dir="ltr" />
@@ -561,6 +588,8 @@ export default function DashboardPage() {
                       </div>
                       <Field label="رابط الصورة المصغرة (اختياري)" value={videoThumb} onChange={setVideoThumb} placeholder="https://..." dir="ltr" />
                       <Field label="المدة بالثواني" value={String(videoDuration)} onChange={(v) => setVideoDuration(parseInt(v) || 0)} type="number" />
+                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المرحلة الدراسية</label><select value={videoStage} onChange={(e) => setVideoStage(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
+                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المنهج</label><select value={videoCurriculum} onChange={(e) => setVideoCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">نوع الوصول</label>
                         <div className="flex gap-3">
@@ -675,6 +704,8 @@ export default function DashboardPage() {
                       </div>
                       <Field label="السعر" value={String(coursePrice)} onChange={(v) => setCoursePrice(parseFloat(v) || 0)} type="number" />
                       <Field label="رابط صورة الدورة (اختياري)" value={courseThumb} onChange={setCourseThumb} placeholder="https://..." dir="ltr" />
+                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المرحلة الدراسية</label><select value={courseStage} onChange={(e) => setCourseStage(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
+                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المنهج</label><select value={courseCurriculum} onChange={(e) => setCourseCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                     </div>
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">وصف الدورة</label>
@@ -722,6 +753,19 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
+
+            {activeTab === 'competitions' && profile.is_teacher && (
+              <>
+                <TeacherCompetitions userId={user!.id} categories={categories} />
+                {profile.is_manager && <TeacherLeaderboards teacherId={user!.id} />}
+              </>
+            )}
+
+            {activeTab === 'page' && profile.is_manager && <TeacherPageSettingsPanel teacherId={user!.id} />}
+
+            {activeTab === 'students' && profile.is_manager && <TeacherStudents teacherId={user!.id} />}
+
+            {activeTab === 'honors' && profile.is_manager && <TeacherHonors teacherId={user!.id} />}
 
             {activeTab === 'subscriptions' && !profile.is_teacher && (
               <div>
@@ -817,6 +861,51 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+function TeacherCompetitions({ userId, categories }: { userId: string; categories: Category[] }) {
+  const { toast } = useToast();
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [selected, setSelected] = useState<Competition | null>(null);
+  const [questions, setQuestions] = useState<CompetitionQuestion[]>([]);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '', '', '']);
+  const [correctOption, setCorrectOption] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('competitions').select('*').eq('teacher_id', userId).order('created_at', { ascending: false });
+    setCompetitions((data ?? []) as Competition[]);
+  }, [userId]);
+  useEffect(() => { void load(); }, [load]);
+
+  const choose = async (competition: Competition) => {
+    setSelected(competition);
+    const { data } = await supabase.from('competition_questions').select('*').eq('competition_id', competition.id).order('sort_order', { ascending: true });
+    setQuestions((data ?? []) as CompetitionQuestion[]);
+  };
+  const createCompetition = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    const { data, error } = await supabase.from('competitions').insert({ teacher_id: userId, title, description, category_id: categoryId || categories[0]?.id || null, status: 'published' }).select().single();
+    setSaving(false);
+    if (error || !data) { toast('تعذر إنشاء المنافسة', 'error'); return; }
+    setTitle(''); setDescription(''); setCategoryId(''); await load(); await choose(data as Competition); toast('تم إنشاء المنافسة', 'success');
+  };
+  const addQuestion = async () => {
+    if (!selected || !question.trim() || options.some((option) => !option.trim())) return;
+    setSaving(true);
+    const { data, error } = await supabase.from('competition_questions').insert({ competition_id: selected.id, question, options, correct_option: correctOption, sort_order: questions.length }).select().single();
+    setSaving(false);
+    if (error || !data) { toast('تعذر إضافة السؤال', 'error'); return; }
+    setQuestions((items) => [...items, data as CompetitionQuestion]); setQuestion(''); setOptions(['', '', '', '']); setCorrectOption(0); toast('تمت إضافة السؤال', 'success');
+  };
+  const removeQuestion = async (id: string) => { await supabase.from('competition_questions').delete().eq('id', id); setQuestions((items) => items.filter((item) => item.id !== id)); };
+
+  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h3 className="flex items-center gap-2 font-bold text-slate-800"><Gamepad2 className="h-5 w-5 text-cyan-600" /> إدارة المنافسات</h3><p className="mt-1 text-sm text-slate-500">أنشئ تحدياتك وأضف أسئلة اختيار من متعدد للطلاب.</p></div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h4 className="mb-4 font-bold text-slate-800">منافسة جديدة</h4><div className="grid gap-4 sm:grid-cols-2"><Field label="اسم المنافسة" value={title} onChange={setTitle} placeholder="تحدي العلوم الأسبوعي" /><Field label="وصف مختصر" value={description} onChange={setDescription} placeholder="اختبر معلوماتك واجمع النقاط" /></div><button onClick={() => void createCompetition()} disabled={saving || !title.trim()} className="mt-4 flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"><FolderPlus className="h-4 w-4" /> إنشاء المنافسة</button></div><div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]"><div className="space-y-3">{competitions.map((competition) => <button key={competition.id} onClick={() => void choose(competition)} className={`w-full rounded-2xl border p-4 text-right transition ${selected?.id === competition.id ? 'border-cyan-400 bg-cyan-50' : 'border-slate-200 bg-white hover:border-cyan-200'}`}><div className="flex items-center justify-between gap-3"><span className="font-bold text-slate-800">{competition.title}</span><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">منشورة</span></div><p className="mt-2 text-xs text-slate-400">اضغط لإدارة الأسئلة</p></button>)}{competitions.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">لم تنشئ منافسات بعد</div>}</div>{selected ? <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><h4 className="font-extrabold text-slate-800">أسئلة: {selected.title}</h4><p className="mt-1 text-xs text-slate-400">الإجابة الصحيحة لا تظهر للطلاب في الواجهة التعليمية.</p></div><ListPlus className="h-5 w-5 text-cyan-600" /></div><div className="space-y-3">{questions.map((item, index) => <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 p-3"><div><p className="text-sm font-bold text-slate-700">{index + 1}. {item.question}</p><p className="mt-1 text-xs text-emerald-600">الإجابة الصحيحة: {item.options[item.correct_option]}</p></div><button onClick={() => void removeQuestion(item.id)} className="text-xs font-bold text-rose-500">حذف</button></div>)}</div><div className="mt-5 border-t border-slate-100 pt-5"><Field label="نص السؤال" value={question} onChange={setQuestion} placeholder="اكتب السؤال هنا" /><div className="mt-3 grid gap-2 sm:grid-cols-2">{options.map((option, index) => <input key={index} value={option} onChange={(event) => setOptions((items) => items.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`الإجابة ${index + 1}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-cyan-500" />)}</div><div className="mt-3 flex items-center gap-3"><label className="text-xs font-bold text-slate-600">الإجابة الصحيحة</label><select value={correctOption} onChange={(event) => setCorrectOption(Number(event.target.value))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{options.map((_, index) => <option key={index} value={index}>الإجابة {index + 1}</option>)}</select></div><button onClick={() => void addQuestion()} disabled={saving || !question.trim() || options.some((option) => !option.trim())} className="mt-4 flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Plus className="h-4 w-4" /> إضافة السؤال</button></div></div> : <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-400">اختر منافسة لإدارة أسئلتها</div>}</div></div>;
 }
 
 function StatCard({ icon: Icon, label, value, color }: { icon: typeof Eye; label: string; value: number | string; color: string }) {

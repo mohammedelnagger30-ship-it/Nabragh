@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { curricula, getStagesForCurriculum } from '@/lib/education';
 
 export default function SignUpPage() {
   const { signUp } = useAuth();
@@ -12,14 +13,17 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isTeacher, setIsTeacher] = useState(false);
+  const [educationStage, setEducationStage] = useState('');
+  const [curriculum, setCurriculum] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const stageOptions = getStagesForCurriculum(curriculum);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await signUp(email, password, fullName, isTeacher);
+    const { error } = await signUp(email, password, fullName, isTeacher, educationStage, curriculum);
     setLoading(false);
     if (error) {
       setError(error);
@@ -64,6 +68,25 @@ export default function SignUpPage() {
                 />
               </div>
             </div>
+
+            {(
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  {isTeacher ? 'نوع المدرسة أو المعهد' : 'نوع المدرسة أو المعهد'}
+                  <select required value={curriculum} onChange={(e) => { setCurriculum(e.target.value); setEducationStage(''); }} className="mt-1.5 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10">
+                    <option value="">اختر نوع التعليم</option>
+                    {curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  {isTeacher ? 'الصف الذي يدرّسه' : 'الصف الدراسي'}
+                  <select required disabled={!curriculum} value={educationStage} onChange={(e) => setEducationStage(e.target.value)} className="mt-1.5 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60">
+                    <option value="">{curriculum ? 'اختر الصف' : 'اختر نوع التعليم أولًا'}</option>
+                    {stageOptions.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">البريد الإلكتروني</label>

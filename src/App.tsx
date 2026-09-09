@@ -13,6 +13,7 @@ import VideoPlayerPage from '@/pages/VideoPlayerPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import CoursesPage from '@/pages/CoursesPage';
 import CategoriesPage from '@/pages/CategoriesPage';
+import AdminPage from '@/pages/AdminPage';
 import PricingPage from '@/pages/PricingPage';
 import DashboardPage from '@/pages/DashboardPage';
 import SearchPage from '@/pages/SearchPage';
@@ -21,6 +22,7 @@ import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import InfoPage from '@/pages/InfoPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import CompetitionsPage from '@/pages/CompetitionsPage';
 
 function App() {
   return (
@@ -40,9 +42,11 @@ function App() {
                   <Route path="/course/:id" element={<CourseDetailPage />} />
                   <Route path="/courses" element={<CoursesPage />} />
                   <Route path="/categories" element={<CategoriesPage />} />
+                  <Route path="/competitions" element={<CompetitionsPage />} />
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/pricing" element={<PricingPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
                   <Route path="/signin" element={<SignInPage />} />
                   <Route path="/signup" element={<SignUpPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />

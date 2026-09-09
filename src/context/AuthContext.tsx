@@ -7,7 +7,8 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, isTeacher: boolean) => Promise<{ error: string | null }>;
+  isAdmin: boolean;
+  signUp: (email: string, password: string, fullName: string, isTeacher: boolean, educationStage?: string, curriculum?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -29,11 +31,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(data as Profile | null);
   };
 
+  const fetchAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    setIsAdmin(!!data);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
+        Promise.allSettled([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -43,17 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         (async () => {
-          await fetchProfile(session.user.id);
+          await Promise.all([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]);
         })();
       } else {
         setProfile(null);
+        setIsAdmin(false);
       }
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, isTeacher: boolean) => {
+  const signUp = async (email: string, password: string, fullName: string, isTeacher: boolean, educationStage?: string, curriculum?: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
 
@@ -63,6 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         full_name: fullName,
         email,
         is_teacher: isTeacher,
+        education_stage: isTeacher ? null : educationStage || null,
+        curriculum: isTeacher ? null : curriculum || null,
+        teaching_stages: isTeacher && educationStage ? [educationStage] : [],
+        teaching_curricula: isTeacher && curriculum ? [curriculum] : [],
       });
       if (profileError) return { error: profileError.message };
     }
@@ -86,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

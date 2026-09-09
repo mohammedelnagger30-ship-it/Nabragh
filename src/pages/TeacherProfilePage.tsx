@@ -7,7 +7,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import type { Profile, Video, Review, Course } from '@/types';
+import type { Profile, Video, Review, Course, TeacherPageSettings } from '@/types';
+import TeacherPublicExtras from '@/components/TeacherPublicExtras';
 
 export default function TeacherProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,7 @@ export default function TeacherProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [settings, setSettings] = useState<TeacherPageSettings | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -34,6 +36,13 @@ export default function TeacherProfilePage() {
         .eq('id', id)
         .maybeSingle();
       setTeacher(teacherData as Profile | null);
+
+      const { data: settingsData } = await supabase
+        .from('teacher_page_settings')
+        .select('*')
+        .eq('teacher_id', id)
+        .maybeSingle();
+      setSettings(settingsData as TeacherPageSettings | null);
 
       const { data: vidData } = await supabase
         .from('videos')
@@ -132,10 +141,13 @@ export default function TeacherProfilePage() {
     );
   }
 
+  const primary = settings?.primary_color ?? '#2563eb';
+  const secondary = settings?.secondary_color ?? '#06b6d4';
+
   return (
     <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
       {/* Cover */}
-      <div className="h-48 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 relative">
+      <div className="h-48 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 relative" style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }}>
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30" />
       </div>
 
@@ -143,19 +155,19 @@ export default function TeacherProfilePage() {
         {/* Profile Header */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 mb-8">
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            <div className="w-32 h-32 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0 ring-4 ring-white shadow-lg">
+            <div className="w-32 h-32 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0 ring-4 ring-white shadow-lg" style={{ background: `linear-gradient(135deg, ${primary}22, ${secondary}22)` }}>
               {teacher.avatar_url ? (
                 <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-5xl font-bold text-blue-600">{teacher.full_name.charAt(0)}</span>
+                <span className="text-5xl font-bold" style={{ color: primary }}>{teacher.full_name.charAt(0)}</span>
               )}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap mb-2">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">{teacher.full_name}</h1>
-                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">مدرس</span>
+                <span className="px-3 py-1 rounded-full text-sm font-medium text-white" style={{ backgroundColor: primary }}>مدرس</span>
               </div>
-              <p className="text-lg text-blue-600 mb-3">{teacher.specialization ?? 'مدرس'}</p>
+              <p className="text-lg mb-3" style={{ color: primary }}>{teacher.specialization ?? 'مدرس'}</p>
               <div className="flex items-center gap-4 flex-wrap text-sm text-slate-500">
                 {reviews.length > 0 ? (
                   <span className="flex items-center gap-1">
@@ -183,7 +195,7 @@ export default function TeacherProfilePage() {
                 </span>
               </div>
               {user && !profile?.is_teacher && user.id !== teacher.id && (
-                <button type="button" onClick={toggleFollow} disabled={followLoading} className={`mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition ${isFollowing ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:opacity-60`}>
+                <button type="button" onClick={toggleFollow} disabled={followLoading} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition disabled:opacity-60" style={isFollowing ? { backgroundColor: '#f1f5f9', color: '#334155' } : { backgroundColor: primary, color: '#fff' }}>
                   {isFollowing ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                   {isFollowing ? 'إلغاء المتابعة' : 'متابعة المدرس'}
                 </button>
@@ -302,6 +314,11 @@ export default function TeacherProfilePage() {
                 </div>
               </div>
             )}
+
+            {/* Manager Extras */}
+            {teacher.is_manager ? (
+              <TeacherPublicExtras teacherId={teacher.id} settings={settings} />
+            ) : null}
 
             {/* Reviews */}
             <div>
@@ -440,12 +457,13 @@ export default function TeacherProfilePage() {
               )}
             </div>
 
-            <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl p-6 text-white">
+            <div className="rounded-2xl p-6 text-white" style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }}>
               <h3 className="font-bold text-lg mb-2">اشترك مع هذا المدرس</h3>
               <p className="text-blue-50 text-sm mb-4">احصل على وصول كامل لجميع الفيديوهات والمحتوى الحصري</p>
               <Link
                 to="/pricing"
-                className="w-full px-4 py-2.5 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 bg-white font-semibold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                style={{ color: primary }}
               >
                 عرض الباقات <ArrowRight className="w-4 h-4" />
               </Link>

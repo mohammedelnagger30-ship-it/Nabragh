@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Star, Users, Filter, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { curricula, educationStages, getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
 import type { Profile, Category, Review } from '@/types';
 
 export default function TeachersPage() {
+  const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [teachers, setTeachers] = useState<Profile[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -13,13 +16,21 @@ export default function TeachersPage() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(searchParams.get('category'));
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'experience'>('newest');
+  const [selectedStage, setSelectedStage] = useState(searchParams.get('stage') ?? profile?.education_stage ?? '');
+  const [selectedCurriculum, setSelectedCurriculum] = useState(searchParams.get('curriculum') ?? profile?.curriculum ?? '');
+
+  useEffect(() => {
+    if (!profile || searchParams.get('stage') || searchParams.get('curriculum')) return;
+    setSelectedStage(profile.education_stage ?? '');
+    setSelectedCurriculum(profile.curriculum ?? '');
+  }, [profile, searchParams]);
 
   useEffect(() => {
     (async () => {
       const { data: catData } = await supabase.from('categories').select('*').order('sort_order', { ascending: true });
       setCategories(catData as Category[] ?? []);
 
-      let query = supabase.from('profiles').select('*').eq('is_teacher', true);
+      let query = supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true);
       if (selectedCategory) {
         query = query.eq('specialization', categories.find(c => c.id === selectedCategory)?.name_ar ?? '');
       }
@@ -28,7 +39,11 @@ export default function TeachersPage() {
       if (sortBy === 'experience') query = query.order('years_experience', { ascending: false });
 
       const { data: teacherData } = await query;
-      const teacherList = teacherData as Profile[] ?? [];
+      const teacherList = (teacherData as Profile[] ?? []).filter((teacher) => {
+        const stageMatch = !selectedStage || (teacher.teaching_stages ?? []).includes(selectedStage);
+        const curriculumMatch = !selectedCurriculum || (teacher.teaching_curricula ?? []).includes(selectedCurriculum);
+        return stageMatch && curriculumMatch;
+      });
       setTeachers(teacherList);
       setLoading(false);
 
@@ -51,7 +66,7 @@ export default function TeachersPage() {
         setReviews(reviewMap);
       }
     })();
-  }, [selectedCategory, sortBy, categories]);
+  }, [selectedCategory, sortBy, categories, selectedStage, selectedCurriculum]);
 
   const filtered = teachers.filter((t) => {
     if (!search) return true;
@@ -65,6 +80,16 @@ export default function TeachersPage() {
     setSelectedCategory(catId);
     if (catId) setSearchParams({ category: catId });
     else setSearchParams({});
+  };
+
+  const updateEducationFilter = (stage: string, curriculum: string) => {
+    setSelectedStage(stage);
+    setSelectedCurriculum(curriculum);
+    const params: Record<string, string> = {};
+    if (selectedCategory) params.category = selectedCategory;
+    if (stage) params.stage = stage;
+    if (curriculum) params.curriculum = curriculum;
+    setSearchParams(params);
   };
 
   return (
@@ -133,6 +158,10 @@ export default function TeachersPage() {
               </button>
             )}
           </div>
+          <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+            <label className="text-xs font-bold text-slate-500">المرحلة: <select value={selectedStage} onChange={(e) => updateEducationFilter(e.target.value, selectedCurriculum)} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-normal text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-500">المنهج: <select value={selectedCurriculum} onChange={(e) => updateEducationFilter(selectedStage, e.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-normal text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          </div>
         </div>
 
         {/* Results */}
@@ -154,7 +183,7 @@ export default function TeachersPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-slate-500 mb-4">{filtered.length} مدرس</p>
+            <p className="mb-4 text-sm text-slate-500">{filtered.length} مدرس {selectedStage && `في ${getEducationStageLabel(selectedStage)}`} {selectedCurriculum && `- ${getCurriculumLabel(selectedCurriculum)}`}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {filtered.map((teacher) => {
                 const review = reviews[teacher.id];

@@ -11,6 +11,12 @@ export interface Profile {
   years_experience: number;
   cv_url: string | null;
   is_teacher: boolean;
+  is_approved: boolean;
+  is_manager: boolean;
+  education_stage: string | null;
+  curriculum: string | null;
+  teaching_stages: string[] | null;
+  teaching_curricula: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,6 +43,8 @@ export interface Video {
   duration_seconds: number;
   views_count: number;
   is_free: boolean;
+  education_stage: string | null;
+  curriculum: string | null;
   created_at: string;
   category?: Category;
   teacher?: Profile;
@@ -53,6 +61,8 @@ export interface Course {
   level: 'beginner' | 'intermediate' | 'advanced';
   price: number;
   is_published: boolean;
+  education_stage: string | null;
+  curriculum: string | null;
   created_at: string;
   updated_at: string;
   category?: Category;
@@ -195,4 +205,114 @@ export interface Certificate {
   course_id: string;
   certificate_number: string;
   issued_at: string;
+}
+
+export interface Competition {
+  id: string;
+  teacher_id: string;
+  title: string;
+  description: string | null;
+  category_id: string | null;
+  education_stage: string | null;
+  curriculum: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: 'draft' | 'published' | 'archived';
+  created_at: string;
+  questions?: CompetitionQuestion[];
+}
+
+export interface CompetitionQuestion {
+  id: string;
+  competition_id: string;
+  question: string;
+  options: string[];
+  correct_option: number;
+  sort_order: number;
+}
+
+export interface CompetitionAttempt {
+  id: string;
+  competition_id: string;
+  student_id: string;
+  answers: Record<string, number>;
+  score: number;
+  points: number;
+  duration_seconds: number;
+  submitted_at: string;
+}
+
+export interface StudentStageLeaderboard {
+  student_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  education_stage: string;
+  points: number;
+  competitions_played: number;
+  stage_rank: number;
+}
+
+export interface TeacherPageSettings {
+  teacher_id: string;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  show_competitions: boolean;
+  show_leaderboard: boolean;
+  updated_at: string;
+}
+
+export interface TeacherPlan {
+  id: string;
+  teacher_id: string;
+  name_ar: string;
+  price: number;
+  duration_months: number;
+  features: string[];
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface TeacherHonor {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  student?: Profile;
+}
+
+export interface CompetitionLeaderboardRow {
+  competition_id: string;
+  student_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  score: number;
+  points: number;
+  submitted_at: string;
+  rank: number;
+}
+
+export interface TeacherTopStudent {
+  teacher_id: string;
+  student_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  total_points: number;
+  competitions_played: number;
+  rank: number;
+}
+
+export interface StudentSubjectLeaderboard {
+  student_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  education_stage: string;
+  category_id: string;
+  subject_name: string;
+  points: number;
+  competitions_played: number;
+  subject_rank: number;
 }

@@ -27,6 +27,7 @@ export default function SearchPage() {
       .from('profiles')
       .select('*')
       .eq('is_teacher', true)
+      .eq('is_approved', true)
       .or(`full_name.ilike.%${safeQuery}%,specialization.ilike.%${safeQuery}%,bio.ilike.%${safeQuery}%`)
       .limit(10);
     setTeachers(teacherData as Profile[] ?? []);

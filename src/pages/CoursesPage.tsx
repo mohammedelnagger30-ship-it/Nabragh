@@ -2,15 +2,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Search, Filter } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { curricula, educationStages, getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
 import type { Course, Category } from '@/types';
 
 export default function CoursesPage() {
+  const { profile } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState(profile?.education_stage ?? '');
+  const [selectedCurriculum, setSelectedCurriculum] = useState(profile?.curriculum ?? '');
+
+  useEffect(() => {
+    if (!profile) return;
+    setSelectedStage(profile.education_stage ?? '');
+    setSelectedCurriculum(profile.curriculum ?? '');
+  }, [profile]);
 
   useEffect(() => {
     (async () => {
@@ -33,11 +44,13 @@ export default function CoursesPage() {
     if (selectedLevel) {
       query = query.eq('level', selectedLevel);
     }
+    if (selectedStage) query = query.eq('education_stage', selectedStage);
+    if (selectedCurriculum) query = query.eq('curriculum', selectedCurriculum);
 
     const { data } = await query;
     setCourses(data as Course[] ?? []);
     setLoading(false);
-  }, [selectedCategory, selectedLevel]);
+  }, [selectedCategory, selectedLevel, selectedStage, selectedCurriculum]);
 
   useEffect(() => {
     fetchCourses();
@@ -111,6 +124,10 @@ export default function CoursesPage() {
               </button>
             ))}
           </div>
+          <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+            <label className="text-xs font-bold text-slate-500">المرحلة: <select value={selectedStage} onChange={(e) => setSelectedStage(e.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-normal text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-500">المنهج: <select value={selectedCurriculum} onChange={(e) => setSelectedCurriculum(e.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-normal text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          </div>
         </div>
 
         {/* Results */}
@@ -134,7 +151,7 @@ export default function CoursesPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-slate-500 mb-4">{filtered.length} دورة</p>
+            <p className="mb-4 text-sm text-slate-500">{filtered.length} دورة {selectedStage && `في ${getEducationStageLabel(selectedStage)}`} {selectedCurriculum && `- ${getCurriculumLabel(selectedCurriculum)}`}</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {filtered.map((course) => (
                 <Link

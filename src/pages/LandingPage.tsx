@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen,
+  GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
   ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap, Search
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import type { Profile, Category, Video, Course, WatchHistoryItem } from '@/types';
+import type { Profile, Category, Video, Course, WatchHistoryItem, StudentSubjectLeaderboard } from '@/types';
+import { getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function LandingPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [continueWatching, setContinueWatching] = useState<WatchHistoryItem[]>([]);
+  const [champions, setChampions] = useState<StudentSubjectLeaderboard[]>([]);
   const [stats, setStats] = useState({ teachers: 0, videos: 0, students: 0, courses: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -26,18 +28,19 @@ export default function LandingPage() {
 
     (async () => {
       try {
-        const [teacherResult, categoryResult, videoResult, teacherCount, videoCount, studentCount, courseCount, courseResult] = await Promise.all([
-          supabase.from('profiles').select('*').eq('is_teacher', true).order('created_at', { ascending: false }).limit(4),
+        const [teacherResult, categoryResult, videoResult, teacherCount, videoCount, studentCount, courseCount, courseResult, championResult] = await Promise.all([
+          supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true).order('created_at', { ascending: false }).limit(4),
           supabase.from('categories').select('*').order('sort_order', { ascending: true }),
           supabase.from('videos').select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*)').order('views_count', { ascending: false }).limit(6),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true),
           supabase.from('videos').select('*', { count: 'exact', head: true }),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', false),
           supabase.from('courses').select('*', { count: 'exact', head: true }),
           supabase.from('courses').select('*, category:categories(*)').eq('is_published', true).order('created_at', { ascending: false }).limit(3),
+          supabase.from('student_subject_leaderboard').select('*').eq('subject_rank', 1).order('points', { ascending: false }).limit(12),
         ]);
 
-        if ([teacherResult, categoryResult, videoResult, teacherCount, videoCount, studentCount, courseCount, courseResult].some((result) => result.error)) {
+        if ([teacherResult, categoryResult, videoResult, teacherCount, videoCount, studentCount, courseCount, courseResult, championResult].some((result) => result.error)) {
           throw new Error('Unable to load landing page data');
         }
 
@@ -59,6 +62,7 @@ export default function LandingPage() {
           setCourses(courseResult.data as Course[] ?? []);
           setStats({ teachers: teacherCount.count ?? 0, videos: videoCount.count ?? 0, students: studentCount.count ?? 0, courses: courseCount.count ?? 0 });
           setContinueWatching(historyData);
+          setChampions((championResult.data ?? []) as StudentSubjectLeaderboard[]);
           setHasLoadError(false);
         }
       } catch {
@@ -212,6 +216,22 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {user && profile && !profile.is_teacher && profile.education_stage && profile.curriculum && (
+        <section className="border-b border-blue-100 bg-blue-50/60 py-6">
+          <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+            <div>
+              <p className="text-xs font-bold text-blue-600">مسارك التعليمي</p>
+              <h2 className="mt-1 text-lg font-extrabold text-slate-900">{getEducationStageLabel(profile.education_stage)} - {getCurriculumLabel(profile.curriculum)}</h2>
+              <p className="mt-1 text-sm text-slate-500">نعرض لك محتوى ومدرسين مناسبين لاختياراتك.</p>
+            </div>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Link to={`/teachers?stage=${profile.education_stage}&curriculum=${profile.curriculum}`} className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700 sm:flex-none">مدرسوك</Link>
+              <Link to="/courses" className="flex-1 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-center text-sm font-bold text-blue-700 hover:bg-blue-50 sm:flex-none">دوراتك</Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Continue Watching (for logged-in students) */}
       {continueWatching.length > 0 && (
@@ -432,6 +452,27 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {champions.length > 0 && (
+        <section className="relative overflow-hidden bg-slate-950 py-20 text-white">
+          <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-end">
+              <div><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-bold text-amber-200"><Trophy className="h-4 w-4" /> لوحة الشرف</div><h2 className="text-3xl font-extrabold sm:text-4xl">أبطال كل مادة</h2><p className="mt-3 max-w-xl text-sm leading-7 text-slate-400">تكريم مستحق للطالب الأول في كل مادة، مع عرض مرحلته ونقاطه ليكون إنجازه مصدر إلهام للجميع.</p></div>
+              <Link to="/competitions" className="flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-cyan-300 hover:bg-white/10">ادخل ساحة المنافسة <ArrowLeft className="h-4 w-4" /></Link>
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {champions.slice(0, 12).map((champion) => (
+                <div key={champion.student_id} className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-5 transition hover:-translate-y-1 hover:bg-white/10">
+                  <div className="absolute left-4 top-4 text-amber-300"><Medal className="h-5 w-5" /></div>
+                  <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-orange-500 text-lg font-extrabold text-slate-900">{champion.avatar_url ? <img src={champion.avatar_url} alt={champion.full_name} className="h-full w-full object-cover" /> : champion.full_name.charAt(0)}</div><div className="min-w-0"><h3 className="truncate font-extrabold text-white">{champion.full_name}</h3><p className="mt-1 text-xs font-bold text-amber-200">{champion.subject_name}</p><p className="mt-1 text-[11px] text-cyan-300">{getEducationStageLabel(champion.education_stage)}</p></div></div>
+                  <div className="mt-5 flex items-end justify-between border-t border-white/10 pt-4"><div><div className="text-xl font-extrabold text-amber-300">{champion.points}</div><div className="text-[11px] text-slate-400">نقطة إنجاز</div></div><div className="text-left text-xs text-slate-400">{champion.competitions_played} منافسات</div></div>
+                </div>
               ))}
             </div>
           </div>

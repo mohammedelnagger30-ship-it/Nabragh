@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Shield } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -19,6 +19,7 @@ export default function Navbar() {
     { to: '/teachers', label: 'المدرسون' },
     { to: '/courses', label: 'الدورات' },
     { to: '/categories', label: 'التخصصات' },
+    { to: '/competitions', label: 'المنافسات' },
     { to: '/search', label: 'البحث' },
     { to: '/pricing', label: 'الباقات' },
   ];
@@ -52,6 +53,15 @@ export default function Navbar() {
           <div className="hidden items-center gap-2 md:flex">
             {user ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                  >
+                    <Shield className="w-4 h-4" />
+                    الإدارة
+                  </Link>
+                )}
                 <Link
                   to="/dashboard"
                   className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
@@ -119,6 +129,15 @@ export default function Navbar() {
             ))}
             {user ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-colors"
+                  >
+                    الإدارة
+                  </Link>
+                )}
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileOpen(false)}
