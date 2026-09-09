@@ -230,7 +230,9 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
                 <div className="mt-2 text-2xl font-extrabold" style={{ color: primary }}>{plan.price === 0 ? 'مجاناً' : `${plan.price} ر.س`}</div>
                 <div className="text-xs text-slate-500">/ {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}</div>
                 <ul className="mt-3 space-y-1 text-xs text-slate-500">
-                  {plan.features.map((f, i) => <li key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> {f}</li>)}
+                  {plan.features.filter((f): f is string => typeof f === 'string').map((f, i) => (
+                    <li key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> {f}</li>
+                  ))}
                 </ul>
                 <LinkButton color={primary} label={profile?.is_teacher ? 'تواصل مع المدرس' : 'اشترك الآن'} />
               </div>

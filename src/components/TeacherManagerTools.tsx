@@ -182,23 +182,21 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: courses }, { data: videoList }, { data: quizList }, { data: compList }] = await Promise.all([
+    const [{ data: courses }, { data: videoList }, { data: quizList }] = await Promise.all([
       supabase.from('courses').select('id').eq('teacher_id', teacherId),
       supabase.from('videos').select('id').eq('teacher_id', teacherId),
       supabase.from('quizzes').select('id').eq('teacher_id', teacherId),
-      supabase.from('competitions').select('id').eq('teacher_id', teacherId),
     ]);
     const courseIds = new Set((courses ?? []).map((c) => c.id));
     const videoIds = new Set((videoList ?? []).map((v) => v.id));
     const quizIds = new Set((quizList ?? []).map((q) => q.id));
-    const compIds = new Set((compList ?? []).map((c) => c.id));
 
-    const [{ data: enrollments }, { data: subs }, { data: progress }, { data: attempts }, { data: compAttempts }] = await Promise.all([
+    const [{ data: enrollments }, { data: subs }, { data: progress }, { data: attempts }, { data: topRows }] = await Promise.all([
       supabase.from('course_enrollments').select('student_id, course_id, progress_percent'),
       supabase.from('subscriptions').select('student_id, status').eq('teacher_id', teacherId),
       supabase.from('video_progress').select('student_id, video_id, is_completed'),
       supabase.from('quiz_attempts').select('student_id, quiz_id, score'),
-      supabase.from('competition_attempts').select('student_id, competition_id, points'),
+      supabase.from('teacher_top_students').select('student_id, total_points, competitions_played').eq('teacher_id', teacherId),
     ]);
 
     const enrolled = new Map<string, { courses: number; progress: number }>();
@@ -227,12 +225,8 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
       quizById.set(row.student_id, cur);
     });
     const compById = new Map<string, { n: number; points: number }>();
-    (compAttempts ?? []).forEach((r) => {
-      const row = r as { student_id: string; competition_id: string; points: number };
-      if (!compIds.has(row.competition_id)) return;
-      const cur = compById.get(row.student_id) ?? { n: 0, points: 0 };
-      cur.n += 1; cur.points += row.points ?? 0;
-      compById.set(row.student_id, cur);
+    ((topRows ?? []) as Array<{ student_id: string; total_points: number; competitions_played: number }>).forEach((r) => {
+      compById.set(r.student_id, { n: r.competitions_played, points: r.total_points });
     });
     const subscriberIds = new Set(((subs ?? [])).filter((s) => (s as { status: string }).status === 'active').map((s) => (s as { student_id: string }).student_id));
     const videoTotal = videoIds.size;
@@ -349,7 +343,7 @@ export function TeacherHonors({ teacherId }: { teacherId: string }) {
     const studentIds = new Set<string>();
     honorsList.forEach((hh) => hh.student_id && studentIds.add(hh.student_id));
     if (courseIds.size > 0) {
-      const { data: enrollments } = await supabase.from('course_enrollments').select('student_id').limit(2000);
+      const { data: enrollments } = await supabase.from('course_enrollments').select('course_id, student_id').limit(2000);
       (enrollments ?? []).forEach((r) => {
         const e = r as { course_id: string; student_id: string };
         if (courseIds.has(e.course_id)) studentIds.add(e.student_id);
