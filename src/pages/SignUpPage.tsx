@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
+import { GraduationCap, Mail, User, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { curricula, getStagesForCurriculum } from '@/lib/education';
+import PasswordField from '@/components/PasswordField';
+import MetaTags from '@/components/MetaTags';
 
 export default function SignUpPage() {
   const { signUp } = useAuth();
@@ -29,20 +31,21 @@ export default function SignUpPage() {
       setError(error);
       toast(error, 'error');
     } else {
-      toast('تم إنشاء حسابك بنجاح! مرحباً بك في منصة العلم', 'success');
+      toast(isTeacher ? 'تم إنشاء حساب المدرس. سيتم تفعيله بعد مراجعة الإدارة والسيرة الذاتية.' : 'تم إنشاء حسابك بنجاح! مرحباً بك في منصة العلم', 'success');
       navigate('/dashboard');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 flex items-center justify-center px-4 pt-20 pb-10">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 px-4 pb-10 pt-20 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <MetaTags title="إنشاء حساب | منصة العلم" description="انضم إلى منصة العلم كطالب أو مدرس" />
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/60 p-8">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-8 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none">
           <div className="flex flex-col items-center mb-8">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30 mb-4">
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800">إنشاء حساب جديد</h1>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">إنشاء حساب جديد</h1>
             <p className="text-sm text-slate-500 mt-1">انضم إلى منصة العلم اليوم</p>
           </div>
 
@@ -55,15 +58,16 @@ export default function SignUpPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">الاسم الكامل</label>
+              <label htmlFor="signup-name" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</label>
               <div className="relative">
-                <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <User className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="signup-name"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
-                  className="w-full pr-11 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-11 text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                   placeholder="محمد أحمد"
                 />
               </div>
@@ -89,37 +93,27 @@ export default function SignUpPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">البريد الإلكتروني</label>
+              <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</label>
               <div className="relative">
-                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Mail className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="signup-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pr-11 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-11 text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                   placeholder="you@example.com"
                   dir="ltr"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">كلمة المرور</label>
-              <div className="relative">
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full pr-11 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                  placeholder="••••••••"
-                  dir="ltr"
-                />
-              </div>
-            </div>
+            <PasswordField id="signup-password" value={password} onChange={setPassword} />
+
+            {isTeacher && (
+              <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">حساب المدرس يحتاج موافقة الإدارة. ارفع سيرتك الذاتية من لوحة التحكم بعد الدخول.</p>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">نوع الحساب</label>

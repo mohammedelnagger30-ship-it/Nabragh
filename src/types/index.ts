@@ -65,6 +65,7 @@ export interface Course {
   curriculum: string | null;
   created_at: string;
   updated_at: string;
+  live_url?: string | null;
   category?: Category;
   teacher?: Profile;
   videos?: Video[];
@@ -94,9 +95,9 @@ export interface VideoProgress {
 
 export interface Comment {
   id: string;
+  comment: string;
   video_id: string;
   student_id: string;
-  comment: string;
   parent_id: string | null;
   created_at: string;
   student?: Profile;
@@ -129,6 +130,47 @@ export interface Review {
   student?: Profile;
 }
 
+export interface CourseReview {
+  id: string;
+  course_id: string;
+  student_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  student?: Profile;
+  course?: Course;
+}
+
+export interface TeacherFollow {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  created_at: string;
+  teacher?: Profile;
+  student?: Profile;
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description?: string;
+  student_id: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  student?: Profile;
+  playlist_videos?: PlaylistVideo[];
+}
+
+export interface PlaylistVideo {
+  id: string;
+  playlist_id: string;
+  video_id: string;
+  sort_order: number;
+  added_at: string;
+  video?: Video;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -143,20 +185,14 @@ export interface SubscriptionPlan {
 export interface Subscription {
   id: string;
   student_id: string;
-  teacher_id: string;
+  teacher_id: string | null;
   plan_id: string | null;
   start_date: string;
   end_date: string;
   status: string;
+  payment_status?: string;
+  notes?: string | null;
   plan?: SubscriptionPlan;
-  teacher?: Profile;
-}
-
-export interface TeacherFollow {
-  id: string;
-  student_id: string;
-  teacher_id: string;
-  created_at: string;
   teacher?: Profile;
 }
 

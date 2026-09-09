@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
-  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap, Search
+  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import SearchSuggestions from '@/components/SearchSuggestions';
+import LazyImage from '@/components/LazyImage';
+import { cache, generateCacheKey } from '@/lib/cache';
 import type { Profile, Category, Video, Course, WatchHistoryItem, StudentSubjectLeaderboard } from '@/types';
 import { getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
+import { isPublicTeacher } from '@/lib/teachers';
+import MetaTags from '@/components/MetaTags';
 
 export default function LandingPage() {
-  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [teachers, setTeachers] = useState<Profile[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -19,7 +23,6 @@ export default function LandingPage() {
   const [continueWatching, setContinueWatching] = useState<WatchHistoryItem[]>([]);
   const [champions, setChampions] = useState<StudentSubjectLeaderboard[]>([]);
   const [stats, setStats] = useState({ teachers: 0, videos: 0, students: 0, courses: 0 });
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
 
@@ -28,39 +31,79 @@ export default function LandingPage() {
 
     (async () => {
       try {
-        const [teacherResult, categoryResult, videoResult, teacherCount, videoCount, studentCount, courseCount, courseResult, championResult] = await Promise.all([
-          supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true).order('created_at', { ascending: false }).limit(4),
-          supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+        // Check cache for static data
+        const categoriesCacheKey = generateCacheKey('categories', {});
+        const statsCacheKey = generateCacheKey('stats', {});
+        
+        const cachedCategories = cache.get(categoriesCacheKey);
+        const cachedStats = cache.get(statsCacheKey);
+
+        let stats: { teachers: number; videos: number; students: number; courses: number };
+        
+        if (cachedStats) {
+          stats = cachedStats;
+        } else {
+          const [teacherCount, videoCount, studentCount, courseCount] = await Promise.all([
+            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true),
+            supabase.from('videos').select('*', { count: 'exact', head: true }),
+            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', false),
+            supabase.from('courses').select('*', { count: 'exact', head: true }),
+          ]);
+          stats = {
+            teachers: teacherCount.count ?? 0,
+            videos: videoCount.count ?? 0,
+            students: studentCount.count ?? 0,
+            courses: courseCount.count ?? 0,
+          };
+          cache.set(statsCacheKey, stats, 5 * 60 * 1000); // 5 minutes
+        }
+
+        const categoriesPromise = cachedCategories 
+          ? Promise.resolve({ data: cachedCategories, error: null })
+          : supabase.from('categories').select('*').order('sort_order', { ascending: true });
+
+        const [teacherResult, categoryResult, videoResult, courseResult, championResult] = await Promise.all([
+          supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true).order('created_at', { ascending: false }).limit(12),
+          categoriesPromise,
           supabase.from('videos').select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*)').order('views_count', { ascending: false }).limit(6),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true),
-          supabase.from('videos').select('*', { count: 'exact', head: true }),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', false),
-          supabase.from('courses').select('*', { count: 'exact', head: true }),
           supabase.from('courses').select('*, category:categories(*)').eq('is_published', true).order('created_at', { ascending: false }).limit(3),
           supabase.from('student_subject_leaderboard').select('*').eq('subject_rank', 1).order('points', { ascending: false }).limit(12),
         ]);
 
-        if ([teacherResult, categoryResult, videoResult, teacherCount, videoCount, studentCount, courseCount, courseResult, championResult].some((result) => result.error)) {
+        if ([teacherResult, categoryResult, videoResult, courseResult].some((result) => result.error)) {
           throw new Error('Unable to load landing page data');
+        }
+
+        // Cache static data
+        if (!cachedCategories && categoryResult.data) {
+          cache.set(categoriesCacheKey, categoryResult.data, 10 * 60 * 1000); // 10 minutes
         }
 
         let historyData: WatchHistoryItem[] = [];
         if (user && !profile?.is_teacher) {
-          const { data } = await supabase
-            .from('watch_history')
-            .select('*, video:videos(*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*))')
-            .eq('student_id', user.id)
-            .order('watched_at', { ascending: false })
-            .limit(4);
-          historyData = data as WatchHistoryItem[] ?? [];
+          const historyCacheKey = generateCacheKey('watch_history', { userId: user.id });
+          const cachedHistory = cache.get(historyCacheKey);
+          
+          if (cachedHistory) {
+            historyData = cachedHistory;
+          } else {
+            const { data } = await supabase
+              .from('watch_history')
+              .select('*, video:videos(*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*))')
+              .eq('student_id', user.id)
+              .order('watched_at', { ascending: false })
+              .limit(4);
+            historyData = data as WatchHistoryItem[] ?? [];
+            cache.set(historyCacheKey, historyData, 2 * 60 * 1000); // 2 minutes
+          }
         }
 
         if (isMounted) {
-          setTeachers(teacherResult.data as Profile[] ?? []);
+          setTeachers(((teacherResult.data as Profile[] ?? []).filter(isPublicTeacher).slice(0, 4)));
           setCategories(categoryResult.data as Category[] ?? []);
           setVideos(videoResult.data as Video[] ?? []);
           setCourses(courseResult.data as Course[] ?? []);
-          setStats({ teachers: teacherCount.count ?? 0, videos: videoCount.count ?? 0, students: studentCount.count ?? 0, courses: courseCount.count ?? 0 });
+          setStats(stats);
           setContinueWatching(historyData);
           setChampions((championResult.data ?? []) as StudentSubjectLeaderboard[]);
           setHasLoadError(false);
@@ -89,37 +132,42 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="pt-[4.5rem]">
-      {isLoading && (
-        <div className="border-b border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm font-medium text-blue-700" role="status">
-          جاري تجهيز أفضل المحتوى لك...
-        </div>
-      )}
+    <>
+      <MetaTags
+        title="منصة العلم - تعلّم من أفضل المدرسين"
+        description="منصة تعليمية متكاملة تتيح للمدرسين رفع فيديوهاتهم وللطلاب الوصول لمحتوى تعليمي متميز في جميع التخصصات"
+      />
+      <div className="pt-[4.5rem]">
+        {isLoading && (
+          <div className="border-b border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm font-medium text-blue-700" role="status">
+            جاري تجهيز أفضل المحتوى لك...
+          </div>
+        )}
       {hasLoadError && !isLoading && (
         <div className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-medium text-rose-700" role="alert">
           تعذر تحميل بعض البيانات. تحقق من الاتصال ثم أعد تحميل الصفحة.
         </div>
       )}
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[#f7f9fc]">
+      <section className="relative overflow-hidden bg-[#f7f9fc] dark:bg-slate-900">
         <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute -right-32 top-10 h-80 w-80 rounded-full bg-blue-200/30 blur-3xl" />
-          <div className="absolute -bottom-24 -left-20 h-96 w-96 rounded-full bg-cyan-100/50 blur-3xl" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-blue-200 to-transparent" />
+          <div className="absolute -right-32 top-10 h-80 w-80 rounded-full bg-blue-200/30 dark:bg-blue-900/20 blur-3xl" />
+          <div className="absolute -bottom-24 -left-20 h-96 w-96 rounded-full bg-cyan-100/50 dark:bg-cyan-900/20 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="text-center lg:text-right">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3.5 py-2 text-xs font-bold text-blue-700 shadow-sm sm:text-sm">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 dark:border-blue-800 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-blue-700 dark:text-blue-300 shadow-sm sm:text-sm">
                 <Sparkles className="w-4 h-4" />
                 تعلم أذكى، من أي مكان
               </div>
-              <h1 className="mb-5 px-1 pb-1 text-4xl font-extrabold leading-[1.35] text-slate-900 sm:px-0 sm:text-5xl sm:leading-[1.25] lg:text-[4.25rem]">
+              <h1 className="mb-5 px-1 pb-1 text-4xl font-extrabold leading-[1.35] text-slate-900 dark:text-white sm:px-0 sm:text-5xl sm:leading-[1.25] lg:text-[4.25rem]">
                 طريقك الأقصر
                 <span className="block bg-gradient-to-l from-blue-700 via-blue-600 to-cyan-500 bg-clip-text text-transparent">لإتقان أي مادة</span>
               </h1>
-              <p className="mx-auto mb-8 max-w-xl text-base leading-8 text-slate-600 sm:text-lg lg:mr-0">
+              <p className="mx-auto mb-8 max-w-xl text-base leading-8 text-slate-600 dark:text-slate-300 sm:text-lg lg:mr-0">
                 محتوى تعليمي منظم، مدرسون موثوقون، وتقدم محفوظ في مكان واحد. ابدأ درسَك التالي بثقة وبدون تشتت.
               </p>
               <div className="flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
@@ -132,7 +180,7 @@ export default function LandingPage() {
                 </Link>
                 <Link
                   to="/teachers"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-7 py-3.5 font-bold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/20"
                 >
                   تصفح المدرسين
                   <Users className="w-5 h-5" />
@@ -140,17 +188,9 @@ export default function LandingPage() {
               </div>
 
               {/* Search bar */}
-              <form onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/search?q=${encodeURIComponent(searchQuery)}`); }}
-                className="relative mx-auto mt-8 max-w-xl lg:mr-0">
-                <Search className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ابحث عن مدرس، فيديو، أو دورة..."
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-4 pr-12 text-slate-800 shadow-sm transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                />
-              </form>
+              <div className="relative mx-auto mt-8 max-w-xl lg:mr-0">
+                <SearchSuggestions />
+              </div>
             </div>
 
             <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
@@ -249,7 +289,7 @@ export default function LandingPage() {
                 >
                   <div className="aspect-video bg-slate-100 flex items-center justify-center relative">
                     {h.video?.thumbnail_url ? (
-                      <img src={h.video.thumbnail_url} alt={h.video.title} className="w-full h-full object-cover" />
+                      <LazyImage src={h.video.thumbnail_url} alt={h.video.title} className="w-full h-full object-cover" />
                     ) : (
                       <Play className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
                     )}
@@ -326,7 +366,7 @@ export default function LandingPage() {
                 >
                   <div className="aspect-square bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center overflow-hidden">
                     {teacher.avatar_url ? (
-                      <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <LazyImage src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     ) : (
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-3xl font-bold">
                         {teacher.full_name.charAt(0)}
@@ -374,7 +414,7 @@ export default function LandingPage() {
                 >
                   <div className="aspect-video bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center relative">
                     {course.thumbnail_url ? (
-                      <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
+                      <LazyImage src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
                     ) : (
                       <BookOpen className="w-12 h-12 text-blue-300" />
                     )}
@@ -433,7 +473,7 @@ export default function LandingPage() {
                 >
                   <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
                     {v.thumbnail_url ? (
-                      <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <LazyImage src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     ) : (
                       <div className="w-14 h-14 rounded-full bg-blue-600/80 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Play className="w-6 h-6 text-white fill-white" />
@@ -571,6 +611,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

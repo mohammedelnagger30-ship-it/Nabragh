@@ -1,78 +1,81 @@
 import { Link } from 'react-router-dom';
-import { GraduationCap, Facebook, Twitter, Youtube, Instagram, Mail, Phone, MapPin } from 'lucide-react';
+import { GraduationCap, Facebook, Youtube, Instagram, Mail, Phone, MapPin } from 'lucide-react';
+import { CONTACT, whatsappLink } from '@/lib/contact';
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-900 text-slate-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+    <footer className="bg-slate-900 text-slate-300 dark:bg-slate-950 dark:text-slate-400">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400">
+                <GraduationCap className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold text-white">منصة العلم</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-400">
-              المنصة التعليمية الأولى عربياً. تعلّم من أفضل المدرسين بجودة عالية وحماية كاملة.
+              منصة تعليمية عربية تجمع الطلاب بالمدرسين في تجربة منظمة وآمنة.
             </p>
-            <div className="flex gap-3 mt-6">
-              {[Facebook, Twitter, Youtube, Instagram].map((Icon, i) => (
-                <a
-                  key={i}
-                  href={['https://www.facebook.com', 'https://twitter.com', 'https://www.youtube.com', 'https://www.instagram.com'][i]}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={['Facebook', 'Twitter', 'YouTube', 'Instagram'][i]}
-                  className="w-10 h-10 rounded-lg bg-slate-800 hover:bg-blue-600 flex items-center justify-center transition-colors"
-                >
-                  <Icon className="w-5 h-5" />
+            <div className="mt-6 flex gap-3">
+              {[
+                { Icon: Facebook, href: CONTACT.facebook, label: 'Facebook' },
+                { Icon: Youtube, href: CONTACT.youtube, label: 'YouTube' },
+                { Icon: Instagram, href: CONTACT.instagram, label: 'Instagram' },
+              ].map(({ Icon, href, label }) => (
+                <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 transition-colors hover:bg-blue-600">
+                  <Icon className="h-5 w-5" />
                 </a>
               ))}
             </div>
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-4">روابط سريعة</h3>
+            <h3 className="mb-4 font-semibold text-white">روابط سريعة</h3>
             <ul className="space-y-3 text-sm">
-              <li><Link to="/" className="hover:text-blue-400 transition-colors">الرئيسية</Link></li>
-              <li><Link to="/teachers" className="hover:text-blue-400 transition-colors">المدرسون</Link></li>
-              <li><Link to="/categories" className="hover:text-blue-400 transition-colors">التخصصات</Link></li>
-              <li><Link to="/pricing" className="hover:text-blue-400 transition-colors">الباقات والأسعار</Link></li>
+              <li><Link to="/" className="transition-colors hover:text-blue-400">الرئيسية</Link></li>
+              <li><Link to="/teachers" className="transition-colors hover:text-blue-400">المدرسون</Link></li>
+              <li><Link to="/courses" className="transition-colors hover:text-blue-400">الدورات</Link></li>
+              <li><Link to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</Link></li>
+              <li><Link to="/categories" className="transition-colors hover:text-blue-400">التخصصات</Link></li>
+              <li><Link to="/pricing" className="transition-colors hover:text-blue-400">الباقات والأسعار</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-4">المنصة</h3>
+            <h3 className="mb-4 font-semibold text-white">المنصة</h3>
             <ul className="space-y-3 text-sm">
-              <li><Link to="/about" className="hover:text-blue-400 transition-colors">من نحن</Link></li>
-              <li><Link to="/privacy" className="hover:text-blue-400 transition-colors">سياسة الخصوصية</Link></li>
-              <li><Link to="/terms" className="hover:text-blue-400 transition-colors">الشروط والأحكام</Link></li>
-              <li><Link to="/pricing#faq" className="hover:text-blue-400 transition-colors">الأسئلة الشائعة</Link></li>
+              <li><Link to="/about" className="transition-colors hover:text-blue-400">من نحن</Link></li>
+              <li><Link to="/privacy" className="transition-colors hover:text-blue-400">سياسة الخصوصية</Link></li>
+              <li><Link to="/terms" className="transition-colors hover:text-blue-400">الشروط والأحكام</Link></li>
+              <li><Link to="/pricing#faq" className="transition-colors hover:text-blue-400">الأسئلة الشائعة</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-4">تواصل معنا</h3>
+            <h3 className="mb-4 font-semibold text-white">تواصل معنا</h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-400" />
-                <span>info@manhatalilm.com</span>
+                <Mail className="h-4 w-4 text-blue-400" />
+                <a href={`mailto:${CONTACT.email}`} className="hover:text-blue-400">{CONTACT.email}</a>
               </li>
               <li className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-blue-400" />
-                <span dir="ltr">+966 50 123 4567</span>
+                <Phone className="h-4 w-4 text-blue-400" />
+                <a href={`tel:${CONTACT.phoneTel}`} dir="ltr">{CONTACT.phoneDisplay}</a>
               </li>
               <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-400" />
-                <span>الرياض، المملكة العربية السعودية</span>
+                <MapPin className="h-4 w-4 text-blue-400" />
+                <span>{CONTACT.city}</span>
+              </li>
+              <li>
+                <a href={whatsappLink()} target="_blank" rel="noreferrer" className="inline-flex rounded-xl bg-emerald-500 px-4 py-2 font-bold text-white hover:bg-emerald-600">واتساب الدعم</a>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-slate-800 mt-12 pt-8 text-center text-sm text-slate-500">
-          <p>© 2026 منصة العلم. جميع الحقوق محفوظة.</p>
+        <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
+          <p>© {new Date().getFullYear()} منصة العلم. جميع الحقوق محفوظة.</p>
         </div>
       </div>
     </footer>

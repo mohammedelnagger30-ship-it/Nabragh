@@ -4,6 +4,8 @@ import { Search, Star, Users, Filter, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { curricula, educationStages, getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
+import { isPublicTeacher } from '@/lib/teachers';
+import MetaTags from '@/components/MetaTags';
 import type { Profile, Category, Review } from '@/types';
 
 export default function TeachersPage() {
@@ -28,18 +30,25 @@ export default function TeachersPage() {
   useEffect(() => {
     (async () => {
       const { data: catData } = await supabase.from('categories').select('*').order('sort_order', { ascending: true });
-      setCategories(catData as Category[] ?? []);
+      const cats = (catData as Category[]) ?? [];
+      setCategories(cats);
 
       let query = supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true);
-      if (selectedCategory) {
-        query = query.eq('specialization', categories.find(c => c.id === selectedCategory)?.name_ar ?? '');
-      }
       if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
       if (sortBy === 'name') query = query.order('full_name', { ascending: true });
       if (sortBy === 'experience') query = query.order('years_experience', { ascending: false });
 
       const { data: teacherData } = await query;
-      const teacherList = (teacherData as Profile[] ?? []).filter((teacher) => {
+      let teacherList = (teacherData as Profile[] ?? []).filter(isPublicTeacher);
+
+      if (selectedCategory) {
+        const selectedName = cats.find((item) => item.id === selectedCategory)?.name_ar;
+        const { data: videosInCategory } = await supabase.from('videos').select('teacher_id').eq('category_id', selectedCategory);
+        const ids = new Set((videosInCategory ?? []).map((row: { teacher_id: string }) => row.teacher_id));
+        teacherList = teacherList.filter((teacher) => ids.has(teacher.id) || (selectedName && teacher.specialization === selectedName));
+      }
+
+      teacherList = teacherList.filter((teacher) => {
         const stageMatch = !selectedStage || (teacher.teaching_stages ?? []).includes(selectedStage);
         const curriculumMatch = !selectedCurriculum || (teacher.teaching_curricula ?? []).includes(selectedCurriculum);
         return stageMatch && curriculumMatch;
@@ -93,16 +102,17 @@ export default function TeachersPage() {
   };
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-[4.5rem] dark:from-slate-900 dark:to-slate-950">
+      <MetaTags title="المدرسون | منصة العلم" description="اكتشف نخبة من أفضل المدرسين في جميع التخصصات" />
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-              <h1 className="mb-1.5 text-2xl font-extrabold text-slate-900 sm:text-4xl">المدرسون</h1>
+              <h1 className="mb-1.5 text-2xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">المدرسون</h1>
           <p className="text-sm leading-6 text-slate-500 sm:text-base">اكتشف نخبة من أفضل المدرسين في جميع التخصصات</p>
         </div>
 
         {/* Search & Filters */}
-        <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm sm:p-5">
+        <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row">
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />

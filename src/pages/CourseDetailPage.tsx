@@ -4,7 +4,11 @@ import { BookOpen, Play, Eye, Clock, Loader2, Lock, Award, BarChart3 } from 'luc
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import CourseQuiz from '@/components/CourseQuiz';
-import type { Course, Video, CourseEnrollment } from '@/types';
+import CourseReviews from '@/components/CourseReviews';
+import SocialShare from '@/components/SocialShare';
+import MetaTags from '@/components/MetaTags';
+import StructuredData, { generateCourseStructuredData } from '@/components/StructuredData';
+import type { Course, Video, CourseEnrollment, Certificate } from '@/types';
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +18,8 @@ export default function CourseDetailPage() {
   const [enrollment, setEnrollment] = useState<CourseEnrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [issuing, setIssuing] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -33,13 +39,12 @@ export default function CourseDetailPage() {
       setVideos(vidData as Video[] ?? []);
 
       if (user) {
-        const { data: enrData } = await supabase
-          .from('course_enrollments')
-          .select('*')
-          .eq('student_id', user.id)
-          .eq('course_id', id)
-          .maybeSingle();
+        const [{ data: enrData }, { data: certData }] = await Promise.all([
+          supabase.from('course_enrollments').select('*').eq('student_id', user.id).eq('course_id', id).maybeSingle(),
+          supabase.from('certificates').select('*').eq('student_id', user.id).eq('course_id', id).maybeSingle(),
+        ]);
         setEnrollment(enrData as CourseEnrollment | null);
+        setCertificate(certData as Certificate | null);
       }
       setLoading(false);
     })();
@@ -57,6 +62,23 @@ export default function CourseDetailPage() {
     setEnrolling(false);
     if (!error && data) {
       setEnrollment(data as CourseEnrollment);
+    }
+  };
+
+  const issueCertificate = async () => {
+    if (!user || !id || !enrollment) return;
+    setIssuing(true);
+    const number = `ILM-${id.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+    const { data, error } = await supabase.from('certificates').insert({
+      student_id: user.id,
+      course_id: id,
+      certificate_number: number,
+    }).select().single();
+    setIssuing(false);
+    if (!error && data) {
+      setCertificate(data as Certificate);
+      await supabase.from('course_enrollments').update({ status: 'completed', completed_at: new Date().toISOString(), progress_percent: 100 }).eq('id', enrollment.id);
+      setEnrollment({ ...enrollment, status: 'completed', progress_percent: 100 });
     }
   };
 
@@ -79,7 +101,9 @@ export default function CourseDetailPage() {
   };
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-[4.5rem] dark:from-slate-900 dark:to-slate-950">
+      <MetaTags title={`${course.title} | منصة العلم`} description={course.description ?? 'دورة تدريبية على منصة العلم'} />
+      <StructuredData data={generateCourseStructuredData(course)} />
       {/* Course Header */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -101,7 +125,11 @@ export default function CourseDetailPage() {
                 )}
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-4">{course.title}</h1>
-              {course.description && <p className="text-slate-300 text-lg leading-relaxed mb-6">{course.description}</p>}
+              {course.description && <p className="mb-4 text-lg leading-relaxed text-slate-300">{course.description}</p>}
+              <SocialShare title={course.title} description={course.description ?? undefined} />
+              {course.live_url && (
+                <a href={course.live_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400">دخول الحصة المباشرة</a>
+              )}
               <div className="flex items-center gap-6 text-sm text-slate-400">
                 <span className="flex items-center gap-1"><BookOpen className="w-4 h-4" /> {videos.length} درس</span>
                 <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> {videos.reduce((s, v) => s + v.views_count, 0)} مشاهدة</span>
@@ -130,9 +158,16 @@ export default function CourseDetailPage() {
                   </p>
                   {videos.length > 0 && (
                     <Link to={`/video/${videos[0].id}`}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                      <Play className="w-5 h-5" /> {enrollment.progress_percent > 0 ? 'متابعة التعلم' : 'ابدأ الآن'}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 font-semibold text-white">
+                      <Play className="h-5 w-5" /> {enrollment.progress_percent > 0 ? 'متابعة التعلم' : 'ابدأ الآن'}
                     </Link>
+                  )}
+                  {certificate ? (
+                    <Link to={`/certificate/${certificate.id}`} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400/40 px-4 py-3 text-sm font-bold text-amber-300">عرض الشهادة</Link>
+                  ) : (
+                    <button type="button" onClick={() => void issueCertificate()} disabled={issuing} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/20 disabled:opacity-60">
+                      {issuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />} إصدار شهادة الإتمام
+                    </button>
                   )}
                 </div>
               ) : (

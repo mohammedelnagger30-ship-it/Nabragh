@@ -7,6 +7,11 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import Comments from '@/components/Comments';
+import SocialShare from '@/components/SocialShare';
+import PlaylistManager from '@/components/PlaylistManager';
+import MetaTags from '@/components/MetaTags';
+import StructuredData, { generateVideoStructuredData } from '@/components/StructuredData';
 import type { Video, Profile, Comment, VideoProgress } from '@/types';
 
 export default function VideoPlayerPage() {
@@ -208,7 +213,9 @@ export default function VideoPlayerPage() {
   }
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950 pt-[4.5rem]">
+      <MetaTags title={`${video.title} | منصة العلم`} description={video.description ?? 'درس تعليمي على منصة العلم'} />
+      <StructuredData data={generateVideoStructuredData(video)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-slate-400 mb-4 flex-wrap">
@@ -265,9 +272,8 @@ export default function VideoPlayerPage() {
               <div className="mb-3 flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-bold text-white">{video.title}</h1>
                 <div className="flex shrink-0 items-center gap-2">
-                  <button onClick={shareVideo} aria-label="مشاركة الفيديو" className="rounded-xl bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white">
-                    <Share2 className="h-5 w-5" />
-                  </button>
+                  <SocialShare title={video.title} description={video.description ?? undefined} />
+                  {user && !profile?.is_teacher && <PlaylistManager videoId={video.id} />}
                   {user && !profile?.is_teacher && (
                     <button onClick={toggleFavorite}
                       className={`flex items-center gap-2 rounded-xl px-3 py-2 font-medium transition-all ${
@@ -362,7 +368,7 @@ export default function VideoPlayerPage() {
                   className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === 'comments' ? 'border-blue-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
                   }`}>
-                  <MessageSquare className="w-4 h-4 inline ml-1" /> التعليقات ({comments.length})
+                  <MessageSquare className="w-4 h-4 inline ml-1" /> التعليقات
                 </button>
                 <button
                   onClick={() => setActiveTab('related')}
@@ -374,73 +380,8 @@ export default function VideoPlayerPage() {
               </div>
 
               {activeTab === 'comments' && (
-                <div>
-                  {/* Add comment */}
-                  {user && !profile?.is_teacher ? (
-                    <div className="flex gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-bold text-blue-600">{profile?.full_name?.charAt(0) ?? 'U'}</span>
-                      </div>
-                      <div className="flex-1">
-                        <textarea
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          placeholder="أضف تعليقاً..."
-                          rows={2}
-                          className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none"
-                        />
-                        {commentText.trim() && (
-                          <button
-                            onClick={submitComment}
-                            disabled={submittingComment}
-                            className="mt-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-60">
-                            {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            نشر التعليق
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ) : !user ? (
-                    <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center mb-6">
-                      <p className="text-slate-400 text-sm">
-                        <Link to="/signin" className="text-blue-400 hover:underline">سجل دخولك</Link> لإضافة تعليق
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {/* Comments list */}
-                  {comments.length === 0 ? (
-                    <div className="text-center py-8">
-                      <MessageSquare className="w-10 h-10 text-slate-700 mx-auto mb-2" />
-                      <p className="text-slate-500 text-sm">لا توجد تعليقات بعد. كن أول من يعلق!</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {comments.map((c) => (
-                        <div key={c.id} className="flex gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-bold text-blue-600">{c.student?.full_name?.charAt(0) ?? 'U'}</span>
-                          </div>
-                          <div className="flex-1">
-                            <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-white text-sm">{c.student?.full_name ?? 'طالب'}</span>
-                                <span className="text-xs text-slate-500">{new Date(c.created_at).toLocaleDateString('ar-EG')}</span>
-                              </div>
-                              <p className="text-slate-300 text-sm leading-relaxed">{c.comment}</p>
-                            </div>
-                            {c.student_id === user?.id && (
-                              <button
-                                onClick={() => deleteComment(c.id)}
-                                className="mt-1 text-xs text-slate-500 hover:text-red-400 flex items-center gap-1 transition-colors">
-                                <Trash2 className="w-3 h-3" /> حذف
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                  <Comments videoId={video.id} />
                 </div>
               )}
 

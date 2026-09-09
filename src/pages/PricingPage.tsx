@@ -4,6 +4,8 @@ import { Check, Zap, Crown, Sparkles, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import MetaTags from '@/components/MetaTags';
+import { whatsappLink } from '@/lib/contact';
 import type { SubscriptionPlan } from '@/types';
 
 export default function PricingPage() {
@@ -36,14 +38,32 @@ export default function PricingPage() {
       return;
     }
     setSubscribing(plan.id);
-    toast('الدفع الإلكتروني قيد التجهيز. لن يتم تفعيل الاشتراك قبل إتمام عملية الدفع.', 'info');
+    const end = new Date();
+    end.setMonth(end.getMonth() + Math.max(plan.duration_months, 1));
+    const { error } = await supabase.from('subscriptions').insert({
+      student_id: user.id,
+      teacher_id: null,
+      plan_id: plan.id,
+      start_date: new Date().toISOString(),
+      end_date: end.toISOString(),
+      status: 'pending',
+      payment_status: 'pending',
+      notes: `طلب باقة ${plan.name_ar}`,
+    });
     setSubscribing(null);
+    if (error) {
+      toast('تعذر إنشاء طلب الاشتراك. حاول مرة أخرى.', 'error');
+      return;
+    }
+    toast('تم تسجيل طلبك. أكمل الدفع عبر واتساب لتفعيل الباقة.', 'success');
+    window.open(whatsappLink(`مرحباً، أريد الاشتراك في باقة ${plan.name_ar} بسعر ${plan.price} ر.س`), '_blank');
   };
 
   const planIcons: Record<string, typeof Zap> = { Free: Sparkles, Monthly: Zap, Annual: Crown };
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 pt-[4.5rem] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <MetaTags title="الباقات | منصة العلم" description="اختر باقة الاشتراك المناسبة لك على منصة العلم" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Header */}
         <div className="text-center mb-12">
@@ -51,7 +71,7 @@ export default function PricingPage() {
             <Sparkles className="w-4 h-4" />
             باقات الاشتراك
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold text-slate-800 mb-4">اختر الباقة المناسبة لك</h1>
+          <h1 className="mb-4 text-3xl font-bold text-slate-800 dark:text-white sm:text-5xl">اختر الباقة المناسبة لك</h1>
           <p className="text-slate-500 max-w-2xl mx-auto text-lg">
             باقات مرنة تناسب جميع الاحتياجات. ابدأ مجاناً أو اشترك للوصول الكامل
           </p>
@@ -70,7 +90,7 @@ export default function PricingPage() {
               return (
                 <div
                   key={plan.id}
-                  className={`relative bg-white rounded-3xl border-2 p-8 transition-all ${
+                  className={`relative rounded-3xl border-2 bg-white p-8 transition-all dark:bg-slate-800 ${
                     isPopular
                       ? 'border-blue-500 shadow-2xl shadow-blue-200/50 scale-105'
                       : 'border-slate-200 shadow-sm hover:shadow-lg hover:border-slate-300'
@@ -86,7 +106,7 @@ export default function PricingPage() {
                   }`}>
                     <Icon className={`w-7 h-7 ${isPopular ? 'text-white' : 'text-slate-600'}`} />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-800 mb-1">{plan.name_ar}</h3>
+                  <h3 className="mb-1 text-2xl font-bold text-slate-800 dark:text-white">{plan.name_ar}</h3>
                   <p className="text-sm text-slate-400 mb-5">
                     {plan.duration_months === 0 ? 'بدون التزام' : `${plan.duration_months} ${plan.duration_months === 1 ? 'شهر' : 'أشهر'}`}
                   </p>
@@ -129,10 +149,10 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-slate-800 text-center mb-8">الأسئلة الشائعة</h2>
           <div className="space-y-4">
             {[
-              { q: 'هل يمكنني إلغاء الاشتراك في أي وقت؟', a: 'نعم، يمكنك إلغاء اشتراكك في أي وقت من لوحة التحكم. سيستمر الوصول حتى نهاية فترة الاشتراك المدفوعة.' },
+              { q: 'هل يمكنني إلغاء الاشتراك في أي وقت؟', a: 'نعم. من لوحة التحكم يمكنك إلغاء الاشتراك النشط، ويظل الوصول حتى نهاية الفترة المدفوعة إن وُجدت.' },
               { q: 'هل الفيديوهات المجانية متاحة للجميع؟', a: 'نعم، جميع الفيديوهات المحددة كمجانية متاحة لأي زائر بدون الحاجة لاشتراك.' },
-              { q: 'ما طرق الدفع المتاحة؟', a: 'نقبل جميع البطاقات الائتمانية الرئيسية والمحافظ الرقمية. سيتم تفعيل الدفع الإلكتروني قريباً.' },
-              { q: 'هل يمكنني التحميل للمشاهدة لاحقاً؟', a: 'نعم، المشتركون في الباقات المدفوعة يمكنهم تحميل الفيديوهات للمشاهدة بدون إنترنت.' },
+              { q: 'ما طرق الدفع المتاحة؟', a: 'حالياً نؤكد الاشتراك المدفوع عبر واتساب بعد تسجيل الطلب. بوابة الدفع الإلكتروني قيد التجهيز ولن يُفعّل أي اشتراك قبل تأكيد الدفع.' },
+              { q: 'هل يمكنني التحميل للمشاهدة لاحقاً؟', a: 'التطبيق يدعم التثبيت كـ PWA للوصول السريع. التحميل الكامل بدون إنترنت سيُتاح تدريجياً للمشتركين.' },
             ].map((faq, i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6">
                 <h3 className="font-bold text-slate-800 mb-2">{faq.q}</h3>

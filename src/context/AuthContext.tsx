@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { translateAuthError } from '@/lib/authErrors';
 import type { Profile } from '@/types';
 
 interface AuthContextType {
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, isTeacher: boolean, educationStage?: string, curriculum?: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
+    if (error) return { error: translateAuthError(error.message) };
 
     if (data.user) {
       const { error: profileError } = await supabase.from('profiles').insert({
@@ -75,12 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         full_name: fullName,
         email,
         is_teacher: isTeacher,
+        is_approved: !isTeacher,
         education_stage: isTeacher ? null : educationStage || null,
         curriculum: isTeacher ? null : curriculum || null,
         teaching_stages: isTeacher && educationStage ? [educationStage] : [],
         teaching_curricula: isTeacher && curriculum ? [curriculum] : [],
       });
-      if (profileError) return { error: profileError.message };
+      if (profileError) return { error: translateAuthError(profileError.message) };
     }
 
     return { error: null };
@@ -88,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    if (error) return { error: translateAuthError(error.message) };
     return { error: null };
   };
 
