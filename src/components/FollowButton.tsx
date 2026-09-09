@@ -88,6 +88,7 @@ export default function FollowButton({
 
   return (
     <button
+    aria-label={isFollowing ? 'إلغاء متابعة المعلم' : 'متابعة المعلم'}
       onClick={handleFollow}
       disabled={isLoading}
       className={`inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${sizeClasses[size]} ${variantClasses[variant]}`}

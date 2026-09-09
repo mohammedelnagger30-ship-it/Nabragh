@@ -85,7 +85,7 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
   if (!showGame && !showBoard && !showHonors && !showPlans) return null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md">
       {showGame && (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3">

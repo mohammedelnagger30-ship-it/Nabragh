@@ -4,11 +4,32 @@ import { GraduationCap, ArrowRight } from 'lucide-react';
 export default function TeacherProfilePage() {
   return (
     <div className="pt-[4.5rem] min-h-screen flex items-center justify-center">
-      <div className="text-center">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">إحصائيات المعلم</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-blue-100 p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold">عدد الطلاب</h3>
+            <p className="text-2xl font-bold">{totalStudents}</p>
+          </div>
+          <div className="bg-green-100 p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold">عدد الدورات</h3>
+            <p className="text-2xl font-bold">{courses.length}</p>
+          </div>
+          <div className="bg-yellow-100 p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold">عدد المراجعات</h3>
+            <p className="text-2xl font-bold">{reviews.length}</p>
+          </div>
+          <div className="bg-red-100 p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold">متوسط التقييم</h3>
+            <p className="text-2xl font-bold">{avgRating.toFixed(1)}</p>
+          </div>
+        </div>
+      </div>
         <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
           <GraduationCap className="w-10 h-10 text-blue-600 dark:text-blue-400" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">صفحة المدرس</h2>
+        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-4">{teacher.full_name}</h2>
+        <p className="text-slate-600 dark:text-slate-300 mb-6">{teacher.bio || 'مدرس محترف'}</p>
         <p className="text-slate-600 dark:text-slate-300 mb-6">صفحة المدرس قيد التطوير</p>
         <Link
           to="/teachers"

@@ -89,7 +89,7 @@ export default function Comments({ videoId }: CommentsProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md">
       {user ? (
         <form onSubmit={handleSubmitComment} className="space-y-4">
           {replyTo && (

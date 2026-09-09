@@ -112,7 +112,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md">
       {/* Rating Summary */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="grid md:grid-cols-2 gap-8">
