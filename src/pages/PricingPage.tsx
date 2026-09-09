@@ -46,7 +46,6 @@ export default function PricingPage() {
     if (!user || !checkoutPlan) return;
     const plan = checkoutPlan;
     const methodLabels: Record<string, string> = { card: 'بطاقة بنكية', bank: 'تحويل بنكي', mobile: 'مدى/محفظة', wallet: 'نقدي' };
-    const simulatedPayment = details.method === 'card';
     setSubscribing(plan.id);
     const end = new Date();
     end.setMonth(end.getMonth() + Math.max(plan.duration_months, 1));
@@ -56,9 +55,9 @@ export default function PricingPage() {
       plan_id: plan.id,
       start_date: new Date().toISOString(),
       end_date: end.toISOString(),
-      status: simulatedPayment ? 'active' : 'pending',
-      payment_status: simulatedPayment ? 'paid' : 'pending',
-      notes: `طلب باقة ${plan.name_ar} - طريقة الدفع: ${methodLabels[details.method] ?? details.method}${details.phone ? ` - الجوال: ${details.phone}` : ''}${simulatedPayment ? ' - دفع تجريبي مكتمل' : ''}`,
+      status: 'pending',
+      payment_status: 'pending',
+      notes: `طلب باقة ${plan.name_ar} - طريقة الدفع: ${methodLabels[details.method] ?? details.method}${details.phone ? ` - الجوال: ${details.phone}` : ''}`,
     });
     setSubscribing(null);
     if (error) {
@@ -67,10 +66,6 @@ export default function PricingPage() {
       return;
     }
     setCheckoutPlan(null);
-    if (simulatedPayment) {
-      toast(`تم تفعيل باقة ${plan.name_ar} بنجاح!`, 'success');
-      return;
-    }
     toast('تم تسجيل طلبك. أكمل الدفع عبر واتساب لتفعيل الباقة.', 'success');
     window.open(whatsappLink(
       `مرحباً، أريد الاشتراك في باقة ${plan.name_ar} بسعر ${plan.price} ر.س.\nطريقة الدفع: ${methodLabels[details.method] ?? details.method}${details.phone ? `\nجوال الطالب: ${details.phone}` : ''}`,

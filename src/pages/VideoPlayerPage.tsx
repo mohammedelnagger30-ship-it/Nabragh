@@ -4,14 +4,15 @@ import {
   ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare,
   Clock, BookOpen, CheckCircle2
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import Comments from '@/components/Comments';
 import SocialShare from '@/components/SocialShare';
 import PlaylistManager from '@/components/PlaylistManager';
 import MetaTags from '@/components/MetaTags';
-import StructuredData, { generateVideoStructuredData } from '@/components/StructuredData';
+import StructuredData from '@/components/StructuredData';
+import { generateVideoStructuredData } from '@/components/structuredDataUtils';
 import type { Video, Profile, VideoProgress } from '@/types';
 
 export default function VideoPlayerPage() {
@@ -25,16 +26,44 @@ export default function VideoPlayerPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [progress, setProgress] = useState<VideoProgress | null>(null);
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'comments' | 'related'>('comments');
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [hasResumed, setHasResumed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const saveProgress = useCallback(async () => {
+    if (!user || !video || !videoRef.current || !hasAccess) return;
+    const currentWatched = Math.floor(videoRef.current.currentTime);
+    const total = Math.floor(videoRef.current.duration || video.duration_seconds || 0);
+    if (total <= 0) return;
+    const isCompleted = currentWatched / total >= 0.9;
+    const payload = {
+      watched_seconds: currentWatched,
+      total_seconds: total,
+      is_completed: isCompleted || Boolean(progress?.is_completed),
+      last_watched_at: new Date().toISOString(),
+    };
+    if (progress) {
+      await supabase.from('video_progress').update(payload).eq('id', progress.id);
+    } else {
+      const { data } = await supabase.from('video_progress').insert({
+        ...payload,
+        student_id: user.id,
+        video_id: video.id,
+      }).select().single();
+      if (data) setProgress(data as VideoProgress);
+    }
+    if (isCompleted) await supabase.rpc('update_course_progress', { target_video_id: video.id });
+  }, [hasAccess, progress, user, video]);
+
   const fetchData = useCallback(async () => {
     if (!id) return;
+    setHasResumed(false);
     const { data: vidData } = await supabase
       .from('videos')
-      .select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*), course:courses(*)')
+      .select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS}), course:courses(*)`)
       .eq('id', id)
       .maybeSingle();
     const vid = vidData as Video | null;
@@ -46,25 +75,15 @@ export default function VideoPlayerPage() {
 
       const { data: related } = await supabase
         .from('videos')
-        .select('*, category:categories(*)')
+        .select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*)`)
         .eq('teacher_id', vid.teacher_id)
         .neq('id', id)
         .limit(5);
-      setRelatedVideos(related as Video[] ?? []);
+      setRelatedVideos(related as unknown as Video[] ?? []);
 
-      if (vid.is_free) {
-        setHasAccess(true);
-      } else if (user) {
-        const { data: sub } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('student_id', user.id)
-          .eq('teacher_id', vid.teacher_id)
-          .eq('status', 'active')
-          .gt('end_date', new Date().toISOString())
-          .maybeSingle();
-        setHasAccess(!!sub);
-      }
+      const { data: authorizedUrl } = await supabase.rpc('get_video_playback_url', { target_video_id: vid.id });
+      setPlaybackUrl(authorizedUrl as string | null);
+      setHasAccess(Boolean(authorizedUrl));
 
       if (user) {
         const { data: fav } = await supabase
@@ -99,32 +118,8 @@ export default function VideoPlayerPage() {
     if (!hasAccess || !user || !video || !videoRef.current) return;
 
     const handleTimeUpdate = () => {
-      const total = Math.floor(videoRef.current?.duration || 0);
-
       if (progressIntervalRef.current === null) {
-        progressIntervalRef.current = setInterval(async () => {
-          const currentWatched = Math.floor(videoRef.current?.currentTime ?? 0);
-          const isCompleted = total > 0 && currentWatched / total >= 0.9;
-
-          if (progress) {
-            await supabase.from('video_progress').update({
-              watched_seconds: currentWatched,
-              total_seconds: total,
-              is_completed: isCompleted || progress.is_completed,
-              last_watched_at: new Date().toISOString(),
-            }).eq('id', progress.id);
-          } else {
-            const { data: newProg } = await supabase.from('video_progress').insert({
-              student_id: user.id,
-              video_id: video.id,
-              watched_seconds: currentWatched,
-              total_seconds: total,
-              is_completed: isCompleted,
-              last_watched_at: new Date().toISOString(),
-            }).select().single();
-            if (newProg) setProgress(newProg as VideoProgress);
-          }
-        }, 10000);
+        progressIntervalRef.current = setInterval(() => { void saveProgress(); }, 10000);
       }
     };
 
@@ -133,12 +128,22 @@ export default function VideoPlayerPage() {
 
     return () => {
       videoEl?.removeEventListener('play', handleTimeUpdate);
+      videoEl?.removeEventListener('pause', saveProgress);
+      videoEl?.removeEventListener('ended', saveProgress);
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
     };
-  }, [hasAccess, user, video, progress]);
+  }, [hasAccess, saveProgress, user, video]);
+
+  const handleLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    event.currentTarget.playbackRate = playbackRate;
+    if (!hasResumed && progress && progress.watched_seconds > 5 && progress.watched_seconds < event.currentTarget.duration - 5) {
+      event.currentTarget.currentTime = progress.watched_seconds;
+      setHasResumed(true);
+    }
+  };
 
   const toggleFavorite = async () => {
     if (!user || !video) return;
@@ -191,12 +196,14 @@ export default function VideoPlayerPage() {
               {hasAccess ? (
                 <video
                   ref={videoRef}
-                  src={video.video_url}
+                  src={playbackUrl ?? undefined}
                   controls
                   autoPlay
                   className="w-full h-full"
                   controlsList="nodownload"
-                  onLoadedMetadata={(event) => { event.currentTarget.playbackRate = playbackRate; }}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onPause={() => void saveProgress()}
+                  onEnded={() => void saveProgress()}
                 />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">

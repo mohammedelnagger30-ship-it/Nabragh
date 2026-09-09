@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Shield, Moon, Sun, Bell } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Moon, Sun, Bell, Home, BookOpen } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase';
 
 export default function Navbar() {
-  const { user, profile, signOut, isAdmin } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { setTheme, actualTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,15 +91,6 @@ export default function Navbar() {
             </button>
             {user ? (
               <>
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
-                    <Shield className="w-4 h-4" />
-                    الإدارة
-                  </Link>
-                )}
                 {!profile?.is_teacher && (
                   <Link
                     to="/dashboard?tab=notifications"
@@ -116,20 +107,28 @@ export default function Navbar() {
                   </Link>
                 )}
                 <Link
-                  to="/dashboard"
+                  to={profile?.is_teacher ? '/admin/teacher' : '/dashboard'}
                   className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   لوحة التحكم
                 </Link>
-                <div className="flex items-center gap-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 px-2.5 py-1.5">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-sm font-bold">
-                    {profile?.full_name?.charAt(0) ?? 'U'}
+                <Link
+                  to="/settings"
+                  className="flex items-center gap-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 px-2.5 py-1.5 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
+                  title="الإعدادات"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile?.full_name ?? 'avatar'} className="w-full h-full object-cover" />
+                    ) : (
+                      profile?.full_name?.charAt(0) ?? 'U'
+                    )}
                   </div>
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-200 max-w-[120px] truncate">
                     {profile?.full_name}
                   </span>
-                </div>
+                </Link>
                 <button
                   onClick={handleSignOut}
                   className="rounded-xl p-2 text-slate-500 dark:text-slate-400 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400"
@@ -189,21 +188,19 @@ export default function Navbar() {
             </button>
             {user ? (
               <>
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileOpen(false)}
-                    className="block px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                  >
-                    الإدارة
-                  </Link>
-                )}
                 <Link
-                  to="/dashboard"
+                  to={profile?.is_teacher ? '/admin/teacher' : '/dashboard'}
                   onClick={() => setMobileOpen(false)}
                   className="block px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                 >
                   لوحة التحكم
+                </Link>
+                <Link
+                  to="/settings"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                >
+                  الإعدادات
                 </Link>
                 <button
                   onClick={() => { handleSignOut(); setMobileOpen(false); }}
@@ -232,6 +229,30 @@ export default function Navbar() {
             )}
           </div>
         )}
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 md:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+          {[
+            { to: '/', label: 'الرئيسية', icon: Home },
+            { to: '/search', label: 'البحث', icon: Search },
+            { to: '/courses', label: 'الدورات', icon: BookOpen },
+            { to: user ? '/dashboard' : '/signin', label: user ? 'حسابي' : 'دخول', icon: user ? LayoutDashboard : User },
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = location.pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold transition-colors ${active ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                <Icon className="h-5 w-5" aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

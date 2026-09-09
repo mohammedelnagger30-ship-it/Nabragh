@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, X, Video as VideoIcon, BookOpen, User } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import type { Video, Course, Profile } from '@/types';
 
@@ -29,18 +29,18 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
           const [videosResult, coursesResult, teachersResult] = await Promise.all([
             supabase
               .from('videos')
-              .select('*, teacher:profiles!videos_teacher_id_fkey(*)')
+              .select(`${VIDEO_PUBLIC_COLUMNS}, teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
               .ilike('title', `%${query}%`)
               .limit(5),
             supabase
               .from('courses')
-              .select('*, teacher:profiles!courses_teacher_id_fkey(*)')
+              .select(`*, teacher:profiles!courses_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
               .ilike('title', `%${query}%`)
               .eq('is_published', true)
               .limit(5),
             supabase
               .from('profiles')
-              .select('*')
+              .select(PROFILE_PUBLIC_COLUMNS)
               .eq('is_teacher', true)
               .eq('is_approved', true)
               .not('id', 'eq', INTERNAL_TEACHER_ID)
@@ -49,7 +49,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
           ]);
 
           setSuggestions({
-            videos: (videosResult.data as Video[]) ?? [],
+            videos: (videosResult.data as unknown as Video[]) ?? [],
             courses: (coursesResult.data as Course[]) ?? [],
             teachers: (teachersResult.data as Profile[]) ?? [],
           });

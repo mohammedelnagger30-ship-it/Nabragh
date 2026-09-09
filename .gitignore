@@ -24,3 +24,4 @@ dist-ssr
 
 android/keystore.properties
 android/manhatalilm-release.keystore
+.aider*

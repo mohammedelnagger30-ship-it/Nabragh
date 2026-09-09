@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Palette, Plus, Trash2, Save, Loader2, Medal, Users as UsersIcon,
   Crown, FolderX, Trophy, BookOpen, Award, Video as VideoIcon,
-  Star, CheckCircle2, TrendingUp, ClipboardList, Gamepad2, RefreshCw
+  Star, CheckCircle2, TrendingUp, ClipboardList, Gamepad2, RefreshCw, UserPlus, UserX
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/context/ToastContext';
@@ -73,32 +73,32 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-5 flex items-center gap-2 font-bold text-slate-800"><Palette className="h-5 w-5 text-blue-600" /> تصميم صفحتي العامة</h3>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h3 className="mb-5 flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Palette className="h-5 w-5 text-blue-600" /> تصميم صفحتي العامة</h3>
         <div className="space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">ألوان صفحتي</label>
+            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">ألوان صفحتي</label>
             <div className="flex flex-wrap items-center gap-3">
               {[
                 { key: 'primary_color' as const, label: 'الرئيسي' },
                 { key: 'secondary_color' as const, label: 'الثانوي' },
                 { key: 'accent_color' as const, label: 'التمييز' },
               ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                <label key={key} className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2">
                   <input type="color" value={settings[key]} onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.value }))} className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0" />
-                  <span className="text-xs font-bold text-slate-600">{label}</span>
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span>
                 </label>
               ))}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {swatches.map((s) => (
-                <button key={s.c} onClick={() => setSettings((cur) => ({ ...cur, primary_color: s.c, secondary_color: s.c }))} className="flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:border-slate-400">
+                <button key={s.c} onClick={() => setSettings((cur) => ({ ...cur, primary_color: s.c, secondary_color: s.c }))} className="flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 dark:text-slate-300 hover:border-slate-400">
                   <span className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: s.c }} /> {s.name}
                 </button>
               ))}
             </div>
-            <div className="mt-4 rounded-xl border border-slate-200 p-4">
-              <div className="text-xs font-bold text-slate-500">معاينة</div>
+            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">معاينة</div>
               <div className="mt-2 flex items-center gap-2">
                 <span className="h-8 w-8 rounded-full" style={{ backgroundColor: settings.primary_color }} />
                 <span className="h-8 w-8 rounded-full" style={{ backgroundColor: settings.secondary_color }} />
@@ -108,11 +108,11 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-5">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
               <input type="checkbox" checked={settings.show_competitions} onChange={(e) => setSettings((s) => ({ ...s, show_competitions: e.target.checked }))} className="h-4 w-4 accent-blue-600" />
               إظهار لعبتي (المنافسات) في صفحتي
             </label>
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
               <input type="checkbox" checked={settings.show_leaderboard} onChange={(e) => setSettings((s) => ({ ...s, show_leaderboard: e.target.checked }))} className="h-4 w-4 accent-blue-600" />
               إظهار ترتيب أفضل طلابي
             </label>
@@ -123,36 +123,36 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-5 flex items-center gap-2 font-bold text-slate-800"><Crown className="h-5 w-5 text-amber-500" /> باقات الاشتراك الخاصة بي</h3>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h3 className="mb-5 flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Crown className="h-5 w-5 text-amber-500" /> باقات الاشتراك الخاصة بي</h3>
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             {plans.map((plan) => (
-              <div key={plan.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-4">
+              <div key={plan.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                 <div>
-                  <div className="font-bold text-slate-800">{plan.name_ar}</div>
-                  <div className="mt-1 text-sm text-slate-500">
+                  <div className="font-bold text-slate-800 dark:text-slate-100">{plan.name_ar}</div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {plan.price === 0 ? 'مجاناً' : `${plan.price} ر.س`} / {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}
                   </div>
                   {plan.features.length > 0 && (
-                    <ul className="mt-2 space-y-1 text-xs text-slate-500">
+                    <ul className="mt-2 space-y-1 text-xs text-slate-500 dark:text-slate-400">
                       {plan.features.map((f, i) => <li key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> {f}</li>)}
                     </ul>
                   )}
                 </div>
-                <button onClick={() => void removePlan(plan.id)} className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100" title="حذف الباقة"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => void removePlan(plan.id)} className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف الباقة"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
-            {plans.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-400">لا توجد باقات بعد — أضف أول باقة لعرضها في صفحتك</div>}
+            {plans.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center text-sm text-slate-400 dark:text-slate-500">لا توجد باقات بعد — أضف أول باقة لعرضها في صفحتك</div>}
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900 p-4">
             <div className="space-y-3">
-              <input value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="اسم الباقة (مثل: باقة شهرية)" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
+              <input value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="اسم الباقة (مثل: باقة شهرية)" className="w-full rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm" />
               <div className="grid grid-cols-2 gap-3">
-                <input type="number" min={0} value={planPrice} onChange={(e) => setPlanPrice(Number(e.target.value))} placeholder="السعر" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
-                <input type="number" min={1} value={planMonths} onChange={(e) => setPlanMonths(Number(e.target.value))} placeholder="المدة (أشهر)" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
+                <input type="number" min={0} value={planPrice} onChange={(e) => setPlanPrice(Number(e.target.value))} placeholder="السعر" className="w-full rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm" />
+                <input type="number" min={1} value={planMonths} onChange={(e) => setPlanMonths(Number(e.target.value))} placeholder="المدة (أشهر)" className="w-full rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm" />
               </div>
-              <input value={planFeatures} onChange={(e) => setPlanFeatures(e.target.value)} placeholder="المميزات، مفصولة بفواصل (,)" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
+              <input value={planFeatures} onChange={(e) => setPlanFeatures(e.target.value)} placeholder="المميزات، مفصولة بفواصل (,)" className="w-full rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm" />
               <button onClick={() => void addPlan()} disabled={!planName.trim()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Plus className="h-4 w-4" /> إضافة الباقة</button>
             </div>
           </div>
@@ -185,7 +185,7 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
     const [{ data: courses }, { data: videoList }, { data: quizList }] = await Promise.all([
       supabase.from('courses').select('id').eq('teacher_id', teacherId),
       supabase.from('videos').select('id').eq('teacher_id', teacherId),
-      supabase.from('quizzes').select('id').eq('teacher_id', teacherId),
+      supabase.from('quizzes').select('id, course:courses!inner(teacher_id)').eq('course.teacher_id', teacherId),
     ]);
     const courseIds = new Set((courses ?? []).map((c) => c.id));
     const videoIds = new Set((videoList ?? []).map((v) => v.id));
@@ -234,8 +234,8 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
     const candidateIds = new Set([...enrolled.keys(), ...progressById.keys(), ...subscriberIds.keys()]);
     let profiles: Profile[] = [];
     if (candidateIds.size > 0) {
-      const { data } = await supabase.from('profiles').select('*').in('id', Array.from(candidateIds)).eq('is_teacher', false);
-      profiles = (data ?? []) as Profile[];
+      const { data } = await supabase.rpc('get_profiles_full', { profile_ids: Array.from(candidateIds) });
+      profiles = ((data ?? []) as Profile[]).filter((profile) => !profile.is_teacher);
     }
     const result: StudentInfo[] = profiles
       .map((profile) => {
@@ -268,26 +268,26 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-bold text-slate-800"><UsersIcon className="h-5 w-5 text-blue-600" /> طلابي ({rows.length})</h3>
-        <button onClick={() => void load()} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"><RefreshCw className="h-3.5 w-3.5" /> تحديث</button>
+        <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><UsersIcon className="h-5 w-5 text-blue-600" /> طلابي ({rows.length})</h3>
+        <button onClick={() => void load()} className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"><RefreshCw className="h-3.5 w-3.5" /> تحديث</button>
       </div>
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-400">لا يوجد طلاب مسجلون في محتواك بعد</div>
+        <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-10 text-center text-sm text-slate-400 dark:text-slate-500">لا يوجد طلاب مسجلون في محتواك بعد</div>
       ) : (
         <div className="space-y-3">
           {rows.map((s) => (
-            <div key={s.profile.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div key={s.profile.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">{s.profile.full_name?.charAt(0) ?? 'ط'}</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-sm font-bold text-blue-700 dark:text-blue-300">{s.profile.full_name?.charAt(0) ?? 'ط'}</div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 font-bold text-slate-800">
+                  <div className="flex flex-wrap items-center gap-2 font-bold text-slate-800 dark:text-slate-100">
                     {s.profile.full_name ?? 'طالب'}
-                    {s.isSubscriber && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">مشترك</span>}
+                    {s.isSubscriber && <span className="rounded-full bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">مشترك</span>}
                   </div>
-                  <div className="truncate text-xs text-slate-400" dir="ltr">{s.profile.email}</div>
+                  <div className="truncate text-xs text-slate-400 dark:text-slate-500" dir="ltr">{s.profile.email}</div>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">🥇 {s.competitionPoints} نقطة</span>
-                <button onClick={() => setExpanded(expanded === s.profile.id ? null : s.profile.id)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200">
+                <span className="rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">🥇 {s.competitionPoints} نقطة</span>
+                <button onClick={() => setExpanded(expanded === s.profile.id ? null : s.profile.id)} className="rounded-lg bg-slate-100 dark:bg-slate-700 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600">
                   {expanded === s.profile.id ? 'إغلاق' : 'تفاصيل'}
                 </button>
               </div>
@@ -299,11 +299,11 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
                 <MiniInfo label="متوسط الدرجات" value={`${s.quizScore}%`} icon={<Star className="h-3.5 w-3.5" />} />
               </div>
               {expanded === s.profile.id && (
-                <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                  <p className="text-slate-600">المرحلة: <b>{s.profile.education_stage || 'غير محددة'}</b></p>
-                  <p className="text-slate-600">المنهج: <b>{s.profile.curriculum || 'غير محدد'}</b></p>
-                  <p className="text-slate-600">منافسات لعبها: <b>{s.competitionsPlayed}</b></p>
-                  <p className="text-slate-600">التقييم العام: <b>{s.profile.is_approved ? 'نشط' : 'مقيد'}</b></p>
+                <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 dark:bg-slate-800 p-4 text-sm sm:grid-cols-2">
+                  <p className="text-slate-600 dark:text-slate-300">المرحلة: <b>{s.profile.education_stage || 'غير محددة'}</b></p>
+                  <p className="text-slate-600 dark:text-slate-300">المنهج: <b>{s.profile.curriculum || 'غير محدد'}</b></p>
+                  <p className="text-slate-600 dark:text-slate-300">منافسات لعبها: <b>{s.competitionsPlayed}</b></p>
+                  <p className="text-slate-600 dark:text-slate-300">التقييم العام: <b>{s.profile.is_approved ? 'نشط' : 'مقيد'}</b></p>
                 </div>
               )}
             </div>
@@ -314,11 +314,51 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
   );
 }
 
+export function TeacherAssistants() {
+  const { toast } = useToast();
+  const [staff, setStaff] = useState<Array<{ id: string; staff_id: string; full_name: string; email: string; can_manage_students: boolean; can_manage_assessments: boolean; can_manage_pricing: boolean; status: string }>>([]);
+  const [email, setEmail] = useState('');
+  const [permissions, setPermissions] = useState({ students: true, assessments: true, pricing: false });
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.rpc('teacher_list_staff');
+    setStaff((data ?? []) as typeof staff);
+    setLoading(false);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const addAssistant = async () => {
+    if (!email.trim()) return;
+    const { error } = await supabase.rpc('teacher_add_staff_by_email', {
+      target_email: email.trim(), students: permissions.students, assessments: permissions.assessments, pricing: permissions.pricing,
+    });
+    if (error) toast('تعذر إضافة الحساب. يجب أن يكون الحساب موجودًا كطالب أولًا.', 'error');
+    else { setEmail(''); await load(); toast('تمت إضافة المساعد بنجاح', 'success'); }
+  };
+
+  const revoke = async (staffId: string) => {
+    const { error } = await supabase.rpc('teacher_revoke_staff', { target_staff_id: staffId });
+    if (!error) { await load(); toast('تم إلغاء صلاحيات المساعد', 'success'); }
+  };
+
+  if (loading) return <div className="flex min-h-[220px] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-blue-600" /></div>;
+  return <div className="space-y-5">
+    <div><h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><UserPlus className="h-5 w-5 text-blue-600" /> مساعدو المنصة</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">أضف حسابًا موجودًا وحدد ما يمكنه إدارته داخل منصتك فقط.</p></div>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-col gap-3 sm:flex-row"><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="بريد حساب المساعد" className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm dark:border-slate-600 dark:bg-slate-900" /><button type="button" onClick={() => void addAssistant()} className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><UserPlus className="h-4 w-4" /> إضافة</button></div>
+      <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300">{([['students', 'متابعة الطلاب'], ['assessments', 'الاختبارات والدرجات'], ['pricing', 'الأسعار والباقات']] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={permissions[key]} onChange={(e) => setPermissions((current) => ({ ...current, [key]: e.target.checked }))} />{label}</label>)}</div>
+    </div>
+    <div className="space-y-3">{staff.map((member) => <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><UsersIcon className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className="font-bold text-slate-800 dark:text-slate-100">{member.full_name}</p><p className="text-xs text-slate-500 dark:text-slate-400" dir="ltr">{member.email}</p></div><span className="text-xs font-bold text-emerald-600">{member.status === 'active' ? 'نشط' : 'ملغى'}</span>{member.status === 'active' && <button type="button" onClick={() => void revoke(member.staff_id)} aria-label="إلغاء صلاحيات المساعد" className="rounded-lg p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"><UserX className="h-4 w-4" /></button>}</div>)}</div>
+    {staff.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">لم تتم إضافة مساعدين بعد.</div>}
+  </div>;
+}
+
 function MiniInfo({ label, value, icon }: { label: string; value: number | string; icon: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-center">
-      <div className="flex items-center justify-center gap-1 text-slate-400">{icon}<span className="text-[11px]">{label}</span></div>
-      <div className="mt-1 text-sm font-extrabold text-slate-700">{value}</div>
+    <div className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-center">
+      <div className="flex items-center justify-center gap-1 text-slate-400 dark:text-slate-500">{icon}<span className="text-[11px]">{label}</span></div>
+      <div className="mt-1 text-sm font-extrabold text-slate-700 dark:text-slate-200">{value}</div>
     </div>
   );
 }
@@ -374,33 +414,33 @@ export function TeacherHonors({ teacherId }: { teacherId: string }) {
 
   return (
     <div className="space-y-6">
-      <h3 className="flex items-center gap-2 font-bold text-slate-800"><Medal className="h-5 w-5 text-amber-500" /> تكريم الطلاب</h3>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h4 className="mb-3 font-bold text-slate-700">تكريم جديد</h4>
+      <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Medal className="h-5 w-5 text-amber-500" /> تكريم الطلاب</h3>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h4 className="mb-3 font-bold text-slate-700 dark:text-slate-200">تكريم جديد</h4>
         <div className="grid gap-3 sm:grid-cols-2">
-          <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+          <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm">
             <option value="">اختر الطالب...</option>
             {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="اللقب (مثل: الأول في تحدي الرياضيات)" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="وصف إضافي (اختياري)" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm sm:col-span-2" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="اللقب (مثل: الأول في تحدي الرياضيات)" className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm" />
+          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="وصف إضافي (اختياري)" className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2.5 text-sm sm:col-span-2" />
         </div>
         <button onClick={() => void award()} className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600"><Award className="h-4 w-4" /> تكريم الطالب</button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {honors.map((h) => (
-          <div key={h.id} className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+          <div key={h.id} className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm dark:border-amber-900/40 dark:from-amber-900/20 dark:to-slate-800">
             <Medal className="h-6 w-6 text-amber-500" />
-            <div className="mt-2 font-extrabold text-slate-800">{h.title}</div>
-            {h.description && <p className="mt-1 text-sm text-slate-500">{h.description}</p>}
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-2 font-extrabold text-slate-800 dark:text-slate-100">{h.title}</div>
+            {h.description && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{h.description}</p>}
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
               <span>الطالب: {h.student?.full_name ?? 'طالب'}</span>
               <span>{new Date(h.created_at).toLocaleDateString('ar-EG')}</span>
             </div>
           </div>
         ))}
       </div>
-      {honors.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400">لا توجد تكريمات بعد — كرّم طلابك المتفوقين</div>}
+      {honors.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-10 text-center text-sm text-slate-400 dark:text-slate-500">لا توجد تكريمات بعد — كرّم طلابك المتفوقين</div>}
     </div>
   );
 }
@@ -440,31 +480,31 @@ export function TeacherLeaderboards({ teacherId }: { teacherId: string }) {
   if (loading) return <div className="flex min-h-[120px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="flex items-center gap-2 font-bold text-slate-800"><Trophy className="h-5 w-5 text-amber-500" /> ترتيب أفضل طلابي</h3>
-      <p className="mt-1 text-sm text-slate-500">يظهر هذا الترتيب في صفحتك العامة على الموقع، ويمكنك تكريم الأول من هنا.</p>
+    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Trophy className="h-5 w-5 text-amber-500" /> ترتيب أفضل طلابي</h3>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يظهر هذا الترتيب في صفحتك العامة على الموقع، ويمكنك تكريم الأول من هنا.</p>
       {competitions.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">أنشئ منافسة منشورة وسيظهر ترتيب طلابك هنا</div>
+        <div className="mt-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center text-sm text-slate-400 dark:text-slate-500">أنشئ منافسة منشورة وسيظهر ترتيب طلابك هنا</div>
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {competitions.map((competition) => {
             const rows = (boards[competition.id] ?? []).slice(0, 5);
             return (
-              <div key={competition.id} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-                <div className="mb-3 flex items-center gap-2 font-bold text-slate-700"><Gamepad2 className="h-4 w-4 text-cyan-600" /> {competition.title}</div>
+              <div key={competition.id} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60 p-4">
+                <div className="mb-3 flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200"><Gamepad2 className="h-4 w-4 text-cyan-600" /> {competition.title}</div>
                 {rows.length === 0 ? (
-                  <p className="text-xs text-slate-400">لا يوجد مشاركون بعد</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">لا يوجد مشاركون بعد</p>
                 ) : (
                   <div className="space-y-1.5">
                     {rows.map((r) => (
-                      <div key={r.student_id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm">
-                        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-extrabold ${r.rank === 1 ? 'bg-amber-100 text-amber-700' : r.rank === 2 ? 'bg-slate-200 text-slate-600' : r.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}>{r.rank}</span>
-                        <span className="min-w-0 flex-1 truncate font-semibold text-slate-700">{r.full_name}</span>
+                      <div key={r.student_id} className="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 px-3 py-2 text-sm">
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-extrabold ${r.rank === 1 ? 'bg-amber-100 text-amber-700' : r.rank === 2 ? 'bg-slate-200 text-slate-600 dark:text-slate-300' : r.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400 dark:text-slate-500'}`}>{r.rank}</span>
+                        <span className="min-w-0 flex-1 truncate font-semibold text-slate-700 dark:text-slate-200">{r.full_name}</span>
                         <span className="font-extrabold text-cyan-700">{r.points}</span>
-                        <span className="text-[10px] text-slate-400">نقطة</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">نقطة</span>
                       </div>
                     ))}
-                    <button onClick={() => void honorTop(competition.id)} className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100">
+                    <button onClick={() => void honorTop(competition.id)} className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40">
                       <Award className="h-3.5 w-3.5" /> تكريم الأول
                     </button>
                   </div>
@@ -474,7 +514,7 @@ export function TeacherLeaderboards({ teacherId }: { teacherId: string }) {
           })}
         </div>
       )}
-      <div className="mt-4 flex items-center gap-2 text-xs text-slate-400"><FolderX className="h-4 w-4" /> التكريمات تظهر في صفحتك العامة في خانة «التكريم».</div>
+      <div className="mt-4 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500"><FolderX className="h-4 w-4" /> التكريمات تظهر في صفحتك العامة في خانة «التكريم».</div>
     </div>
   );
 }

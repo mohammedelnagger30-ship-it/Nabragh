@@ -36,7 +36,7 @@ export interface Video {
   teacher_id: string;
   title: string;
   description: string | null;
-  video_url: string;
+  video_url?: string;
   thumbnail_url: string | null;
   category_id: string | null;
   course_id: string | null;
@@ -194,6 +194,18 @@ export interface Subscription {
   notes?: string | null;
   plan?: SubscriptionPlan;
   teacher?: Profile;
+}
+
+export interface TeacherStaff {
+  id: string;
+  teacher_id: string;
+  staff_id: string;
+  can_manage_students: boolean;
+  can_manage_assessments: boolean;
+  can_manage_pricing: boolean;
+  status: 'active' | 'revoked';
+  created_at: string;
+  staff?: Profile;
 }
 
 export interface Notification {

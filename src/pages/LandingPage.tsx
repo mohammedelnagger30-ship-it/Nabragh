@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
   ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import SearchSuggestions from '@/components/SearchSuggestions';
 import LazyImage from '@/components/LazyImage';
@@ -13,6 +13,7 @@ import type { Profile, Category, Video, Course, WatchHistoryItem, StudentSubject
 import { getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
 import { isPublicTeacher, INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
+import { CardSkeleton, TeacherCardSkeleton, VideoCardSkeleton } from '@/components/SkeletonLoader';
 
 export default function LandingPage() {
   const { user, profile } = useAuth();
@@ -25,9 +26,19 @@ export default function LandingPage() {
   const [stats, setStats] = useState({ teachers: 0, videos: 0, students: 0, courses: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
+    const timeoutId = window.setTimeout(() => {
+      if (isMounted) {
+        setHasLoadError(true);
+        setIsLoading(false);
+      }
+    }, 8000);
+
+    setIsLoading(true);
+    setHasLoadError(false);
 
     (async () => {
       try {
@@ -44,10 +55,10 @@ export default function LandingPage() {
           stats = cachedStats;
         } else {
           const [teacherCount, videoCount, studentCount, courseCount] = await Promise.all([
-            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID),
-            supabase.from('videos').select('*', { count: 'exact', head: true }),
-            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', false),
-            supabase.from('courses').select('*', { count: 'exact', head: true }),
+            supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID),
+            supabase.from('videos').select('id', { count: 'exact', head: true }),
+            supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_teacher', false),
+            supabase.from('courses').select('id', { count: 'exact', head: true }),
           ]);
           stats = {
             teachers: teacherCount.count ?? 0,
@@ -63,9 +74,9 @@ export default function LandingPage() {
           : supabase.from('categories').select('*').order('sort_order', { ascending: true });
 
         const [teacherResult, categoryResult, videoResult, courseResult] = await Promise.all([
-          supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID).order('created_at', { ascending: false }).limit(12),
+          supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID).order('created_at', { ascending: false }).limit(12),
           categoriesPromise,
-          supabase.from('videos').select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*)').order('views_count', { ascending: false }).limit(6),
+          supabase.from('videos').select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`).order('views_count', { ascending: false }).limit(6),
           supabase.from('courses').select('*, category:categories(*)').eq('is_published', true).order('created_at', { ascending: false }).limit(3),
         ]);
 
@@ -101,7 +112,7 @@ export default function LandingPage() {
           } else {
             const { data } = await supabase
               .from('watch_history')
-              .select('*, video:videos(*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*))')
+              .select(`*, video:videos(${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS}))`)
               .eq('student_id', user.id)
               .order('watched_at', { ascending: false })
               .limit(4);
@@ -113,7 +124,7 @@ export default function LandingPage() {
         if (isMounted) {
           setTeachers(((teacherResult.data as Profile[] ?? []).filter(isPublicTeacher).slice(0, 4)));
           setCategories(categoryResult.data as Category[] ?? []);
-          setVideos(videoResult.data as Video[] ?? []);
+          setVideos(videoResult.data as unknown as Video[] ?? []);
           setCourses(courseResult.data as Course[] ?? []);
           setStats(stats);
           setContinueWatching(historyData);
@@ -123,24 +134,34 @@ export default function LandingPage() {
       } catch {
         if (isMounted) setHasLoadError(true);
       } finally {
+        window.clearTimeout(timeoutId);
         if (isMounted) setIsLoading(false);
       }
     })();
 
-    return () => { isMounted = false; };
-  }, [profile?.is_teacher, user]);
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [profile?.is_teacher, retryCount, user]);
+
+  const retryLoading = () => {
+    setIsLoading(true);
+    setHasLoadError(false);
+    setRetryCount((count) => count + 1);
+  };
 
   const colorMap: Record<string, string> = {
-    blue: 'from-blue-500 to-blue-600 bg-blue-50 text-blue-600',
-    cyan: 'from-cyan-500 to-cyan-600 bg-cyan-50 text-cyan-600',
-    teal: 'from-teal-500 to-teal-600 bg-teal-50 text-teal-600',
-    green: 'from-green-500 to-green-600 bg-green-50 text-green-600',
-    indigo: 'from-indigo-500 to-indigo-600 bg-indigo-50 text-indigo-600',
-    amber: 'from-amber-500 to-amber-600 bg-amber-50 text-amber-600',
-    orange: 'from-orange-500 to-orange-600 bg-orange-50 text-orange-600',
-    sky: 'from-sky-500 to-sky-600 bg-sky-50 text-sky-600',
-    emerald: 'from-emerald-500 to-emerald-600 bg-emerald-50 text-emerald-600',
-    rose: 'from-rose-500 to-rose-600 bg-rose-50 text-rose-600',
+    blue: 'from-blue-500 to-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300',
+    cyan: 'from-cyan-500 to-cyan-600 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-300',
+    teal: 'from-teal-500 to-teal-600 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-300',
+    green: 'from-green-500 to-green-600 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300',
+    indigo: 'from-indigo-500 to-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300',
+    amber: 'from-amber-500 to-amber-600 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300',
+    orange: 'from-orange-500 to-orange-600 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300',
+    sky: 'from-sky-500 to-sky-600 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-300',
+    emerald: 'from-emerald-500 to-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300',
+    rose: 'from-rose-500 to-rose-600 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300',
   };
 
   return (
@@ -151,13 +172,14 @@ export default function LandingPage() {
       />
       <div className="pt-[4.5rem]">
         {isLoading && (
-          <div className="border-b border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm font-medium text-blue-700" role="status">
+          <div className="border-b border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-center text-sm font-medium text-blue-700 dark:text-blue-300" role="status">
             جاري تجهيز أفضل المحتوى لك...
           </div>
         )}
       {hasLoadError && !isLoading && (
-        <div className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-medium text-rose-700" role="alert">
-          تعذر تحميل بعض البيانات. تحقق من الاتصال ثم أعد تحميل الصفحة.
+        <div className="flex flex-wrap items-center justify-center gap-3 border-b border-rose-100 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-center text-sm font-medium text-rose-700" role="alert">
+          <span>تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.</span>
+          <button type="button" onClick={retryLoading} className="rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-bold text-rose-800 transition hover:bg-rose-200">إعادة المحاولة</button>
         </div>
       )}
       {/* Hero Section */}
@@ -175,11 +197,11 @@ export default function LandingPage() {
                 <Sparkles className="w-4 h-4" />
                 تعلم أذكى، من أي مكان
               </div>
-              <h1 className="mb-5 px-1 pb-1 text-4xl font-extrabold leading-[1.35] text-slate-900 dark:text-white sm:px-0 sm:text-5xl sm:leading-[1.25] lg:text-[4.25rem]">
+              <h1 className="mb-5 px-1 pb-1 text-4xl font-extrabold leading-[1.35] text-slate-900 dark:text-white dark:text-white sm:px-0 sm:text-5xl sm:leading-[1.25] lg:text-[4.25rem]">
                 طريقك الأقصر
                 <span className="block bg-gradient-to-l from-blue-700 via-blue-600 to-cyan-500 bg-clip-text text-transparent">لإتقان أي مادة</span>
               </h1>
-              <p className="mx-auto mb-8 max-w-xl text-base leading-8 text-slate-600 dark:text-slate-300 sm:text-lg lg:mr-0">
+              <p className="mx-auto mb-8 max-w-xl text-base leading-8 text-slate-600 dark:text-slate-300 dark:text-slate-300 sm:text-lg lg:mr-0">
                 محتوى تعليمي منظم، مدرسون موثوقون، وتقدم محفوظ في مكان واحد. ابدأ درسَك التالي بثقة وبدون تشتت.
               </p>
               <div className="flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
@@ -192,7 +214,7 @@ export default function LandingPage() {
                 </Link>
                 <Link
                   to="/teachers"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-7 py-3.5 font-bold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/20"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-800 px-7 py-3.5 font-bold text-slate-700 dark:text-slate-200 dark:text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/20"
                 >
                   تصفح المدرسين
                   <Users className="w-5 h-5" />
@@ -208,12 +230,12 @@ export default function LandingPage() {
             <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
               <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl shadow-slate-200/50 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/40 sm:p-6">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center mb-3">
                       <VideoIcon className="w-6 h-6 text-blue-600" />
                     </div>
-                    <h3 className="mb-1 font-bold text-slate-800">فيديوهات HD</h3>
-                    <p className="text-xs leading-6 text-slate-500 sm:text-sm">جودة عالية مع حماية كاملة للمحتوى</p>
+                    <h3 className="mb-1 font-bold text-slate-800 dark:text-slate-100">فيديوهات HD</h3>
+                    <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">جودة عالية مع حماية كاملة للمحتوى</p>
                   </div>
                   <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-xl shadow-blue-700/25 sm:p-6">
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3">
@@ -224,19 +246,19 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div className="space-y-4 pt-8">
-                  <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl shadow-slate-200/50 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/40 sm:p-6">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center mb-3">
                       <Award className="w-6 h-6 text-emerald-600" />
                     </div>
-                    <h3 className="font-bold text-slate-800 mb-1">مدرسون محترفون</h3>
-                    <p className="text-xs leading-6 text-slate-500 sm:text-sm">نخبة من أفضل المدرسين في كل تخصص</p>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">مدرسون محترفون</h3>
+                    <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">نخبة من أفضل المدرسين في كل تخصص</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl shadow-slate-200/50 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/40 sm:p-6">
+                    <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center mb-3">
                       <TrendingUp className="w-6 h-6 text-amber-600" />
                     </div>
-                    <h3 className="font-bold text-slate-800 mb-1">تتبع التقدم</h3>
-                    <p className="text-xs leading-6 text-slate-500 sm:text-sm">تابع تقدمك في كل مادة وكل درس</p>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">تتبع التقدم</h3>
+                    <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">تابع تقدمك في كل مادة وكل درس</p>
                   </div>
                 </div>
               </div>
@@ -260,9 +282,9 @@ export default function LandingPage() {
                   <stat.icon className="w-6 h-6 text-blue-400" />
                 </div>
                 <div className="text-3xl font-bold text-white">
-                  {stat.value}{stat.suffix}
+                  {isLoading || hasLoadError ? (hasLoadError ? '—' : '...') : `${stat.value}${stat.suffix}`}
                 </div>
-                <div className="text-sm text-slate-400 mt-1">{stat.label}</div>
+                <div className="text-sm text-slate-400 dark:text-slate-500 mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -270,16 +292,16 @@ export default function LandingPage() {
       </section>
 
       {user && profile && !profile.is_teacher && profile.education_stage && profile.curriculum && (
-        <section className="border-b border-blue-100 bg-blue-50/60 py-6">
+        <section className="border-b border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-slate-800/60 py-6">
           <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
             <div>
               <p className="text-xs font-bold text-blue-600">مسارك التعليمي</p>
-              <h2 className="mt-1 text-lg font-extrabold text-slate-900">{getEducationStageLabel(profile.education_stage)} - {getCurriculumLabel(profile.curriculum)}</h2>
-              <p className="mt-1 text-sm text-slate-500">نعرض لك محتوى ومدرسين مناسبين لاختياراتك.</p>
+              <h2 className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">{getEducationStageLabel(profile.education_stage)} - {getCurriculumLabel(profile.curriculum)}</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">نعرض لك محتوى ومدرسين مناسبين لاختياراتك.</p>
             </div>
             <div className="flex w-full gap-2 sm:w-auto">
               <Link to={`/teachers?stage=${profile.education_stage}&curriculum=${profile.curriculum}`} className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-blue-700 sm:flex-none">مدرسوك</Link>
-              <Link to="/courses" className="flex-1 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-center text-sm font-bold text-blue-700 hover:bg-blue-50 sm:flex-none">دوراتك</Link>
+              <Link to="/courses" className="flex-1 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 px-4 py-2.5 text-center text-sm font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-slate-700 sm:flex-none">دوراتك</Link>
             </div>
           </div>
         </section>
@@ -287,9 +309,9 @@ export default function LandingPage() {
 
       {/* Continue Watching (for logged-in students) */}
       {continueWatching.length > 0 && (
-        <section className="py-12 bg-white">
+        <section className="py-12 bg-white dark:bg-slate-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
               <Play className="w-6 h-6 text-blue-500" /> أكمل ما شاهدته
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -297,18 +319,18 @@ export default function LandingPage() {
                 <Link
                   key={h.id}
                   to={`/video/${h.video_id}`}
-                  className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                 >
-                  <div className="aspect-video bg-slate-100 flex items-center justify-center relative">
+                  <div className="aspect-video bg-slate-100 dark:bg-slate-700 flex items-center justify-center relative">
                     {h.video?.thumbnail_url ? (
                       <LazyImage src={h.video.thumbnail_url} alt={h.video.title} className="w-full h-full object-cover" />
                     ) : (
-                      <Play className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                      <Play className="w-8 h-8 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
                     )}
                   </div>
                   <div className="p-3">
-                    <h3 className="font-medium text-slate-800 text-sm line-clamp-1 group-hover:text-blue-600 transition-colors">{h.video?.title}</h3>
-                    <p className="text-xs text-slate-400 mt-1">{h.video?.teacher?.full_name}</p>
+                    <h3 className="font-medium text-slate-800 dark:text-slate-100 text-sm line-clamp-1 group-hover:text-blue-600 transition-colors">{h.video?.title}</h3>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{h.video?.teacher?.full_name}</p>
                   </div>
                 </Link>
               ))}
@@ -318,19 +340,19 @@ export default function LandingPage() {
       )}
 
       {/* Categories Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
               <BookOpen className="w-4 h-4" />
               التخصصات الدراسية
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3">استكشف التخصصات</h2>
-            <p className="text-slate-500 max-w-2xl mx-auto">مجموعة متنوعة من التخصصات الأكاديمية يدرسها لك أفضل المدرسين</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-3">استكشف التخصصات</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">مجموعة متنوعة من التخصصات الأكاديمية يدرسها لك أفضل المدرسين</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {categories.map((cat) => {
+            {isLoading ? Array.from({ length: 5 }).map((_, index) => <CardSkeleton key={index} />) : categories.map((cat) => {
               const colors = colorMap[cat.color] ?? colorMap.blue;
               const bgClass = colors.split(' ').slice(2).join(' ');
               const textClass = colors.split(' ').slice(3).join(' ');
@@ -338,31 +360,32 @@ export default function LandingPage() {
                 <Link
                   key={cat.id}
                   to={`/teachers?category=${cat.id}`}
-                  className="group bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:border-slate-700 rounded-2xl p-5 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-500/50 transition-all hover:-translate-y-1"
                 >
                   <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
                     <BookOpen className={`w-6 h-6 ${textClass}`} />
                   </div>
-                  <h3 className="font-bold text-slate-800 mb-1">{cat.name_ar}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-2">{cat.description}</p>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{cat.name_ar}</h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-2">{cat.description}</p>
                 </Link>
               );
             })}
           </div>
+          {!isLoading && categories.length === 0 && <p className="mt-6 text-center text-sm text-slate-500">لا توجد تخصصات متاحة حاليًا.</p>}
         </div>
       </section>
 
       {/* Featured Teachers */}
-      {teachers.length > 0 && (
-        <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50/30">
+      {(isLoading || teachers.length > 0) && (
+        <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-blue-900/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-10">
               <div>
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+                <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <Award className="w-4 h-4" />
                   مدرسون متميزون
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800">أفضل المدرسين</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100">أفضل المدرسين</h2>
               </div>
               <Link to="/teachers" className="hidden sm:flex items-center gap-2 text-blue-600 font-medium hover:gap-3 transition-all">
                 عرض الكل <ArrowLeft className="w-4 h-4" />
@@ -370,11 +393,11 @@ export default function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {teachers.map((teacher) => (
+              {isLoading ? Array.from({ length: 4 }).map((_, index) => <TeacherCardSkeleton key={index} />) : teachers.map((teacher) => (
                 <Link
                   key={teacher.id}
                   to={`/teacher/${teacher.id}`}
-                  className="group bg-white rounded-2xl shadow-md shadow-slate-200/50 border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-md shadow-slate-200/50 dark:shadow-black/40 border border-slate-100 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
                 >
                   <div className="aspect-square bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center overflow-hidden">
                     {teacher.avatar_url ? (
@@ -386,9 +409,9 @@ export default function LandingPage() {
                     )}
                   </div>
                   <div className="p-5">
-                    <h3 className="font-bold text-slate-800 mb-1">{teacher.full_name}</h3>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{teacher.full_name}</h3>
                     <p className="text-sm text-blue-600 mb-2">{teacher.specialization ?? 'مدرس'}</p>
-                    <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500">
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                       <span>جديد</span>
                       {teacher.years_experience > 0 && (
@@ -399,30 +422,31 @@ export default function LandingPage() {
                 </Link>
               ))}
             </div>
+            {!isLoading && teachers.length === 0 && <p className="text-center text-sm text-slate-500">سيظهر المدرسون المعتمدون هنا قريبًا.</p>}
           </div>
         </section>
       )}
 
       {/* Featured Courses */}
-      {courses.length > 0 && (
-        <section className="py-20 bg-white">
+      {(isLoading || courses.length > 0) && (
+        <section className="py-20 bg-white dark:bg-slate-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-10">
               <div>
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+                <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <BookOpen className="w-4 h-4" />
                   دورات مميزة
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800">أحدث الدورات</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100">أحدث الدورات</h2>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
+              {isLoading ? Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} />) : courses.map((course) => (
                 <Link
                   key={course.id}
                   to={`/course/${course.id}`}
-                  className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                 >
                   <div className="aspect-video bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center relative">
                     {course.thumbnail_url ? (
@@ -439,37 +463,38 @@ export default function LandingPage() {
                     </span>
                   </div>
                   <div className="p-5">
-                    <h3 className="font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors line-clamp-1">{course.title}</h3>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-600 transition-colors line-clamp-1">{course.title}</h3>
                     {course.description && (
-                      <p className="text-sm text-slate-500 line-clamp-2 mb-3">{course.description}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">{course.description}</p>
                     )}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-blue-600 font-medium">
                         {course.price === 0 ? 'مجاني' : `${course.price} ر.س`}
                       </span>
                       {course.category && (
-                        <span className="text-slate-400 text-xs">{course.category.name_ar}</span>
+                        <span className="text-slate-400 dark:text-slate-500 text-xs">{course.category.name_ar}</span>
                       )}
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
+            {!isLoading && courses.length === 0 && <p className="text-center text-sm text-slate-500">لا توجد دورات منشورة حاليًا.</p>}
           </div>
         </section>
       )}
 
       {/* Popular Videos */}
-      {videos.length > 0 && (
-        <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50/30">
+      {(isLoading || videos.length > 0) && (
+        <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-blue-900/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-10">
               <div>
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+                <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <Play className="w-4 h-4" />
                   دروس شائعة
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800">الأكثر مشاهدة</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100">الأكثر مشاهدة</h2>
               </div>
               <Link to="/courses" className="hidden sm:flex items-center gap-2 text-blue-600 font-medium hover:gap-3 transition-all">
                 عرض الكل <ArrowLeft className="w-4 h-4" />
@@ -477,11 +502,11 @@ export default function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {videos.slice(0, 6).map((v) => (
+              {isLoading ? Array.from({ length: 6 }).map((_, index) => <VideoCardSkeleton key={index} />) : videos.slice(0, 6).map((v) => (
                 <Link
                   key={v.id}
                   to={`/video/${v.id}`}
-                  className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                 >
                   <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
                     {v.thumbnail_url ? (
@@ -496,16 +521,17 @@ export default function LandingPage() {
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-bold text-slate-800 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">{v.title}</h3>
-                    {v.teacher && <p className="text-sm text-slate-400 mb-2">{v.teacher.full_name}</p>}
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">{v.title}</h3>
+                    {v.teacher && <p className="text-sm text-slate-400 dark:text-slate-500 mb-2">{v.teacher.full_name}</p>}
+                    <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
                       <span>{v.views_count} مشاهدة</span>
-                      {v.category && <span className="px-2 py-0.5 bg-slate-100 rounded-md">{v.category.name_ar}</span>}
+                      {v.category && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-md">{v.category.name_ar}</span>}
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
+            {!isLoading && videos.length === 0 && <p className="text-center text-sm text-slate-500">لا توجد فيديوهات منشورة حاليًا.</p>}
           </div>
         </section>
       )}
@@ -515,15 +541,15 @@ export default function LandingPage() {
           <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-end">
-              <div><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-bold text-amber-200"><Trophy className="h-4 w-4" /> لوحة الشرف</div><h2 className="text-3xl font-extrabold sm:text-4xl">أبطال كل مادة</h2><p className="mt-3 max-w-xl text-sm leading-7 text-slate-400">تكريم مستحق للطالب الأول في كل مادة، مع عرض مرحلته ونقاطه ليكون إنجازه مصدر إلهام للجميع.</p></div>
+              <div><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-bold text-amber-200"><Trophy className="h-4 w-4" /> لوحة الشرف</div><h2 className="text-3xl font-extrabold sm:text-4xl">أبطال كل مادة</h2><p className="mt-3 max-w-xl text-sm leading-7 text-slate-400 dark:text-slate-500">تكريم مستحق للطالب الأول في كل مادة، مع عرض مرحلته ونقاطه ليكون إنجازه مصدر إلهام للجميع.</p></div>
               <Link to="/competitions" className="flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-cyan-300 hover:bg-white/10">ادخل ساحة المنافسة <ArrowLeft className="h-4 w-4" /></Link>
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {champions.slice(0, 12).map((champion) => (
                 <div key={champion.student_id} className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-5 transition hover:-translate-y-1 hover:bg-white/10">
                   <div className="absolute left-4 top-4 text-amber-300"><Medal className="h-5 w-5" /></div>
-                  <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-orange-500 text-lg font-extrabold text-slate-900">{champion.avatar_url ? <img src={champion.avatar_url} alt={champion.full_name} className="h-full w-full object-cover" /> : champion.full_name.charAt(0)}</div><div className="min-w-0"><h3 className="truncate font-extrabold text-white">{champion.full_name}</h3><p className="mt-1 text-xs font-bold text-amber-200">{champion.subject_name}</p><p className="mt-1 text-[11px] text-cyan-300">{getEducationStageLabel(champion.education_stage)}</p></div></div>
-                  <div className="mt-5 flex items-end justify-between border-t border-white/10 pt-4"><div><div className="text-xl font-extrabold text-amber-300">{champion.points}</div><div className="text-[11px] text-slate-400">نقطة إنجاز</div></div><div className="text-left text-xs text-slate-400">{champion.competitions_played} منافسات</div></div>
+                  <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-orange-500 text-lg font-extrabold text-slate-900 dark:text-white">{champion.avatar_url ? <img src={champion.avatar_url} alt={champion.full_name} className="h-full w-full object-cover" /> : champion.full_name.charAt(0)}</div><div className="min-w-0"><h3 className="truncate font-extrabold text-white">{champion.full_name}</h3><p className="mt-1 text-xs font-bold text-amber-200">{champion.subject_name}</p><p className="mt-1 text-[11px] text-cyan-300">{getEducationStageLabel(champion.education_stage)}</p></div></div>
+                  <div className="mt-5 flex items-end justify-between border-t border-white/10 pt-4"><div><div className="text-xl font-extrabold text-amber-300">{champion.points}</div><div className="text-[11px] text-slate-400 dark:text-slate-500">نقطة إنجاز</div></div><div className="text-left text-xs text-slate-400 dark:text-slate-500">{champion.competitions_played} منافسات</div></div>
                 </div>
               ))}
             </div>
@@ -532,14 +558,14 @@ export default function LandingPage() {
       )}
 
       {/* How It Works */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
               <Zap className="w-4 h-4" />
               كيف تعمل المنصة
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3">ابدأ رحلتك التعليمية في 3 خطوات</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-3">ابدأ رحلتك التعليمية في 3 خطوات</h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -549,14 +575,14 @@ export default function LandingPage() {
               { icon: Play, step: '٣', title: 'ابدأ التعلم', desc: 'اشترك واشاهد الفيديوهات بجودة عالية في أي وقت ومن أي مكان' },
             ].map((item, i) => (
               <div key={i} className="relative text-center">
-                <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 mb-5">
+                <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 border border-blue-100 dark:border-blue-900/40 mb-5">
                   <item.icon className="w-9 h-9 text-blue-600" />
                   <span className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white text-sm font-bold flex items-center justify-center shadow-md">
                     {item.step}
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">{item.title}</h3>
-                <p className="text-slate-500 leading-relaxed max-w-xs mx-auto">{item.desc}</p>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{item.title}</h3>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -572,7 +598,7 @@ export default function LandingPage() {
               لماذا منصة العلم؟
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">مميزات تجعلنا الأفضل</h2>
-            <p className="text-slate-400 max-w-2xl mx-auto">نوفّر تجربة تعليمية متكاملة بأعلى معايير الجودة والحماية العالمية</p>
+            <p className="text-slate-400 dark:text-slate-500 max-w-2xl mx-auto">نوفّر تجربة تعليمية متكاملة بأعلى معايير الجودة والحماية العالمية</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -587,7 +613,7 @@ export default function LandingPage() {
                   <feat.icon className="w-6 h-6 text-blue-400" />
                 </div>
                 <h3 className="font-bold text-white mb-2">{feat.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{feat.desc}</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500 leading-relaxed">{feat.desc}</p>
               </div>
             ))}
           </div>
@@ -595,9 +621,9 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-12 text-center overflow-hidden">
+          <div className="relative bg-gradient-to-br from-blue-600 to-cyan-500 dark:from-blue-900/80 dark:to-cyan-900/70 rounded-3xl p-12 text-center overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
             <div className="relative">

@@ -24,12 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    setProfile(data as Profile | null);
+    const { data } = await supabase.rpc('get_my_profile');
+    const rows = (data ?? []) as Profile[];
+    setProfile(rows.find((p) => p.id === userId) ?? null);
   };
 
   const fetchAdminStatus = async (userId: string) => {
@@ -42,16 +39,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        Promise.allSettled([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]).finally(() => setLoading(false));
-      } else {
+    console.log('AuthContext: Starting session check...');
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.log('AuthContext: Loading timeout - forcing loading to false');
         setLoading(false);
       }
+    }, 3000); // Reduced to 3 seconds timeout
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('AuthContext: Session retrieved', session ? 'User logged in' : 'No user');
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        Promise.allSettled([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]).finally(() => {
+          console.log('AuthContext: Profile and admin status loaded');
+          setLoading(false);
+        });
+      } else {
+        console.log('AuthContext: No session, setting loading to false');
+        setLoading(false);
+      }
+    }).catch((error) => {
+      console.error('AuthContext: Error getting session', error);
+      setLoading(false);
     });
 
+    return () => clearTimeout(timeout);
+  }, []);
+
+  // Auth state change listener
+  useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('AuthContext: Auth state changed', _event, session ? 'User logged in' : 'No user');
       setUser(session?.user ?? null);
       if (session?.user) {
         (async () => {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Video as VideoIcon, Users, BookOpen, X, Play, Eye } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
 import type { Profile, Video, Course } from '@/types';
@@ -27,7 +27,7 @@ export default function SearchPage() {
 
     const { data: teacherData, error: teacherError } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_PUBLIC_COLUMNS)
       .eq('is_teacher', true)
       .eq('is_approved', true)
       .not('id', 'eq', INTERNAL_TEACHER_ID)
@@ -37,14 +37,14 @@ export default function SearchPage() {
 
     const { data: vidData, error: videoError } = await supabase
       .from('videos')
-      .select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*)')
+      .select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`)
       .limit(10);
-    setVideos(vidData as Video[] ?? []);
+    setVideos(vidData as unknown as Video[] ?? []);
 
     const { data: courseData, error: courseError } = await supabase
       .from('courses')
-      .select('*, category:categories(*), teacher:profiles!courses_teacher_id_fkey(*)')
+      .select(`*, category:categories(*), teacher:profiles!courses_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
       .or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`)
       .limit(10);
     setCourses(courseData as Course[] ?? []);

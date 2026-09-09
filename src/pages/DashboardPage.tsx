@@ -5,27 +5,29 @@ import {
   Plus, Save, Loader2, FileText, Calendar, Crown, Play, BookOpen,
   TrendingUp, Heart, Clock, Award, Bell, MessageCircle,
   BarChart3, FolderPlus, Settings, Palette, Medal, Users as UsersIcon
-  , Gamepad2, ListPlus
+  , Gamepad2, ListPlus, ClipboardCheck, GraduationCap, Search, Filter,
+  Download, Send, CheckCircle, XCircle, AlertCircle, ChevronDown, MoreVertical,
+  Edit, Copy, ExternalLink, Target, Activity, Flame, Star, MessageSquare, X
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { uploadFile } from '@/lib/storage';
 import { whatsappLink } from '@/lib/contact';
 import MetaTags from '@/components/MetaTags';
 import { curricula, educationStages } from '@/lib/education';
-import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherStudents, TeacherHonors, TeacherLeaderboards } from '@/components/TeacherManagerTools';
+import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherStudents, TeacherHonors, TeacherLeaderboards, TeacherAssistants } from '@/components/TeacherManagerTools';
 import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'honors' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'exams' | 'analytics' | 'honors' | 'assistants' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
 
-export default function DashboardPage() {
+export default function DashboardPage({ teacherWorkspace = false }: { teacherWorkspace?: boolean }) {
   const { user, profile, loading, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab && ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'honors', 'subscriptions', 'favorites', 'history', 'notifications'].includes(initialTab) ? initialTab : 'overview');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab && ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'exams', 'analytics', 'honors', 'assistants', 'subscriptions', 'favorites', 'history', 'notifications'].includes(initialTab) ? initialTab as Tab : 'overview');
   const [videos, setVideos] = useState<Video[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -39,6 +41,17 @@ export default function DashboardPage() {
   const [showVideoForm, setShowVideoForm] = useState(false);
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // New states for enhanced features
+  const [students, setStudents] = useState<any[]>([]);
+  const [studentProgress, setStudentProgress] = useState<Record<string, any>>({});
+  const [exams, setExams] = useState<any[]>([]);
+  const [examResults, setExamResults] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [examForm, setExamForm] = useState({ title: '', course_id: '', questions: [] as any[] });
+  const [showExamForm, setShowExamForm] = useState(false);
 
   // Profile form state
   const [fullName, setFullName] = useState('');
@@ -77,7 +90,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && !user) navigate('/signin');
-  }, [user, loading, navigate]);
+    if (!loading && profile?.is_teacher && !teacherWorkspace) navigate('/admin/teacher', { replace: true });
+  }, [user, loading, navigate, profile?.is_teacher, teacherWorkspace]);
 
   useEffect(() => {
     if (profile) {
@@ -103,10 +117,10 @@ export default function DashboardPage() {
     if (profile?.is_teacher) {
       const { data: vidData } = await supabase
         .from('videos')
-        .select('*, category:categories(*), course:courses(*)')
+        .select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), course:courses(*)`)
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
-      setVideos(vidData as Video[] ?? []);
+      setVideos(vidData as unknown as Video[] ?? []);
 
       const { data: courseData } = await supabase
         .from('courses')
@@ -114,6 +128,59 @@ export default function DashboardPage() {
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
       setCourses(courseData as Course[] ?? []);
+
+      // Load students data
+      const { data: enrollData } = await supabase
+        .from('course_enrollments')
+        .select('*, student:profiles(*), course:courses(*)')
+        .in('course_id', (courseData as Course[]).map(c => c.id));
+      setStudents(enrollData ?? []);
+
+      // Load student progress
+      const progressMap: Record<string, any> = {};
+      for (const enrollment of enrollData ?? []) {
+        const { data: progressData } = await supabase
+          .from('video_progress')
+          .select('*, video:videos(*)')
+          .eq('student_id', enrollment.student_id);
+        progressMap[enrollment.student_id] = progressData ?? [];
+      }
+      setStudentProgress(progressMap);
+
+      // Load exams
+      const { data: examData } = await supabase
+        .from('quizzes')
+        .select('*, course:courses(*)')
+        .eq('teacher_id', user.id)
+        .order('created_at', { ascending: false });
+      setExams(examData ?? []);
+
+      // Load exam results
+      const { data: resultsData } = await supabase
+        .from('quiz_attempts')
+        .select('*, student:profiles(*), quiz:quizzes(*)')
+        .in('quiz_id', (examData ?? []).map(e => e.id));
+      setExamResults(resultsData ?? []);
+
+      // Load analytics
+      const totalViews = (vidData as Video[]).reduce((sum, v) => sum + (v.views_count || 0), 0);
+      const totalEnrollments = (enrollData ?? []).length;
+      const avgProgress = Object.values(progressMap).flat().length > 0
+        ? Object.values(progressMap).flat().reduce((sum: number, p: any) => sum + (p.progress_percent || 0), 0) / Object.values(progressMap).flat().length
+        : 0;
+      const avgScore = (resultsData ?? []).length > 0
+        ? (resultsData as any[]).reduce((sum, r) => sum + (r.score || 0), 0) / (resultsData as any[]).length
+        : 0;
+
+      setAnalytics({
+        totalViews,
+        totalEnrollments,
+        avgProgress,
+        avgScore,
+        totalExams: (examData ?? []).length,
+        totalAttempts: (resultsData ?? []).length,
+        passedExams: (resultsData as any[]).filter(r => r.passed).length,
+      });
 
       const { count } = await supabase
         .from('subscriptions')
@@ -126,7 +193,7 @@ export default function DashboardPage() {
     // Subscriptions
     const { data: subData } = await supabase
       .from('subscriptions')
-      .select('*, teacher:profiles!subscriptions_teacher_id_fkey(*), plan:subscription_plans(*)')
+      .select(`*, teacher:profiles!subscriptions_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS}), plan:subscription_plans(*)`)
       .eq('student_id', user.id)
       .order('created_at', { ascending: false });
     setSubscriptions(subData as Subscription[] ?? []);
@@ -142,7 +209,7 @@ export default function DashboardPage() {
     // Favorites
     const { data: favData } = await supabase
       .from('favorites')
-      .select('*, video:videos(*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*))')
+      .select(`*, video:videos(${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS}))`)
       .eq('student_id', user.id)
       .order('created_at', { ascending: false });
     setFavorites(favData as Favorite[] ?? []);
@@ -150,7 +217,7 @@ export default function DashboardPage() {
     // Watch history
     const { data: histData } = await supabase
       .from('watch_history')
-      .select('*, video:videos(*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*))')
+      .select(`*, video:videos(${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS}))`)
       .eq('student_id', user.id)
       .order('watched_at', { ascending: false })
       .limit(20);
@@ -315,11 +382,14 @@ export default function DashboardPage() {
     { id: 'profile', label: 'الملف الشخصي', icon: User },
     { id: 'videos', label: 'الفيديوهات', icon: VideoIcon },
     { id: 'courses', label: 'الدورات', icon: BookOpen },
+    { id: 'students', label: 'متابعة الطلاب', icon: UsersIcon },
+    { id: 'exams', label: 'الامتحانات', icon: ClipboardCheck },
+    { id: 'analytics', label: 'التحليلات', icon: BarChart3 },
     { id: 'competitions', label: 'المنافسات', icon: Gamepad2 },
     ...(profile.is_manager ? [
       { id: 'page' as Tab, label: 'إعدادات صفحتي', icon: Palette },
-      { id: 'students' as Tab, label: 'طلابي', icon: UsersIcon },
       { id: 'honors' as Tab, label: 'التكريم', icon: Medal },
+      { id: 'assistants' as Tab, label: 'المساعدون', icon: UsersIcon },
     ] : []),
   ];
 
@@ -335,12 +405,12 @@ export default function DashboardPage() {
   const tabs = profile.is_teacher ? teacherTabs : studentTabs;
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-slate-50">
+    <div className="pt-[4.5rem] min-h-screen bg-slate-50 dark:bg-slate-900">
       <MetaTags title="لوحة التحكم | منصة العلم" noIndex />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-800">لوحة التحكم</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">لوحة التحكم</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
             مرحباً، {profile.full_name} — {profile.is_teacher ? 'مدرس' : 'طالب'}
           </p>
         </div>
@@ -348,7 +418,7 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sticky top-20">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sticky top-20">
               <div className="flex items-center gap-3 mb-6 p-2">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-lg font-bold overflow-hidden">
                   {profile.avatar_url ? (
@@ -358,8 +428,8 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-slate-800 text-sm truncate">{profile.full_name}</p>
-                  <p className="text-xs text-slate-400 truncate">{profile.email}</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{profile.full_name}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{profile.email}</p>
                 </div>
               </div>
               <nav className="space-y-1">
@@ -368,7 +438,7 @@ export default function DashboardPage() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      activeTab === tab.id ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+                      activeTab === tab.id ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <tab.icon className="w-4 h-4" />
@@ -401,8 +471,8 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Recent activity */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-blue-500" />
                     {profile.is_teacher ? 'أحدث الفيديوهات' : 'آخر ما شاهدته'}
                   </h3>
@@ -414,15 +484,15 @@ export default function DashboardPage() {
                     ) : (
                       <div className="space-y-3">
                         {videos.slice(0, 5).map((v) => (
-                          <Link key={v.id} to={`/video/${v.id}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                            <div className="w-16 aspect-video rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                              <Play className="w-5 h-5 text-slate-400" />
+                          <Link key={v.id} to={`/video/${v.id}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            <div className="w-16 aspect-video rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                              <Play className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-slate-800 text-sm line-clamp-1">{v.title}</p>
-                              <p className="text-xs text-slate-400">{v.views_count} مشاهدة</p>
+                              <p className="font-medium text-slate-800 dark:text-slate-100 text-sm line-clamp-1">{v.title}</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500">{v.views_count} مشاهدة</p>
                             </div>
-                            <span className={`px-2 py-0.5 text-xs rounded-md ${v.is_free ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                            <span className={`px-2 py-0.5 text-xs rounded-md ${v.is_free ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                               {v.is_free ? 'مجاني' : 'مدفوع'}
                             </span>
                           </Link>
@@ -436,15 +506,15 @@ export default function DashboardPage() {
                   ) : (
                     <div className="space-y-3">
                       {history.slice(0, 5).map((h) => (
-                        <Link key={h.id} to={`/video/${h.video_id}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                          <div className="w-16 aspect-video rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                            <Play className="w-5 h-5 text-slate-400" />
+                        <Link key={h.id} to={`/video/${h.video_id}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                          <div className="w-16 aspect-video rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                            <Play className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-slate-800 text-sm line-clamp-1">{h.video?.title ?? 'فيديو'}</p>
-                            <p className="text-xs text-slate-400">{h.video?.teacher?.full_name ?? ''}</p>
+                            <p className="font-medium text-slate-800 dark:text-slate-100 text-sm line-clamp-1">{h.video?.title ?? 'فيديو'}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{h.video?.teacher?.full_name ?? ''}</p>
                           </div>
-                          <span className="text-xs text-slate-400">{new Date(h.watched_at).toLocaleDateString('ar-EG')}</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(h.watched_at).toLocaleDateString('ar-EG')}</span>
                         </Link>
                       ))}
                     </div>
@@ -453,20 +523,20 @@ export default function DashboardPage() {
 
                 {/* Enrollments progress (students) */}
                 {!profile.is_teacher && enrollments.length > 0 && (
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
                       <BarChart3 className="w-5 h-5 text-blue-500" /> تقدم الدورات
                     </h3>
                     <div className="space-y-4">
                       {enrollments.slice(0, 5).map((enr) => (
                         <div key={enr.id}>
                           <div className="flex items-center justify-between mb-1.5">
-                            <Link to={`/course/${enr.course_id}`} className="text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors line-clamp-1">
+                            <Link to={`/course/${enr.course_id}`} className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-blue-600 transition-colors line-clamp-1">
                               {enr.course?.title ?? 'دورة'}
                             </Link>
-                            <span className="text-sm font-bold text-slate-600">{enr.progress_percent}%</span>
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">{enr.progress_percent}%</span>
                           </div>
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all ${enr.status === 'completed' ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}
                               style={{ width: `${enr.progress_percent}%` }}
@@ -481,9 +551,9 @@ export default function DashboardPage() {
             )}
 
             {activeTab === 'notifications' && !profile.is_teacher && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm sm:p-6">
                 <div className="mb-5 flex items-center justify-between gap-3">
-                  <h3 className="flex items-center gap-2 font-bold text-slate-800"><Bell className="h-5 w-5 text-blue-500" /> الإشعارات</h3>
+                  <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Bell className="h-5 w-5 text-blue-500" /> الإشعارات</h3>
                   {notifications.some((notification) => !notification.is_read) && (
                     <button type="button" onClick={async () => {
                       await supabase.from('notifications').update({ is_read: true }).eq('user_id', user!.id).eq('is_read', false);
@@ -492,7 +562,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 {notifications.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-slate-500">لا توجد إشعارات جديدة.</div>
+                  <div className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">لا توجد إشعارات جديدة.</div>
                 ) : (
                   <div className="space-y-2">
                     {notifications.map((notification) => (
@@ -501,10 +571,10 @@ export default function DashboardPage() {
                           supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
                           setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, is_read: true } : item));
                         }
-                      }} className={`block rounded-xl border p-4 transition hover:border-blue-200 ${notification.is_read ? 'border-slate-100 bg-white' : 'border-blue-100 bg-blue-50/50'}`}>
+                      }} className={`block rounded-xl border p-4 transition hover:border-blue-200 dark:hover:border-blue-900 ${notification.is_read ? 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800' : 'border-blue-100 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-900/20'}`}>
                         <div className="flex items-start justify-between gap-3">
-                          <div><p className="font-semibold text-slate-800">{notification.title}</p>{notification.body && <p className="mt-1 text-sm leading-6 text-slate-500">{notification.body}</p>}</div>
-                          <span className="shrink-0 text-xs text-slate-400">{new Date(notification.created_at).toLocaleDateString('ar-EG')}</span>
+                          <div><p className="font-semibold text-slate-800 dark:text-slate-100">{notification.title}</p>{notification.body && <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{notification.body}</p>}</div>
+                          <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{new Date(notification.created_at).toLocaleDateString('ar-EG')}</span>
                         </div>
                       </Link>
                     ))}
@@ -514,15 +584,15 @@ export default function DashboardPage() {
             )}
 
             {activeTab === 'profile' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
                   <Settings className="w-5 h-5 text-blue-500" /> تعديل الملف الشخصي
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-5">
                   <Field label="الاسم الكامل" value={fullName} onChange={setFullName} />
                   <Field label="التخصص" value={specialization} onChange={setSpecialization} placeholder="مثال: مدرس رياضيات" />
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1.5">{profile.is_teacher ? 'الصف الذي تدرّسه' : 'الصف الدراسي'}</label><select value={profileStage} onChange={(e) => setProfileStage(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1.5">{profile.is_teacher ? 'المنهج الذي تدرّسه' : 'نوع المنهج'}</label><select value={profileCurriculum} onChange={(e) => setProfileCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
+                  <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{profile.is_teacher ? 'الصف الذي تدرّسه' : 'الصف الدراسي'}</label><select value={profileStage} onChange={(e) => setProfileStage(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
+                  <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{profile.is_teacher ? 'المنهج الذي تدرّسه' : 'نوع المنهج'}</label><select value={profileCurriculum} onChange={(e) => setProfileCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                   <Field label="الهاتف" value={phone} onChange={setPhone} placeholder="+966..." dir="ltr" />
                   <Field label="الموقع" value={location} onChange={setLocation} placeholder="الرياض، السعودية" />
                   <Field label="الموقع الإلكتروني" value={website} onChange={setWebsite} placeholder="https://..." dir="ltr" />
@@ -531,12 +601,12 @@ export default function DashboardPage() {
 
                 {/* Avatar upload */}
                 <div className="mt-5">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">الصورة الشخصية</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">الصورة الشخصية</label>
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 flex items-center justify-center overflow-hidden">
                       {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" /> : <User className="w-6 h-6 text-blue-400" />}
                     </div>
-                    <label className="px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-200 transition-colors cursor-pointer flex items-center gap-2">
+                    <label className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer flex items-center gap-2">
                       <Upload className="w-4 h-4" /> رفع صورة
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAvatarUpload(f); }} />
                     </label>
@@ -545,12 +615,12 @@ export default function DashboardPage() {
 
                 {/* CV upload */}
                 <div className="mt-5">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">السيرة الذاتية (CV)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">السيرة الذاتية (CV)</label>
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 truncate">
+                    <div className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-500 dark:text-slate-400 truncate">
                       {cvUrl ? 'تم رفع السيرة الذاتية' : 'لم يتم رفع سيرة ذاتية بعد'}
                     </div>
-                    <label className="px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-200 transition-colors cursor-pointer flex items-center gap-2">
+                    <label className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer flex items-center gap-2">
                       <FileText className="w-4 h-4" /> رفع CV
                       <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCvUpload(f); }} />
                     </label>
@@ -558,9 +628,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="mt-5">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">نبذة تعريفية</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">نبذة تعريفية</label>
                   <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} placeholder="اكتب نبذة عنك وعن خبرتك في التدريس..."
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none" />
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none" />
                 </div>
 
                 <button onClick={saveProfile} disabled={saving}
@@ -573,7 +643,7 @@ export default function DashboardPage() {
             {activeTab === 'videos' && profile.is_teacher && (
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2"><VideoIcon className="w-5 h-5 text-blue-500" /> إدارة الفيديوهات</h3>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><VideoIcon className="w-5 h-5 text-blue-500" /> إدارة الفيديوهات</h3>
                   <button onClick={() => setShowVideoForm(!showVideoForm)}
                     className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2">
                     <Plus className="w-4 h-4" /> إضافة فيديو
@@ -581,48 +651,48 @@ export default function DashboardPage() {
                 </div>
 
                 {showVideoForm && (
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-                    <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Upload className="w-5 h-5 text-blue-500" /> رفع فيديو جديد</h4>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+                    <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2"><Upload className="w-5 h-5 text-blue-500" /> رفع فيديو جديد</h4>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Field label="عنوان الفيديو" value={videoTitle} onChange={setVideoTitle} placeholder="شرح درس..." />
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">التخصص</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">التخصص</label>
                         <select value={videoCategory ?? ''} onChange={(e) => setVideoCategory(e.target.value || null)}
-                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
+                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
                           <option value="">بدون تخصص</option>
                           {categories.map((c) => <option key={c.id} value={c.id}>{c.name_ar}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">الدورة (اختياري)</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">الدورة (اختياري)</label>
                         <select value={videoCourse ?? ''} onChange={(e) => setVideoCourse(e.target.value || null)}
-                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
+                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
                           <option value="">بدون دورة</option>
                           {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                         </select>
                       </div>
                       <Field label="رابط الصورة المصغرة (اختياري)" value={videoThumb} onChange={setVideoThumb} placeholder="https://..." dir="ltr" />
                       <Field label="المدة بالثواني" value={String(videoDuration)} onChange={(v) => setVideoDuration(parseInt(v) || 0)} type="number" />
-                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المرحلة الدراسية</label><select value={videoStage} onChange={(e) => setVideoStage(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
-                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المنهج</label><select value={videoCurriculum} onChange={(e) => setVideoCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
+                      <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المرحلة الدراسية</label><select value={videoStage} onChange={(e) => setVideoStage(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
+                      <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المنهج</label><select value={videoCurriculum} onChange={(e) => setVideoCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">نوع الوصول</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">نوع الوصول</label>
                         <div className="flex gap-3">
                           <button type="button" onClick={() => setVideoIsFree(true)}
-                            className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${videoIsFree ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600'}`}>مجاني</button>
+                            className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${videoIsFree ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>مجاني</button>
                           <button type="button" onClick={() => setVideoIsFree(false)}
-                            className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${!videoIsFree ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-600'}`}>للمشتركين</button>
+                            className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${!videoIsFree ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>للمشتركين</button>
                         </div>
                       </div>
                     </div>
 
                     {/* File upload */}
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">ملف الفيديو</label>
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">ملف الفيديو</label>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
                         <div className="flex flex-col items-center gap-2">
-                          <Upload className="w-8 h-8 text-slate-400" />
-                          <span className="text-sm text-slate-500">
+                          <Upload className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+                          <span className="text-sm text-slate-500 dark:text-slate-400">
                             {videoFile ? videoFile.name : 'اختر ملف فيديو لرفعه'}
                           </span>
                         </div>
@@ -630,18 +700,18 @@ export default function DashboardPage() {
                       </label>
                       {uploadProgress > 0 && uploadProgress < 100 && (
                         <div className="mt-3">
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
                           </div>
-                          <p className="text-xs text-slate-400 mt-1 text-center">جاري الرفع... {uploadProgress}%</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 text-center">جاري الرفع... {uploadProgress}%</p>
                         </div>
                       )}
                     </div>
 
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">وصف الفيديو</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">وصف الفيديو</label>
                       <textarea value={videoDesc} onChange={(e) => setVideoDesc(e.target.value)} rows={3} placeholder="وصف محتوى الفيديو..."
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none" />
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none" />
                     </div>
 
                     <div className="flex gap-3 mt-5">
@@ -650,7 +720,7 @@ export default function DashboardPage() {
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} رفع الفيديو
                       </button>
                       <button onClick={() => setShowVideoForm(false)}
-                        className="px-6 py-2.5 bg-slate-100 text-slate-600 font-medium rounded-xl hover:bg-slate-200 transition-colors">إلغاء</button>
+                        className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">إلغاء</button>
                     </div>
                   </div>
                 )}
@@ -660,22 +730,22 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {videos.map((v) => (
-                      <div key={v.id} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4">
-                        <div className="w-20 aspect-video rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <Play className="w-6 h-6 text-slate-400" />
+                      <div key={v.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex items-center gap-4">
+                        <div className="w-20 aspect-video rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                          <Play className="w-6 h-6 text-slate-400 dark:text-slate-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Link to={`/video/${v.id}`} className="font-bold text-slate-800 hover:text-blue-600 transition-colors line-clamp-1">{v.title}</Link>
-                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                          <Link to={`/video/${v.id}`} className="font-bold text-slate-800 dark:text-slate-100 hover:text-blue-600 transition-colors line-clamp-1">{v.title}</Link>
+                          <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500 mt-1">
                             <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {v.views_count}</span>
-                            {v.category && <span className="px-2 py-0.5 bg-slate-100 rounded-md">{v.category.name_ar}</span>}
-                            {v.course && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">{v.course.title}</span>}
-                            <span className={`px-2 py-0.5 rounded-md ${v.is_free ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                            {v.category && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-md">{v.category.name_ar}</span>}
+                            {v.course && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md dark:bg-blue-900/30 dark:text-blue-300">{v.course.title}</span>}
+                            <span className={`px-2 py-0.5 rounded-md ${v.is_free ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                               {v.is_free ? 'مجاني' : 'مدفوع'}
                             </span>
                           </div>
                         </div>
-                        <button onClick={() => deleteVideo(v.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors">
+                        <button onClick={() => deleteVideo(v.id)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
@@ -688,7 +758,7 @@ export default function DashboardPage() {
             {activeTab === 'courses' && profile.is_teacher && (
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2"><BookOpen className="w-5 h-5 text-blue-500" /> إدارة الدورات</h3>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><BookOpen className="w-5 h-5 text-blue-500" /> إدارة الدورات</h3>
                   <button onClick={() => setShowCourseForm(!showCourseForm)}
                     className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2">
                     <FolderPlus className="w-4 h-4" /> إنشاء دورة
@@ -696,22 +766,22 @@ export default function DashboardPage() {
                 </div>
 
                 {showCourseForm && (
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-                    <h4 className="font-bold text-slate-700 mb-4">إنشاء دورة جديدة</h4>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+                    <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-4">إنشاء دورة جديدة</h4>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Field label="عنوان الدورة" value={courseTitle} onChange={setCourseTitle} placeholder="مثال: الرياضيات للصف الأول" />
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">التخصص</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">التخصص</label>
                         <select value={courseCategory ?? ''} onChange={(e) => setCourseCategory(e.target.value || null)}
-                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
+                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
                           <option value="">بدون تخصص</option>
                           {categories.map((c) => <option key={c.id} value={c.id}>{c.name_ar}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">المستوى</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المستوى</label>
                         <select value={courseLevel} onChange={(e) => setCourseLevel(e.target.value as typeof courseLevel)}
-                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
+                          className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors">
                           <option value="beginner">مبتدئ</option>
                           <option value="intermediate">متوسط</option>
                           <option value="advanced">متقدم</option>
@@ -719,13 +789,13 @@ export default function DashboardPage() {
                       </div>
                       <Field label="السعر" value={String(coursePrice)} onChange={(v) => setCoursePrice(parseFloat(v) || 0)} type="number" />
                       <Field label="رابط صورة الدورة (اختياري)" value={courseThumb} onChange={setCourseThumb} placeholder="https://..." dir="ltr" />
-                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المرحلة الدراسية</label><select value={courseStage} onChange={(e) => setCourseStage(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
-                      <div><label className="block text-sm font-medium text-slate-700 mb-1.5">المنهج</label><select value={courseCurriculum} onChange={(e) => setCourseCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
+                      <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المرحلة الدراسية</label><select value={courseStage} onChange={(e) => setCourseStage(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
+                      <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المنهج</label><select value={courseCurriculum} onChange={(e) => setCourseCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                     </div>
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">وصف الدورة</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">وصف الدورة</label>
                       <textarea value={courseDesc} onChange={(e) => setCourseDesc(e.target.value)} rows={3} placeholder="وصف محتوى الدورة..."
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none" />
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none" />
                     </div>
                     <div className="flex gap-3 mt-5">
                       <button onClick={handleCourseCreate} disabled={saving || !courseTitle}
@@ -733,7 +803,7 @@ export default function DashboardPage() {
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderPlus className="w-4 h-4" />} إنشاء الدورة
                       </button>
                       <button onClick={() => setShowCourseForm(false)}
-                        className="px-6 py-2.5 bg-slate-100 text-slate-600 font-medium rounded-xl hover:bg-slate-200 transition-colors">إلغاء</button>
+                        className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">إلغاء</button>
                     </div>
                   </div>
                 )}
@@ -743,24 +813,24 @@ export default function DashboardPage() {
                 ) : (
                   <div className="grid sm:grid-cols-2 gap-4">
                     {courses.map((c) => (
-                      <div key={c.id} className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <div key={c.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <Link to={`/course/${c.id}`} className="font-bold text-slate-800 hover:text-blue-600 transition-colors line-clamp-1 flex-1">{c.title}</Link>
-                          <button onClick={() => deleteCourse(c.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
+                          <Link to={`/course/${c.id}`} className="font-bold text-slate-800 dark:text-slate-100 hover:text-blue-600 transition-colors line-clamp-1 flex-1">{c.title}</Link>
+                          <button onClick={() => deleteCourse(c.id)} className="p-1.5 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex-shrink-0">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        {c.description && <p className="text-sm text-slate-500 line-clamp-2 mb-3">{c.description}</p>}
+                        {c.description && <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">{c.description}</p>}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`px-2 py-0.5 text-xs rounded-md ${
-                            c.level === 'beginner' ? 'bg-green-50 text-green-600' :
-                            c.level === 'intermediate' ? 'bg-amber-50 text-amber-600' :
-                            'bg-rose-50 text-rose-600'
+                            c.level === 'beginner' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-300' :
+                            c.level === 'intermediate' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300' :
+                            'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300'
                           }`}>
                             {c.level === 'beginner' ? 'مبتدئ' : c.level === 'intermediate' ? 'متوسط' : 'متقدم'}
                           </span>
-                          {c.category && <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-md">{c.category.name_ar}</span>}
-                          <span className="text-xs text-slate-400">{videos.filter(v => v.course_id === c.id).length} فيديو</span>
+                          {c.category && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs rounded-md">{c.category.name_ar}</span>}
+                          <span className="text-xs text-slate-400 dark:text-slate-500">{videos.filter(v => v.course_id === c.id).length} فيديو</span>
                         </div>
                       </div>
                     ))}
@@ -776,15 +846,363 @@ export default function DashboardPage() {
               </>
             )}
 
-            {activeTab === 'page' && profile.is_manager && <TeacherPageSettingsPanel teacherId={user!.id} />}
+            {activeTab === 'students' && profile.is_teacher && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><UsersIcon className="w-5 h-5 text-blue-500" /> متابعة الطلاب المشتركين</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">تتبع أداء وتقدم طلابك في دوراتك</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                      {students.length} طالب
+                    </span>
+                  </div>
+                </div>
 
-            {activeTab === 'students' && profile.is_manager && <TeacherStudents teacherId={user!.id} />}
+                {students.length === 0 ? (
+                  <EmptyState icon={UsersIcon} text="لا يوجد طلاب مشتركين في دوراتك حالياً" />
+                ) : (
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50">
+                          <tr>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الطالب</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الدورة</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">التقدم</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الحالة</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الإجراءات</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                          {students.map((enrollment) => (
+                            <tr key={enrollment.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 flex items-center justify-center">
+                                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                      {enrollment.student?.full_name?.charAt(0) || 'ط'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-800 dark:text-slate-100">{enrollment.student?.full_name || 'طالب'}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">{enrollment.student?.email || ''}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="font-medium text-slate-700 dark:text-slate-200">{enrollment.course?.title || 'دورة'}</span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all"
+                                      style={{ width: `${enrollment.progress_percent || 0}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{enrollment.progress_percent || 0}%</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                  enrollment.status === 'active'
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                    : enrollment.status === 'completed'
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                                }`}>
+                                  {enrollment.status === 'active' ? 'نشط' : enrollment.status === 'completed' ? 'مكتمل' : 'متوقف'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <button
+                                  onClick={() => setSelectedStudent(enrollment.student)}
+                                  className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                >
+                                  عرض التفاصيل
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'exams' && profile.is_teacher && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-blue-500" /> إدارة الامتحانات</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">إنشاء وإدارة امتحانات دوراتك</p>
+                  </div>
+                  <button
+                    onClick={() => setShowExamForm(!showExamForm)}
+                    className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> إنشاء امتحان
+                  </button>
+                </div>
+
+                {showExamForm && (
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4">امتحان جديد</h4>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="عنوان الامتحان" value={examForm.title} onChange={(v) => setExamForm({...examForm, title: v})} placeholder="امتحان الوحدة الأولى" />
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">الدورة</label>
+                        <select
+                          value={examForm.course_id}
+                          onChange={(e) => setExamForm({...examForm, course_id: e.target.value})}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"
+                        >
+                          <option value="">اختر الدورة</option>
+                          {courses.map((c) => (
+                            <option key={c.id} value={c.id}>{c.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (!examForm.title.trim() || !examForm.course_id) return;
+                          const { error } = await supabase.from('quizzes').insert({
+                            title: examForm.title,
+                            course_id: examForm.course_id,
+                            teacher_id: user!.id,
+                          });
+                          if (!error) {
+                            setShowExamForm(false);
+                            setExamForm({ title: '', course_id: '', questions: [] });
+                            await fetchDashboardData();
+                            toast('تم إنشاء الامتحان بنجاح', 'success');
+                          } else {
+                            toast('فشل إنشاء الامتحان', 'error');
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      >
+                        <Save className="w-4 h-4" /> إنشاء
+                      </button>
+                      <button
+                        onClick={() => setShowExamForm(false)}
+                        className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {exams.length === 0 ? (
+                  <EmptyState icon={ClipboardCheck} text="لا توجد امتحانات حالياً" />
+                ) : (
+                  <div className="grid gap-4">
+                    {exams.map((exam) => (
+                      <div key={exam.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{exam.title}</h4>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{exam.course?.title || 'بدون دورة'}</p>
+                            <div className="flex items-center gap-4 text-sm text-slate-400 dark:text-slate-500">
+                              <span className="flex items-center gap-1">
+                                <UsersIcon className="w-4 h-4" />
+                                {examResults.filter(r => r.quiz_id === exam.id).length} محاولة
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                {examResults.filter(r => r.quiz_id === exam.id && r.passed).length} ناجح
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedCourse(exam)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await supabase.from('quizzes').delete().eq('id', exam.id);
+                                await fetchDashboardData();
+                                toast('تم حذف الامتحان', 'success');
+                              }}
+                              className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'analytics' && profile.is_teacher && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-blue-500" /> تحليلات الأداء</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">إحصائيات شاملة عن أداء دوراتك وطلابك</p>
+                </div>
+
+                {analytics ? (
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <Eye className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalViews.toLocaleString()}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المشاهدات</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                          <UsersIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalEnrollments}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">المشتركين في الدورات</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
+                          <TrendingUp className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.avgProgress.toFixed(1)}%</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">متوسط التقدم</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                          <Award className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.avgScore.toFixed(1)}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">متوسط الدرجات</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                          <ClipboardCheck className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.totalExams}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">الامتحانات المنشورة</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                          <CheckCircle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{analytics.passedExams}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">الناجحين في الامتحانات</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyState icon={BarChart3} text="جاري تحميل البيانات..." />
+                )}
+              </div>
+            )}
+
+            {activeTab === 'page' && profile.is_manager && <TeacherPageSettingsPanel teacherId={user!.id} />}
 
             {activeTab === 'honors' && profile.is_manager && <TeacherHonors teacherId={user!.id} />}
 
+            {activeTab === 'honors' && profile.is_manager && <TeacherHonors teacherId={user!.id} />}
+            {activeTab === 'assistants' && profile.is_manager && <TeacherAssistants />}
+
+            {/* Student Details Modal */}
+            {selectedStudent && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">تفاصيل الطالب</h3>
+                      <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                        <X className="w-5 h-5 text-slate-500" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {selectedStudent.full_name?.charAt(0) || 'ط'}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100">{selectedStudent.full_name}</h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{selectedStudent.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">التقدم في الدورات</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                          {studentProgress[selectedStudent.id]?.length || 0} فيديو
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">الامتحانات المحلولة</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                          {examResults.filter(r => r.student_id === selectedStudent.id).length}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-3">آخر النشاط</h5>
+                      <div className="space-y-2">
+                        {studentProgress[selectedStudent.id]?.slice(0, 5).map((progress: any) => (
+                          <div key={progress.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                            <Play className="w-4 h-4 text-blue-500" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{progress.video?.title || 'فيديو'}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{progress.progress_percent || 0}% مكتمل</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'subscriptions' && !profile.is_teacher && (
               <div>
-                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2 dark:text-white"><Crown className="w-5 h-5 text-blue-500" /> اشتراكاتي</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2 dark:text-white"><Crown className="w-5 h-5 text-blue-500" /> اشتراكاتي</h3>
                 {subscriptions.length === 0 ? (
                   <EmptyState icon={Crown} text="لا توجد اشتراكات بعد" action={
                     <Link to="/pricing" className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">عرض الباقات</Link>
@@ -800,12 +1218,12 @@ export default function DashboardPage() {
                         ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300'
                         : isPending
                           ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300';
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300';
                       return (
-                        <div key={sub.id} className="bg-white rounded-2xl border border-slate-200 p-5 dark:bg-slate-800 dark:border-slate-700">
+                        <div key={sub.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 flex items-center justify-center">
                                 <Crown className="w-6 h-6 text-blue-600" />
                               </div>
                               <div>
@@ -830,7 +1248,7 @@ export default function DashboardPage() {
                                   href={whatsappLink(`مرحباً، أريد إتمام الدفع لباقة ${sub.plan?.name_ar ?? ''} لإتمام تفعيل اشتراكي.`)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-medium hover:bg-emerald-100 transition-colors"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-100 transition-colors"
                                 >
                                   <MessageCircle className="w-4 h-4" /> أكمل الدفع عبر واتساب
                                 </a>
@@ -838,7 +1256,7 @@ export default function DashboardPage() {
                               {(isActive || isPending) && (
                                 <button
                                   onClick={() => cancelSubscription(sub.id)}
-                                  className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-medium hover:bg-rose-100 transition-colors"
+                                  className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300 text-xs font-medium hover:bg-rose-100 transition-colors"
                                 >
                                   إلغاء الاشتراك
                                 </button>
@@ -855,22 +1273,22 @@ export default function DashboardPage() {
 
             {activeTab === 'favorites' && !profile.is_teacher && (
               <div>
-                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Heart className="w-5 h-5 text-rose-500" /> المفضلة</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2"><Heart className="w-5 h-5 text-rose-500" /> المفضلة</h3>
                 {favorites.length === 0 ? (
                   <EmptyState icon={Heart} text="لا توجد فيديوهات في المفضلة" />
                 ) : (
                   <div className="grid sm:grid-cols-2 gap-4">
                     {favorites.map((fav) => (
                       <Link key={fav.id} to={`/video/${fav.video_id}`}
-                        className="group bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-lg hover:border-blue-200 transition-all">
+                        className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-900 transition-all">
                         <div className="flex gap-3">
-                          <div className="w-24 aspect-video rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                            <Play className="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                          <div className="w-24 aspect-video rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                            <Play className="w-6 h-6 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{fav.video?.title}</p>
-                            <p className="text-xs text-slate-400 mt-1">{fav.video?.teacher?.full_name}</p>
-                            <p className="text-xs text-slate-300 mt-1">{new Date(fav.created_at).toLocaleDateString('ar-EG')}</p>
+                            <p className="font-medium text-slate-800 dark:text-slate-100 line-clamp-1 group-hover:text-blue-600 transition-colors">{fav.video?.title}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{fav.video?.teacher?.full_name}</p>
+                            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">{new Date(fav.created_at).toLocaleDateString('ar-EG')}</p>
                           </div>
                         </div>
                       </Link>
@@ -882,7 +1300,7 @@ export default function DashboardPage() {
 
             {activeTab === 'history' && !profile.is_teacher && (
               <div>
-                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Clock className="w-5 h-5 text-blue-500" /> سجل المشاهدة</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2"><Clock className="w-5 h-5 text-blue-500" /> سجل المشاهدة</h3>
                 {history.length === 0 ? (
                   <EmptyState icon={Clock} text="لا يوجد سجل مشاهدات بعد" action={
                     <Link to="/teachers" className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">ابدأ المشاهدة</Link>
@@ -891,15 +1309,15 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     {history.map((h) => (
                       <Link key={h.id} to={`/video/${h.video_id}`}
-                        className="group flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-all">
-                        <div className="w-20 aspect-video rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <Play className="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                        className="group flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all">
+                        <div className="w-20 aspect-video rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                          <Play className="w-6 h-6 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{h.video?.title}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{h.video?.teacher?.full_name}</p>
+                          <p className="font-medium text-slate-800 dark:text-slate-100 line-clamp-1 group-hover:text-blue-600 transition-colors">{h.video?.title}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{h.video?.teacher?.full_name}</p>
                         </div>
-                        <span className="text-xs text-slate-400 flex-shrink-0">{new Date(h.watched_at).toLocaleDateString('ar-EG')}</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">{new Date(h.watched_at).toLocaleDateString('ar-EG')}</span>
                       </Link>
                     ))}
                   </div>
@@ -955,30 +1373,30 @@ function TeacherCompetitions({ userId, categories }: { userId: string; categorie
   };
   const removeQuestion = async (id: string) => { await supabase.from('competition_questions').delete().eq('id', id); setQuestions((items) => items.filter((item) => item.id !== id)); };
 
-  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h3 className="flex items-center gap-2 font-bold text-slate-800"><Gamepad2 className="h-5 w-5 text-cyan-600" /> إدارة المنافسات</h3><p className="mt-1 text-sm text-slate-500">أنشئ تحدياتك وأضف أسئلة اختيار من متعدد للطلاب.</p></div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h4 className="mb-4 font-bold text-slate-800">منافسة جديدة</h4><div className="grid gap-4 sm:grid-cols-2"><Field label="اسم المنافسة" value={title} onChange={setTitle} placeholder="تحدي العلوم الأسبوعي" /><Field label="وصف مختصر" value={description} onChange={setDescription} placeholder="اختبر معلوماتك واجمع النقاط" /></div><button onClick={() => void createCompetition()} disabled={saving || !title.trim()} className="mt-4 flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"><FolderPlus className="h-4 w-4" /> إنشاء المنافسة</button></div><div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]"><div className="space-y-3">{competitions.map((competition) => <button key={competition.id} onClick={() => void choose(competition)} className={`w-full rounded-2xl border p-4 text-right transition ${selected?.id === competition.id ? 'border-cyan-400 bg-cyan-50' : 'border-slate-200 bg-white hover:border-cyan-200'}`}><div className="flex items-center justify-between gap-3"><span className="font-bold text-slate-800">{competition.title}</span><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">منشورة</span></div><p className="mt-2 text-xs text-slate-400">اضغط لإدارة الأسئلة</p></button>)}{competitions.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">لم تنشئ منافسات بعد</div>}</div>{selected ? <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><h4 className="font-extrabold text-slate-800">أسئلة: {selected.title}</h4><p className="mt-1 text-xs text-slate-400">الإجابة الصحيحة لا تظهر للطلاب في الواجهة التعليمية.</p></div><ListPlus className="h-5 w-5 text-cyan-600" /></div><div className="space-y-3">{questions.map((item, index) => <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 p-3"><div><p className="text-sm font-bold text-slate-700">{index + 1}. {item.question}</p><p className="mt-1 text-xs text-emerald-600">الإجابة الصحيحة: {item.options[item.correct_option]}</p></div><button onClick={() => void removeQuestion(item.id)} className="text-xs font-bold text-rose-500">حذف</button></div>)}</div><div className="mt-5 border-t border-slate-100 pt-5"><Field label="نص السؤال" value={question} onChange={setQuestion} placeholder="اكتب السؤال هنا" /><div className="mt-3 grid gap-2 sm:grid-cols-2">{options.map((option, index) => <input key={index} value={option} onChange={(event) => setOptions((items) => items.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`الإجابة ${index + 1}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-cyan-500" />)}</div><div className="mt-3 flex items-center gap-3"><label className="text-xs font-bold text-slate-600">الإجابة الصحيحة</label><select value={correctOption} onChange={(event) => setCorrectOption(Number(event.target.value))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">{options.map((_, index) => <option key={index} value={index}>الإجابة {index + 1}</option>)}</select></div><button onClick={() => void addQuestion()} disabled={saving || !question.trim() || options.some((option) => !option.trim())} className="mt-4 flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Plus className="h-4 w-4" /> إضافة السؤال</button></div></div> : <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-400">اختر منافسة لإدارة أسئلتها</div>}</div></div>;
+  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Gamepad2 className="h-5 w-5 text-cyan-600" /> إدارة المنافسات</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">أنشئ تحدياتك وأضف أسئلة اختيار من متعدد للطلاب.</p></div></div><div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm"><h4 className="mb-4 font-bold text-slate-800 dark:text-slate-100">منافسة جديدة</h4><div className="grid gap-4 sm:grid-cols-2"><Field label="اسم المنافسة" value={title} onChange={setTitle} placeholder="تحدي العلوم الأسبوعي" /><Field label="وصف مختصر" value={description} onChange={setDescription} placeholder="اختبر معلوماتك واجمع النقاط" /></div><button onClick={() => void createCompetition()} disabled={saving || !title.trim()} className="mt-4 flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"><FolderPlus className="h-4 w-4" /> إنشاء المنافسة</button></div><div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]"><div className="space-y-3">{competitions.map((competition) => <button key={competition.id} onClick={() => void choose(competition)} className={`w-full rounded-2xl border p-4 text-right transition ${selected?.id === competition.id ? 'border-cyan-400 bg-cyan-50 dark:border-cyan-500/60 dark:bg-cyan-900/30' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-cyan-200 dark:hover:border-cyan-800'}`}><div className="flex items-center justify-between gap-3"><span className="font-bold text-slate-800 dark:text-slate-100">{competition.title}</span><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">منشورة</span></div><p className="mt-2 text-xs text-slate-400 dark:text-slate-500">اضغط لإدارة الأسئلة</p></button>)}{competitions.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center text-sm text-slate-400 dark:text-slate-500">لم تنشئ منافسات بعد</div>}</div>{selected ? <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><h4 className="font-extrabold text-slate-800 dark:text-slate-100">أسئلة: {selected.title}</h4><p className="mt-1 text-xs text-slate-400 dark:text-slate-500">الإجابة الصحيحة لا تظهر للطلاب في الواجهة التعليمية.</p></div><ListPlus className="h-5 w-5 text-cyan-600" /></div><div className="space-y-3">{questions.map((item, index) => <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 dark:bg-slate-900 p-3"><div><p className="text-sm font-bold text-slate-700 dark:text-slate-200">{index + 1}. {item.question}</p><p className="mt-1 text-xs text-emerald-600">الإجابة الصحيحة: {item.options[item.correct_option]}</p></div><button onClick={() => void removeQuestion(item.id)} className="text-xs font-bold text-rose-500">حذف</button></div>)}</div><div className="mt-5 border-t border-slate-100 dark:border-slate-700 pt-5"><Field label="نص السؤال" value={question} onChange={setQuestion} placeholder="اكتب السؤال هنا" /><div className="mt-3 grid gap-2 sm:grid-cols-2">{options.map((option, index) => <input key={index} value={option} onChange={(event) => setOptions((items) => items.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`الإجابة ${index + 1}`} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2.5 text-sm outline-none focus:border-cyan-500" />)}</div><div className="mt-3 flex items-center gap-3"><label className="text-xs font-bold text-slate-600 dark:text-slate-300">الإجابة الصحيحة</label><select value={correctOption} onChange={(event) => setCorrectOption(Number(event.target.value))} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm">{options.map((_, index) => <option key={index} value={index}>الإجابة {index + 1}</option>)}</select></div><button onClick={() => void addQuestion()} disabled={saving || !question.trim() || options.some((option) => !option.trim())} className="mt-4 flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Plus className="h-4 w-4" /> إضافة السؤال</button></div></div> : <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center text-sm text-slate-400 dark:text-slate-500">اختر منافسة لإدارة أسئلتها</div>}</div></div>;
 }
 
 function StatCard({ icon: Icon, label, value, color }: { icon: typeof Eye; label: string; value: number | string; color: string }) {
   const colorMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600', cyan: 'bg-cyan-50 text-cyan-600',
-    amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300', cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300', emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
   };
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
       <div className={`w-10 h-10 rounded-xl ${colorMap[color] ?? colorMap.blue} flex items-center justify-center mb-3`}>
         <Icon className="w-5 h-5" />
       </div>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
-      <p className="text-sm text-slate-400">{label}</p>
+      <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
+      <p className="text-sm text-slate-400 dark:text-slate-500">{label}</p>
     </div>
   );
 }
 
 function EmptyState({ icon: Icon, text, action }: { icon: typeof Eye; text: string; action?: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-      <Icon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-      <p className="text-slate-500 mb-4">{text}</p>
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+      <Icon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+      <p className="text-slate-500 dark:text-slate-400 mb-4">{text}</p>
       {action}
     </div>
   );
@@ -989,9 +1407,9 @@ function Field({ label, value, onChange, placeholder, type = 'text', dir }: {
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} dir={dir}
-        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
+        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
     </div>
   );
 }

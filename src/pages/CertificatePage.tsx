@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Award, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, PROFILE_PUBLIC_COLUMNS } from '@/lib/supabase';
 import MetaTags from '@/components/MetaTags';
 import type { Certificate, Course, Profile } from '@/types';
 
@@ -20,8 +20,8 @@ export default function CertificatePage() {
       setCertificate(cert);
       if (cert) {
         const [{ data: courseData }, { data: studentData }] = await Promise.all([
-          supabase.from('courses').select('*, teacher:profiles!courses_teacher_id_fkey(*)').eq('id', cert.course_id).maybeSingle(),
-          supabase.from('profiles').select('*').eq('id', cert.student_id).maybeSingle(),
+          supabase.from('courses').select(`*, teacher:profiles!courses_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`).eq('id', cert.course_id).maybeSingle(),
+          supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('id', cert.student_id).maybeSingle(),
         ]);
         setCourse(courseData as Course | null);
         setStudent(studentData as Profile | null);

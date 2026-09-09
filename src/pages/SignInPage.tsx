@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -7,13 +7,17 @@ import PasswordField from '@/components/PasswordField';
 import MetaTags from '@/components/MetaTags';
 
 export default function SignInPage() {
-  const { signIn } = useAuth();
+  const { signIn, user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && profile) navigate(profile.is_teacher ? '/admin/teacher' : '/dashboard', { replace: true });
+  }, [user, profile, navigate]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -26,7 +30,6 @@ export default function SignInPage() {
       toast(signInError, 'error');
     } else {
       toast('مرحباً بعودتك!', 'success');
-      navigate('/dashboard');
     }
   };
 
