@@ -50,7 +50,7 @@ export default function SignUpPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm rounded-lg px-4 py-3 mb-6">
+            <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm rounded-lg px-4 py-3 mb-6 dark:bg-red-900/20 dark:text-red-300">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -75,16 +75,16 @@ export default function SignUpPage() {
 
             {(
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
                   {isTeacher ? 'نوع المدرسة أو المعهد' : 'نوع المدرسة أو المعهد'}
-                  <select required value={curriculum} onChange={(e) => { setCurriculum(e.target.value); setEducationStage(''); }} className="mt-1.5 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10">
+                  <select required value={curriculum} onChange={(e) => { setCurriculum(e.target.value); setEducationStage(''); }} className="mt-1.5 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
                     <option value="">اختر نوع التعليم</option>
                     {curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   </select>
                 </label>
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
                   {isTeacher ? 'الصف الذي يدرّسه' : 'الصف الدراسي'}
-                  <select required disabled={!curriculum} value={educationStage} onChange={(e) => setEducationStage(e.target.value)} className="mt-1.5 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60">
+                  <select required disabled={!curriculum} value={educationStage} onChange={(e) => setEducationStage(e.target.value)} className="mt-1.5 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
                     <option value="">{curriculum ? 'اختر الصف' : 'اختر نوع التعليم أولًا'}</option>
                     {stageOptions.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}
                   </select>
@@ -116,15 +116,15 @@ export default function SignUpPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">نوع الحساب</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-200">نوع الحساب</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setIsTeacher(false)}
                   className={`px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
                     !isTeacher
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
                   طالب
@@ -134,8 +134,8 @@ export default function SignUpPage() {
                   onClick={() => setIsTeacher(true)}
                   className={`px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
                     isTeacher
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
                   مدرس

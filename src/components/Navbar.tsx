@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Shield, Moon, Sun } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Shield, Moon, Sun, Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 
 export default function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth();
@@ -10,6 +11,32 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+    const loadUnread = async () => {
+      try {
+        const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_read', false).limit(1);
+        if (!cancelled) setUnreadCount(count ?? 0);
+      } catch {
+        if (!cancelled) setUnreadCount(0);
+      }
+    };
+    void loadUnread();
+    const channel = supabase
+      .channel('navbar-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => void loadUnread())
+      .subscribe();
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,6 +98,21 @@ export default function Navbar() {
                   >
                     <Shield className="w-4 h-4" />
                     الإدارة
+                  </Link>
+                )}
+                {!profile?.is_teacher && (
+                  <Link
+                    to="/dashboard?tab=notifications"
+                    className="relative flex items-center justify-center rounded-xl p-2 text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                    aria-label="الإشعارات"
+                    title="الإشعارات"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -left-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 )}
                 <Link

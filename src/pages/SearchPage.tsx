@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Video as VideoIcon, Users, BookOpen, X, Play, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { INTERNAL_TEACHER_ID } from '@/lib/teachers';
+import MetaTags from '@/components/MetaTags';
 import type { Profile, Video, Course } from '@/types';
 
 export default function SearchPage() {
@@ -28,6 +30,7 @@ export default function SearchPage() {
       .select('*')
       .eq('is_teacher', true)
       .eq('is_approved', true)
+      .not('id', 'eq', INTERNAL_TEACHER_ID)
       .or(`full_name.ilike.%${safeQuery}%,specialization.ilike.%${safeQuery}%,bio.ilike.%${safeQuery}%`)
       .limit(10);
     setTeachers(teacherData as Profile[] ?? []);
@@ -62,10 +65,11 @@ export default function SearchPage() {
   const totalResults = teachers.length + videos.length + courses.length;
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+      <MetaTags title="البحث | منصة العلم" description="ابحث في المدرسين والدروس والدورات على منصة العلم" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="mb-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">البحث</h1>
-        <p className="mb-6 text-sm text-slate-500">ابحث في المدرسين والدروس والدورات من مكان واحد.</p>
+        <h1 className="mb-2 text-2xl font-extrabold text-slate-900 sm:text-3xl dark:text-white">البحث</h1>
+        <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">ابحث في المدرسين والدروس والدورات من مكان واحد.</p>
 
         {/* Search bar */}
         <form onSubmit={handleSearch} className="relative mb-6">
@@ -75,7 +79,7 @@ export default function SearchPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ابحث عن مدرسين، فيديوهات، أو دورات..."
-            className="w-full pr-12 pl-12 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm"
+            className="w-full pr-12 pl-12 py-3.5 bg-white border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white"
           />
           {query && (
             <button type="button" onClick={() => { setQuery(''); setTeachers([]); setVideos([]); setCourses([]); setHasSearched(false); }}
@@ -98,7 +102,7 @@ export default function SearchPage() {
                 key={tab.id}
                 onClick={() => setActiveFilter(tab.id)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeFilter === tab.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  activeFilter === tab.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700'
                 }`}>
                 {tab.label} ({tab.count})
               </button>
@@ -106,7 +110,7 @@ export default function SearchPage() {
           </div>
         )}
 
-        {hasError && <div role="alert" className="mb-5 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">حدث خطأ أثناء البحث. حاول مرة أخرى.</div>}
+        {hasError && <div role="alert" className="mb-5 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300">حدث خطأ أثناء البحث. حاول مرة أخرى.</div>}
 
         {/* Results */}
         {loading ? (
@@ -115,32 +119,32 @@ export default function SearchPage() {
           </div>
         ) : !hasSearched ? (
           <div className="text-center py-20">
-            <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500 text-lg">ابدأ البحث عن المدرسين والفيديوهات والدورات</p>
+            <Search className="w-16 h-16 text-slate-300 mx-auto mb-4 dark:text-slate-600" />
+            <p className="text-slate-500 text-lg dark:text-slate-400">ابدأ البحث عن المدرسين والفيديوهات والدورات</p>
           </div>
         ) : totalResults === 0 ? (
           <div className="text-center py-20">
-            <X className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500 text-lg">لا توجد نتائج لـ "{query}"</p>
+            <X className="w-16 h-16 text-slate-300 mx-auto mb-4 dark:text-slate-600" />
+            <p className="text-slate-500 text-lg dark:text-slate-400">لا توجد نتائج لـ "{query}"</p>
           </div>
         ) : (
           <div className="space-y-8">
             {/* Teachers */}
             {(activeFilter === 'all' || activeFilter === 'teachers') && teachers.length > 0 && (
               <div>
-                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2 dark:text-white">
                   <Users className="w-5 h-5 text-blue-500" /> مدرسون
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {teachers.map((t) => (
                     <Link key={t.id} to={`/teacher/${t.id}`}
-                      className="group bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg hover:border-blue-200 transition-all">
+                      className="group bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg hover:border-blue-200 transition-all dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-500">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg font-bold text-blue-600">{t.full_name.charAt(0)}</span>
+                          <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{t.full_name.charAt(0)}</span>
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{t.full_name}</h3>
+                          <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors dark:text-white dark:group-hover:text-blue-400">{t.full_name}</h3>
                           <p className="text-sm text-blue-600">{t.specialization ?? 'مدرس'}</p>
                         </div>
                       </div>
@@ -153,14 +157,14 @@ export default function SearchPage() {
             {/* Videos */}
             {(activeFilter === 'all' || activeFilter === 'videos') && videos.length > 0 && (
               <div>
-                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2 dark:text-white">
                   <VideoIcon className="w-5 h-5 text-blue-500" /> فيديوهات
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {videos.map((v) => (
                     <Link key={v.id} to={`/video/${v.id}`}
-                      className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all">
-                      <div className="aspect-video bg-slate-100 flex items-center justify-center relative">
+                      className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-500">
+                      <div className="aspect-video bg-slate-100 flex items-center justify-center relative dark:bg-slate-700">
                         {v.thumbnail_url ? (
                           <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" />
                         ) : (
@@ -169,7 +173,7 @@ export default function SearchPage() {
                         {v.is_free && <span className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-md">مجاني</span>}
                       </div>
                       <div className="p-4">
-                        <h3 className="font-bold text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{v.title}</h3>
+                        <h3 className="font-bold text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors dark:text-white dark:group-hover:text-blue-400">{v.title}</h3>
                         <p className="text-sm text-slate-400 mt-1">{v.teacher?.full_name}</p>
                         <div className="flex items-center gap-3 text-xs text-slate-400 mt-2">
                           <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {v.views_count}</span>
@@ -184,23 +188,23 @@ export default function SearchPage() {
             {/* Courses */}
             {(activeFilter === 'all' || activeFilter === 'courses') && courses.length > 0 && (
               <div>
-                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2 dark:text-white">
                   <BookOpen className="w-5 h-5 text-blue-500" /> دورات
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {courses.map((c) => (
                     <Link key={c.id} to={`/course/${c.id}`}
-                      className="group bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg hover:border-blue-200 transition-all">
-                      <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors mb-2">{c.title}</h3>
-                      {c.description && <p className="text-sm text-slate-500 line-clamp-2 mb-3">{c.description}</p>}
+                      className="group bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg hover:border-blue-200 transition-all dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-500">
+                      <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors mb-2 dark:text-white dark:group-hover:text-blue-400">{c.title}</h3>
+                      {c.description && <p className="text-sm text-slate-500 line-clamp-2 mb-3 dark:text-slate-400">{c.description}</p>}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-2 py-0.5 text-xs rounded-md ${
-                          c.level === 'beginner' ? 'bg-green-50 text-green-600' :
-                          c.level === 'intermediate' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
+                          c.level === 'beginner' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                          c.level === 'intermediate' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
                         }`}>
                           {c.level === 'beginner' ? 'مبتدئ' : c.level === 'intermediate' ? 'متوسط' : 'متقدم'}
                         </span>
-                        {c.category && <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-md">{c.category.name_ar}</span>}
+                        {c.category && <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-md dark:bg-slate-700 dark:text-slate-300">{c.category.name_ar}</span>}
                       </div>
                     </Link>
                   ))}

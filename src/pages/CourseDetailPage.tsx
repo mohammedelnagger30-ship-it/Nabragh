@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BookOpen, Play, Eye, Clock, Loader2, Lock, Award, BarChart3 } from 'lucide-react';
+import { BookOpen, Play, Eye, Clock, Loader2, Lock, Award, BarChart3, Star } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import CourseQuiz from '@/components/CourseQuiz';
@@ -236,6 +236,12 @@ export default function CourseDetailPage() {
               </div>
             )}
             {enrollment && user && <div className="mt-8"><CourseQuiz courseId={course.id} studentId={user.id} /></div>}
+            <div className="mt-10 pt-2 border-t border-slate-200 dark:border-slate-700">
+              <h2 className="mb-6 text-xl font-bold text-slate-800 flex items-center gap-2 dark:text-white">
+                <Star className="w-5 h-5 text-amber-400" /> تقييمات الدورة
+              </h2>
+              <CourseReviews courseId={course.id} />
+            </div>
           </div>
 
           <div>

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare, Share2,
-  Send, Trash2, Clock, BookOpen, CheckCircle2
+  ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare,
+  Clock, BookOpen, CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +12,7 @@ import SocialShare from '@/components/SocialShare';
 import PlaylistManager from '@/components/PlaylistManager';
 import MetaTags from '@/components/MetaTags';
 import StructuredData, { generateVideoStructuredData } from '@/components/StructuredData';
-import type { Video, Profile, Comment, VideoProgress } from '@/types';
+import type { Video, Profile, VideoProgress } from '@/types';
 
 export default function VideoPlayerPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,12 +21,9 @@ export default function VideoPlayerPage() {
   const [video, setVideo] = useState<Video | null>(null);
   const [teacher, setTeacher] = useState<Profile | null>(null);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
   const [progress, setProgress] = useState<VideoProgress | null>(null);
   const [activeTab, setActiveTab] = useState<'comments' | 'related'>('comments');
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -54,14 +51,6 @@ export default function VideoPlayerPage() {
         .neq('id', id)
         .limit(5);
       setRelatedVideos(related as Video[] ?? []);
-
-      const { data: commentData } = await supabase
-        .from('comments')
-        .select('*, student:profiles!comments_student_id_fkey(*)')
-        .eq('video_id', id)
-        .is('parent_id', null)
-        .order('created_at', { ascending: false });
-      setComments(commentData as Comment[] ?? []);
 
       if (vid.is_free) {
         setHasAccess(true);
@@ -162,41 +151,6 @@ export default function VideoPlayerPage() {
       setIsFavorited(true);
       toast('تمت الإضافة إلى المفضلة', 'success');
     }
-  };
-
-  const shareVideo = async () => {
-    const shareData = { title: video?.title ?? 'فيديو تعليمي', url: window.location.href };
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-      toast('تم نسخ رابط الفيديو', 'success');
-    }
-  };
-
-  const submitComment = async () => {
-    if (!user || !video || !commentText.trim()) return;
-    setSubmittingComment(true);
-    const { data, error } = await supabase.from('comments').insert({
-      video_id: video.id,
-      student_id: user.id,
-      comment: commentText.trim(),
-    }).select('*, student:profiles!comments_student_id_fkey(*)').single();
-
-    setSubmittingComment(false);
-    if (!error && data) {
-      setComments([data as Comment, ...comments]);
-      setCommentText('');
-      toast('تم نشر تعليقك', 'success');
-    } else {
-      toast('حدث خطأ أثناء نشر التعليق', 'error');
-    }
-  };
-
-  const deleteComment = async (commentId: string) => {
-    if (!confirm('هل تريد حذف هذا التعليق؟')) return;
-    await supabase.from('comments').delete().eq('id', commentId);
-    setComments(comments.filter(c => c.id !== commentId));
   };
 
   if (loading) {

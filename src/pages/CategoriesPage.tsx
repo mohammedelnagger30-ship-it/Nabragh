@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import MetaTags from '@/components/MetaTags';
 import type { Category } from '@/types';
 
 export default function CategoriesPage() {
@@ -40,6 +41,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white">
+      <MetaTags title="التخصصات الدراسية | منصة العلم" description="تصفح جميع التخصصات الدراسية وابدأ التعلم مع أفضل المدرسين" />
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-8 text-center sm:mb-12">
           <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">

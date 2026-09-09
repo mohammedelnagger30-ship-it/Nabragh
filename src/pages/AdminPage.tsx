@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import MetaTags from '@/components/MetaTags';
 import type { Profile, Video, Course, Comment, Review } from '@/types';
 
 type Tab = 'overview' | 'students' | 'assessments' | 'live' | 'teachers' | 'managers' | 'videos' | 'courses' | 'comments' | 'reviews';
@@ -232,6 +233,7 @@ export default function AdminPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+      <MetaTags title="لوحة الإدارة | منصة العلم" noIndex />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">

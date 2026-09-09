@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, X, Video as VideoIcon, BookOpen, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import type { Video, Course, Profile } from '@/types';
 
 interface SearchSuggestionsProps {
@@ -42,6 +43,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
               .select('*')
               .eq('is_teacher', true)
               .eq('is_approved', true)
+              .not('id', 'eq', INTERNAL_TEACHER_ID)
               .ilike('full_name', `%${query}%`)
               .limit(5),
           ]);

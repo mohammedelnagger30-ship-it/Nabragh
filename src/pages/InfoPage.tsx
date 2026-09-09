@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, BookOpen, ShieldCheck } from 'lucide-react';
+import MetaTags from '@/components/MetaTags';
 
 const content = {
   '/about': {
@@ -36,6 +37,7 @@ export default function InfoPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pt-[4.5rem]">
+      <MetaTags title={`${page.title} | منصة العلم`} description={page.intro} />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
         <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700">
           <ArrowRight className="h-4 w-4" /> العودة للرئيسية

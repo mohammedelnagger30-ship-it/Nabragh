@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, User, Video as VideoIcon, Upload, Eye, Trash2,
   Plus, Save, Loader2, FileText, Calendar, Crown, Play, BookOpen,
-  TrendingUp, Heart, Clock, Award, Bell,
+  TrendingUp, Heart, Clock, Award, Bell, MessageCircle,
   BarChart3, FolderPlus, Settings, Palette, Medal, Users as UsersIcon
   , Gamepad2, ListPlus
 } from 'lucide-react';
@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { uploadFile } from '@/lib/storage';
+import { whatsappLink } from '@/lib/contact';
+import MetaTags from '@/components/MetaTags';
 import { curricula, educationStages } from '@/lib/education';
 import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherStudents, TeacherHonors, TeacherLeaderboards } from '@/components/TeacherManagerTools';
 import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion } from '@/types';
@@ -21,7 +23,9 @@ export default function DashboardPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab && ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'honors', 'subscriptions', 'favorites', 'history', 'notifications'].includes(initialTab) ? initialTab : 'overview');
   const [videos, setVideos] = useState<Video[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -162,6 +166,16 @@ export default function DashboardPage() {
   }, [user, profile]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+
+  const cancelSubscription = async (id: string) => {
+    const { error } = await supabase.from('subscriptions').update({ status: 'cancelled' }).eq('id', id);
+    if (error) {
+      toast('تعذر إلغاء الاشتراك. حاول مرة أخرى.', 'error');
+      return;
+    }
+    toast('تم إلغاء الاشتراك', 'success');
+    fetchDashboardData();
+  };
 
   const saveProfile = async () => {
     setSaving(true);
@@ -322,6 +336,7 @@ export default function DashboardPage() {
 
   return (
     <div className="pt-[4.5rem] min-h-screen bg-slate-50">
+      <MetaTags title="لوحة التحكم | منصة العلم" noIndex />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-800">لوحة التحكم</h1>
@@ -769,35 +784,70 @@ export default function DashboardPage() {
 
             {activeTab === 'subscriptions' && !profile.is_teacher && (
               <div>
-                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Crown className="w-5 h-5 text-blue-500" /> اشتراكاتي</h3>
+                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2 dark:text-white"><Crown className="w-5 h-5 text-blue-500" /> اشتراكاتي</h3>
                 {subscriptions.length === 0 ? (
                   <EmptyState icon={Crown} text="لا توجد اشتراكات بعد" action={
                     <Link to="/pricing" className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">عرض الباقات</Link>
                   } />
                 ) : (
                   <div className="space-y-4">
-                    {subscriptions.map((sub) => (
-                      <div key={sub.id} className="bg-white rounded-2xl border border-slate-200 p-5">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
-                              <Crown className="w-6 h-6 text-blue-600" />
+                    {subscriptions.map((sub) => {
+                      const isActive = sub.status === 'active';
+                      const isPending = sub.status === 'pending';
+                      const isCancelled = sub.status === 'cancelled';
+                      const statusLabel = isActive ? 'نشط' : isPending ? 'معلق - قيد التأكيد' : isCancelled ? 'ملغى' : 'منتهي';
+                      const statusClass = isActive
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : isPending
+                          ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300';
+                      return (
+                        <div key={sub.id} className="bg-white rounded-2xl border border-slate-200 p-5 dark:bg-slate-800 dark:border-slate-700">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
+                                <Crown className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-800 dark:text-white">{sub.plan?.name_ar ?? 'باقة'}</p>
+                                <p className="text-sm text-slate-400 dark:text-slate-400">
+                                  {sub.payment_status === 'paid' ? 'مدفوع' : sub.payment_status === 'pending' ? 'الدفع قيد التأكيد' : 'غير مدفوع'}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-bold text-slate-800">{sub.teacher?.full_name ?? 'مدرس'}</p>
-                              <p className="text-sm text-slate-400">{sub.plan?.name_ar ?? 'باقة'}</p>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                            <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+                              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> يبدأ: {new Date(sub.start_date).toLocaleDateString('ar-EG')}</span>
+                              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> ينتهي: {new Date(sub.end_date).toLocaleDateString('ar-EG')}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isPending && (
+                                <a
+                                  href={whatsappLink(`مرحباً، أريد إتمام الدفع لباقة ${sub.plan?.name_ar ?? ''} لإتمام تفعيل اشتراكي.`)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-medium hover:bg-emerald-100 transition-colors"
+                                >
+                                  <MessageCircle className="w-4 h-4" /> أكمل الدفع عبر واتساب
+                                </a>
+                              )}
+                              {(isActive || isPending) && (
+                                <button
+                                  onClick={() => cancelSubscription(sub.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-medium hover:bg-rose-100 transition-colors"
+                                >
+                                  إلغاء الاشتراك
+                                </button>
+                              )}
                             </div>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${sub.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                            {sub.status === 'active' ? 'نشط' : 'منتهي'}
-                          </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-500 pt-3 border-t border-slate-100">
-                          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> بدأ: {new Date(sub.start_date).toLocaleDateString('ar-EG')}</span>
-                          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> ينتهي: {new Date(sub.end_date).toLocaleDateString('ar-EG')}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -11,7 +11,7 @@ import LazyImage from '@/components/LazyImage';
 import { cache, generateCacheKey } from '@/lib/cache';
 import type { Profile, Category, Video, Course, WatchHistoryItem, StudentSubjectLeaderboard } from '@/types';
 import { getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
-import { isPublicTeacher } from '@/lib/teachers';
+import { isPublicTeacher, INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
 
 export default function LandingPage() {
@@ -44,7 +44,7 @@ export default function LandingPage() {
           stats = cachedStats;
         } else {
           const [teacherCount, videoCount, studentCount, courseCount] = await Promise.all([
-            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true),
+            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID),
             supabase.from('videos').select('*', { count: 'exact', head: true }),
             supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_teacher', false),
             supabase.from('courses').select('*', { count: 'exact', head: true }),
@@ -62,16 +62,28 @@ export default function LandingPage() {
           ? Promise.resolve({ data: cachedCategories, error: null })
           : supabase.from('categories').select('*').order('sort_order', { ascending: true });
 
-        const [teacherResult, categoryResult, videoResult, courseResult, championResult] = await Promise.all([
-          supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true).order('created_at', { ascending: false }).limit(12),
+        const [teacherResult, categoryResult, videoResult, courseResult] = await Promise.all([
+          supabase.from('profiles').select('*').eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID).order('created_at', { ascending: false }).limit(12),
           categoriesPromise,
           supabase.from('videos').select('*, category:categories(*), teacher:profiles!videos_teacher_id_fkey(*)').order('views_count', { ascending: false }).limit(6),
           supabase.from('courses').select('*, category:categories(*)').eq('is_published', true).order('created_at', { ascending: false }).limit(3),
-          supabase.from('student_subject_leaderboard').select('*').eq('subject_rank', 1).order('points', { ascending: false }).limit(12),
         ]);
 
         if ([teacherResult, categoryResult, videoResult, courseResult].some((result) => result.error)) {
           throw new Error('Unable to load landing page data');
+        }
+
+        let champions: StudentSubjectLeaderboard[] = [];
+        try {
+          const { data: championData } = await supabase
+            .from('student_subject_leaderboard')
+            .select('*')
+            .eq('subject_rank', 1)
+            .order('points', { ascending: false })
+            .limit(12);
+          champions = (championData ?? []) as StudentSubjectLeaderboard[];
+        } catch {
+          // Ignore champion loading errors so the rest of the page still renders
         }
 
         // Cache static data
@@ -105,7 +117,7 @@ export default function LandingPage() {
           setCourses(courseResult.data as Course[] ?? []);
           setStats(stats);
           setContinueWatching(historyData);
-          setChampions((championResult.data ?? []) as StudentSubjectLeaderboard[]);
+          setChampions(champions);
           setHasLoadError(false);
         }
       } catch {
