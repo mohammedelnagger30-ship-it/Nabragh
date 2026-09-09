@@ -558,31 +558,33 @@ export default function LandingPage() {
       )}
 
       {/* How It Works */}
-      <section className="py-20 bg-white dark:bg-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
-              <Zap className="w-4 h-4" />
+      <section className="bg-white py-12 dark:bg-slate-800 sm:py-16 md:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center sm:mb-10 md:mb-12">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+              <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               كيف تعمل المنصة
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-3">ابدأ رحلتك التعليمية في 3 خطوات</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-4xl">ابدأ رحلتك التعليمية في 3 خطوات</h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid gap-3 md:grid-cols-3 md:gap-8">
             {[
               { icon: Users, step: '١', title: 'أنشئ حساباً', desc: 'سجّل كطالب أو مدرس في دقائق، وأنشئ ملفك الشخصي' },
               { icon: BookOpen, step: '٢', title: 'اختر مدرسك', desc: 'تصفح المدرسين حسب التخصص واقرأ السيرة الذاتية والتقييمات' },
               { icon: Play, step: '٣', title: 'ابدأ التعلم', desc: 'اشترك واشاهد الفيديوهات بجودة عالية في أي وقت ومن أي مكان' },
             ].map((item, i) => (
-              <div key={i} className="relative text-center">
-                <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 border border-blue-100 dark:border-blue-900/40 mb-5">
-                  <item.icon className="w-9 h-9 text-blue-600" />
-                  <span className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white text-sm font-bold flex items-center justify-center shadow-md">
+              <div key={i} className="relative flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-right dark:border-slate-700/70 dark:bg-slate-900/30 md:block md:border-0 md:bg-transparent md:p-0 md:text-center">
+                <div className="relative inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50 dark:border-blue-900/40 dark:from-blue-900/30 dark:to-cyan-900/30 md:mb-5 md:h-20 md:w-20">
+                  <item.icon className="h-6 w-6 text-blue-600 md:h-9 md:w-9" />
+                  <span className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-xs font-bold text-white shadow-md md:-right-2 md:-top-2 md:h-8 md:w-8 md:text-sm">
                     {item.step}
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{item.title}</h3>
-                <p className="text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">{item.desc}</p>
+                <div className="min-w-0 flex-1 md:block">
+                  <h3 className="mb-1 text-base font-bold text-slate-800 dark:text-slate-100 sm:text-lg md:mb-2 md:text-xl">{item.title}</h3>
+                  <p className="text-xs leading-5 text-slate-500 dark:text-slate-400 sm:text-sm sm:leading-6 md:mx-auto md:max-w-xs md:leading-relaxed">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -590,30 +592,30 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-gradient-to-br from-slate-900 to-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-white/10 text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
-              <Shield className="w-4 h-4" />
+      <section className="bg-gradient-to-br from-slate-900 to-slate-800 py-12 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center sm:mb-10 lg:mb-12">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-blue-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+              <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               لماذا منصة العلم؟
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">مميزات تجعلنا الأفضل</h2>
-            <p className="text-slate-400 dark:text-slate-500 max-w-2xl mx-auto">نوفّر تجربة تعليمية متكاملة بأعلى معايير الجودة والحماية العالمية</p>
+            <h2 className="mb-3 text-2xl font-bold text-white sm:text-4xl">مميزات تجعلنا الأفضل</h2>
+            <p className="mx-auto max-w-2xl text-xs leading-6 text-slate-400 sm:text-sm">نوفّر تجربة تعليمية متكاملة بأعلى معايير الجودة والحماية العالمية</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {[
               { icon: Shield, title: 'حماية المحتوى', desc: 'حماية الفيديوهات من النسخ والتسريب بأحدث تقنيات التشفير' },
               { icon: VideoIcon, title: 'جودة 4K', desc: 'فيديوهات بجودة فائقة مع إمكانية المشاهدة على أي جهاز' },
               { icon: Award, title: 'سيرة ذاتية موثقة', desc: 'كل مدرس لديه سيرة ذاتية كاملة مع التحقق من المؤهلات' },
               { icon: Lock, title: 'خصوصية البيانات', desc: 'حماية كاملة لبيانات الطلاب والمدرسين وفق المعايير العالمية' },
             ].map((feat, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center mb-4">
-                  <feat.icon className="w-6 h-6 text-blue-400" />
+              <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm transition-colors hover:bg-white/10 sm:p-5 lg:p-6">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 sm:mb-4 sm:h-12 sm:w-12">
+                  <feat.icon className="h-5 w-5 text-blue-400 sm:h-6 sm:w-6" />
                 </div>
-                <h3 className="font-bold text-white mb-2">{feat.title}</h3>
-                <p className="text-sm text-slate-400 dark:text-slate-500 leading-relaxed">{feat.desc}</p>
+                <h3 className="mb-1 text-sm font-bold text-white sm:mb-2 sm:text-base">{feat.title}</h3>
+                <p className="text-[11px] leading-5 text-slate-400 dark:text-slate-500 sm:text-sm sm:leading-relaxed">{feat.desc}</p>
               </div>
             ))}
           </div>

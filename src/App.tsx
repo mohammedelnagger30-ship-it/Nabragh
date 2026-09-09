@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
@@ -11,6 +11,7 @@ import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import LandingPage from '@/pages/LandingPage';
 import TeachersPage from '@/pages/TeachersPage';
 import TeacherProfilePage from '@/pages/TeacherProfilePage';
+import AcademyPage from '@/pages/AcademyPage';
 import VideoPlayerPage from '@/pages/VideoPlayerPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import CoursesPage from '@/pages/CoursesPage';
@@ -29,11 +30,9 @@ import CertificatePage from '@/pages/CertificatePage';
 import AdminPortalShell from '@/components/AdminPortalShell';
 import AdminEntryPage from '@/pages/AdminEntryPage';
 import TeacherAdminPage from '@/pages/TeacherAdminPage';
-import { useAuth } from '@/context/AuthContext';
 
 function AppRoutes() {
   const location = useLocation();
-  const { user, profile, loading, isAdmin } = useAuth();
   const isAdminPortal = location.pathname.startsWith('/admin');
   if (isAdminPortal) {
     return <AdminPortalShell mode={location.pathname.startsWith('/admin/teacher') ? 'teacher' : 'site'}><Routes><Route path="/admin" element={<AdminEntryPage />} /><Route path="/admin/teacher" element={<TeacherAdminPage />} /></Routes></AdminPortalShell>;
@@ -53,6 +52,8 @@ function PublicApp() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/teachers" element={<TeachersPage />} />
+              <Route path="/teacher/:id" element={<TeacherProfilePage />} />
+              <Route path="/academy/:slug" element={<AcademyPage />} />
               <Route path="/video/:id" element={<VideoPlayerPage />} />
               <Route path="/course/:id" element={<CourseDetailPage />} />
               <Route path="/courses" element={<CoursesPage />} />

@@ -302,12 +302,27 @@ export interface StudentStageLeaderboard {
 
 export interface TeacherPageSettings {
   teacher_id: string;
+  academy_name: string;
+  slug: string;
+  access_mode: 'public' | 'private' | 'invite';
+  require_approval: boolean;
+  allow_free_preview: boolean;
+  is_published: boolean;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
   show_competitions: boolean;
   show_leaderboard: boolean;
   updated_at: string;
+}
+
+export interface AcademyMembership {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  status: 'pending' | 'active' | 'rejected' | 'blocked';
+  joined_at: string;
+  reviewed_at: string | null;
 }
 
 export interface TeacherPlan {

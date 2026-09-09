@@ -12,14 +12,15 @@ import {
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { uploadFile } from '@/lib/storage';
+import { uploadFile, uploadPrivateFile } from '@/lib/storage';
 import { whatsappLink } from '@/lib/contact';
 import MetaTags from '@/components/MetaTags';
 import { curricula, educationStages } from '@/lib/education';
 import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherStudents, TeacherHonors, TeacherLeaderboards, TeacherAssistants } from '@/components/TeacherManagerTools';
-import type { Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion } from '@/types';
+import AcademyMembersPanel from '@/components/AcademyMembersPanel';
+import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'exams' | 'analytics' | 'honors' | 'assistants' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'honors' | 'assistants' | 'subscriptions' | 'favorites' | 'history' | 'notifications';
 
 export default function DashboardPage({ teacherWorkspace = false }: { teacherWorkspace?: boolean }) {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -27,7 +28,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab && ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'exams', 'analytics', 'honors', 'assistants', 'subscriptions', 'favorites', 'history', 'notifications'].includes(initialTab) ? initialTab as Tab : 'overview');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab && ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'honors', 'assistants', 'subscriptions', 'favorites', 'history', 'notifications'].includes(initialTab) ? initialTab as Tab : 'overview');
   const [videos, setVideos] = useState<Video[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -163,7 +164,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       setExamResults(resultsData ?? []);
 
       // Load analytics
-      const totalViews = (vidData as Video[]).reduce((sum, v) => sum + (v.views_count || 0), 0);
+      const totalViews = (vidData as unknown as Video[]).reduce((sum, v) => sum + (v.views_count || 0), 0);
       const totalEnrollments = (enrollData ?? []).length;
       const avgProgress = Object.values(progressMap).flat().length > 0
         ? Object.values(progressMap).flat().reduce((sum: number, p: any) => sum + (p.progress_percent || 0), 0) / Object.values(progressMap).flat().length
@@ -269,7 +270,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     setSaving(true);
     setUploadProgress(0);
 
-    const videoUrl = await uploadFile('videos', videoFile, user.id, setUploadProgress);
+    const videoUrl = await uploadPrivateFile('videos', videoFile, user.id, setUploadProgress);
     if (!videoUrl) {
       setSaving(false);
       setUploadProgress(0);
@@ -356,7 +357,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
   const handleCvUpload = async (file: File) => {
     if (!user) return;
-    const url = await uploadFile('cvs', file, user.id);
+    const url = await uploadPrivateFile('cvs', file, user.id);
     if (url) {
       setCvUrl(url);
       toast('تم رفع السيرة الذاتية', 'success');
@@ -383,6 +384,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'videos', label: 'الفيديوهات', icon: VideoIcon },
     { id: 'courses', label: 'الدورات', icon: BookOpen },
     { id: 'students', label: 'متابعة الطلاب', icon: UsersIcon },
+    { id: 'members', label: 'طلاب منصتي', icon: UsersIcon },
     { id: 'exams', label: 'الامتحانات', icon: ClipboardCheck },
     { id: 'analytics', label: 'التحليلات', icon: BarChart3 },
     { id: 'competitions', label: 'المنافسات', icon: Gamepad2 },
@@ -413,6 +415,29 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
           <p className="text-slate-500 dark:text-slate-400 mt-1">
             مرحباً، {profile.full_name} — {profile.is_teacher ? 'مدرس' : 'طالب'}
           </p>
+        </div>
+
+        <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-l from-blue-700 via-blue-600 to-cyan-500 p-6 text-white shadow-xl shadow-blue-900/10 sm:p-8">
+          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm">مساحة عملك التعليمية</span>
+              <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">خلّي محتواك يوصل للطلاب بشكل أفضل</h2>
+              <p className="mt-2 text-sm leading-7 text-blue-100">تابع أداء المحتوى، نظم دوراتك، وابقَ على تواصل مع طلابك من مكان واحد.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {profile.is_teacher ? (
+                <>
+                  <button type="button" onClick={() => setActiveTab('videos')} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50"><Upload className="h-4 w-4" /> رفع فيديو</button>
+                  <button type="button" onClick={() => setActiveTab('courses')} className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/30 transition hover:bg-white/25"><FolderPlus className="h-4 w-4" /> إنشاء دورة</button>
+                  <Link to={`/teacher/${user!.id}`} className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/30 transition hover:bg-white/25"><ExternalLink className="h-4 w-4" /> صفحتي العامة</Link>
+                </>
+              ) : (
+                <Link to="/courses" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50"><BookOpen className="h-4 w-4" /> تصفح الدورات</Link>
+              )}
+            </div>
+          </div>
+          <div className="pointer-events-none absolute -left-8 -top-16 h-48 w-48 rounded-full border-[24px] border-white/10" />
+          <div className="pointer-events-none absolute -bottom-24 right-1/3 h-56 w-56 rounded-full border-[30px] border-cyan-300/10" />
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
@@ -539,7 +564,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                           <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all ${enr.status === 'completed' ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}
-                              style={{ width: `${enr.progress_percent}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, enr.progress_percent ?? 0))}%` }}
                             />
                           </div>
                         </div>
@@ -584,10 +609,53 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
             )}
 
             {activeTab === 'profile' && (
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-blue-500" /> تعديل الملف الشخصي
-                </h3>
+              <div className="space-y-6">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-blue-700 via-blue-600 to-cyan-500 p-6 text-white shadow-xl sm:p-8">
+                  <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-4 border-white/30 bg-white/15 text-4xl font-extrabold shadow-lg">
+                        {avatarUrl ? <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" /> : fullName.charAt(0) || <User className="h-9 w-9" />}
+                      </div>
+                      <div>
+                        <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{profile.is_teacher ? 'حساب مدرس' : 'حساب طالب'}</span>
+                        <h2 className="mt-2 text-2xl font-extrabold sm:text-3xl">{fullName || 'أكمل ملفك الشخصي'}</h2>
+                        <p className="mt-1 text-sm text-blue-100">{profile.is_teacher ? (specialization || 'أضف تخصصك ليعرفك الطلاب') : (profileStage ? educationStages.find((stage) => stage.value === profileStage)?.label : 'أضف مرحلتك الدراسية')}</p>
+                      </div>
+                    </div>
+                    {profile.is_teacher && <Link to={`/teacher/${user!.id}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50"><ExternalLink className="h-4 w-4" /> عرض الملف العام</Link>}
+                  </div>
+                  <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full border-[24px] border-white/10" />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {profile.is_teacher ? (
+                    <>
+                      <ProfileMetric icon={VideoIcon} label="الفيديوهات" value={videos.length} tone="blue" />
+                      <ProfileMetric icon={BookOpen} label="الدورات" value={courses.length} tone="emerald" />
+                      <ProfileMetric icon={Eye} label="المشاهدات" value={totalViews} tone="cyan" />
+                      <ProfileMetric icon={UsersIcon} label="الطلاب/المشتركون" value={subscriberCount} tone="amber" />
+                    </>
+                  ) : (
+                    <>
+                      <ProfileMetric icon={BookOpen} label="الدورات المسجلة" value={enrollments.length} tone="blue" />
+                      <ProfileMetric icon={Award} label="الدورات المكتملة" value={completedCourses} tone="emerald" />
+                      <ProfileMetric icon={Heart} label="المفضلة" value={favorites.length} tone="rose" />
+                      <ProfileMetric icon={Clock} label="سجل المشاهدة" value={history.length} tone="amber" />
+                    </>
+                  )}
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <div className="mb-4 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-800 dark:text-white">اكتمال الملف</h3><p className="mt-1 text-xs text-slate-500">كلما اكتمل الملف زادت ثقة المستخدمين بك.</p></div><span className="text-xl font-extrabold text-blue-600">{profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum })}%</span></div>
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all" style={{ width: `${profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum })}%` }} /></div>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">{!avatarUrl && <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">أضف صورة شخصية</span>}{!bio && <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">أضف نبذة</span>}{!location && <span className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 dark:bg-slate-700 dark:text-slate-300">أضف موقعك</span>}</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-extrabold text-slate-800 dark:text-white">روابط سريعة</h3><div className="mt-4 space-y-2">{profile.is_teacher ? <><QuickProfileLink icon={Upload} label="رفع فيديو جديد" onClick={() => setActiveTab('videos')} /><QuickProfileLink icon={FolderPlus} label="إنشاء دورة" onClick={() => setActiveTab('courses')} /><QuickProfileLink icon={BarChart3} label="عرض التحليلات" onClick={() => setActiveTab('analytics')} /></> : <><QuickProfileLink icon={BookOpen} label="تصفح الدورات" href="/courses" /><QuickProfileLink icon={Heart} label="فتح المفضلة" onClick={() => setActiveTab('favorites')} /><QuickProfileLink icon={Bell} label="عرض الإشعارات" onClick={() => setActiveTab('notifications')} /></>}</div></div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2"><Settings className="w-5 h-5 text-blue-500" /> تعديل البيانات الشخصية</h3>
                 <div className="grid sm:grid-cols-2 gap-5">
                   <Field label="الاسم الكامل" value={fullName} onChange={setFullName} />
                   <Field label="التخصص" value={specialization} onChange={setSpecialization} placeholder="مثال: مدرس رياضيات" />
@@ -637,6 +705,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   className="mt-6 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg transition-all disabled:opacity-60 flex items-center gap-2">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} حفظ التغييرات
                 </button>
+              </div>
               </div>
             )}
 
@@ -933,6 +1002,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                 )}
               </div>
             )}
+
+            {activeTab === 'members' && profile.is_teacher && <AcademyMembersPanel teacherId={user!.id} />}
 
             {activeTab === 'exams' && profile.is_teacher && (
               <div className="space-y-6">
@@ -1390,6 +1461,22 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof Eye; label
       <p className="text-sm text-slate-400 dark:text-slate-500">{label}</p>
     </div>
   );
+}
+
+function ProfileMetric({ icon: Icon, label, value, tone }: { icon: typeof Eye; label: string; value: number | string; tone: 'blue' | 'emerald' | 'cyan' | 'amber' | 'rose' }) {
+  const styles = { blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300', emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300', cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300', amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300', rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300' };
+  return <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"><div className={`flex h-10 w-10 items-center justify-center rounded-xl ${styles[tone]}`}><Icon className="h-5 w-5" /></div><div><strong className="block text-xl text-slate-900 dark:text-white">{value}</strong><span className="text-xs text-slate-500 dark:text-slate-400">{label}</span></div></div>;
+}
+
+function profileCompletion(profile: Profile, values: { fullName: string; bio: string; specialization: string; avatarUrl: string; location: string; profileStage: string; profileCurriculum: string }) {
+  const fields = profile.is_teacher ? [values.fullName, values.bio, values.specialization, values.avatarUrl, values.location, values.profileStage, values.profileCurriculum] : [values.fullName, values.avatarUrl, values.profileStage, values.profileCurriculum, values.location];
+  return Math.round((fields.filter(Boolean).length / fields.length) * 100);
+}
+
+function QuickProfileLink({ icon: Icon, label, onClick, href }: { icon: typeof Eye; label: string; onClick?: () => void; href?: string }) {
+  const className = "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800";
+  if (href) return <Link to={href} className={className}><Icon className="h-4 w-4" /> {label}</Link>;
+  return <button type="button" onClick={onClick} className={className}><Icon className="h-4 w-4" /> {label}</button>;
 }
 
 function EmptyState({ icon: Icon, text, action }: { icon: typeof Eye; text: string; action?: React.ReactNode }) {

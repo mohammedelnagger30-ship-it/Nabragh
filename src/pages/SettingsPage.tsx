@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User, Camera, Save, Loader2, ShieldCheck, Moon, Sun, LogOut,
-  Trash2, Eye, EyeOff, Check, Smartphone, MapPin, Globe, Phone, Mail
+  Trash2, Eye, EyeOff, Check, Smartphone, MapPin, Globe, Phone, Mail, ExternalLink, LayoutDashboard, BookOpen, GraduationCap
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { uploadFile } from '@/lib/storage';
@@ -139,6 +139,10 @@ export default function SettingsPage() {
   if (!user || !profile) { navigate('/signin'); return null; }
 
   const avatar = profile.avatar_url;
+  const completionFields = profile.is_teacher
+    ? [fullName, specialization, bio, avatar, locationVal, stage, curriculum, website]
+    : [fullName, avatar, locationVal, stage, curriculum, bio];
+  const completion = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
   return (
     <div className="min-h-screen bg-slate-50 pt-[4.5rem] pb-16 dark:bg-slate-900">
       <MetaTags title="الإعدادات | منصة العلم" noIndex />
@@ -188,11 +192,24 @@ export default function SettingsPage() {
                   <Mail className="h-4 w-4" /> {profile.email}
                 </p>
               </div>
-              <span className={`mb-1 rounded-full px-3 py-1 text-xs font-bold ${profile.is_teacher ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+              <div className="mb-1 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${profile.is_teacher ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
                 {profile.is_teacher ? 'مدرّس' : 'طالب'}
               </span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">اكتمال الحساب {completion}%</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => navigate(profile.is_teacher ? '/admin/teacher' : '/dashboard')} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"><LayoutDashboard className="h-4 w-4" /> لوحة التحكم</button>
+              {profile.is_teacher && <button type="button" onClick={() => navigate(`/teacher/${profile.id}`)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"><ExternalLink className="h-4 w-4" /> الملف العام</button>}
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/40 dark:bg-blue-900/20"><GraduationCap className="h-5 w-5 text-blue-600" /><p className="mt-3 text-sm font-bold text-blue-900 dark:text-blue-200">{profile.is_teacher ? 'ملف المدرس' : 'ملف الطالب'}</p><p className="mt-1 text-xs leading-6 text-blue-700 dark:text-blue-300">{profile.is_teacher ? 'أظهر تخصصك وخبرتك للطلاب لبناء الثقة.' : 'أكمل بياناتك التعليمية لتحصل على ترشيحات أفضل.'}</p></div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 dark:border-emerald-900/40 dark:bg-emerald-900/20"><BookOpen className="h-5 w-5 text-emerald-600" /><p className="mt-3 text-sm font-bold text-emerald-900 dark:text-emerald-200">خطوتك التالية</p><p className="mt-1 text-xs leading-6 text-emerald-700 dark:text-emerald-300">{profile.is_teacher ? 'حدّث نبذتك وأضف رابط منصتك التعليمية.' : 'تصفح الدورات وابدأ أول درس يناسب مرحلتك.'}</p></div>
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 p-5 dark:border-amber-900/40 dark:bg-amber-900/20"><Check className="h-5 w-5 text-amber-600" /><p className="mt-3 text-sm font-bold text-amber-900 dark:text-amber-200">حالة الحساب</p><p className="mt-1 text-xs leading-6 text-amber-700 dark:text-amber-300">{profile.is_teacher ? (profile.is_approved ? 'حسابك معتمد ويمكنك إدارة محتواك.' : 'حسابك قيد المراجعة من الإدارة.') : 'حسابك جاهز للتعلم ومتابعة تقدمك.'}</p></div>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1fr]">

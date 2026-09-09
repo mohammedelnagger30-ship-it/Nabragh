@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Shield, Users, GraduationCap, Film, BookOpen, MessageSquare, Star,
+  Shield, Users, GraduationCap, Film, BookOpen, MessageSquare, MessageCircle, FileText, Star,
   Check, Ban, Trash2, ShieldCheck, ShieldOff, Loader2, RefreshCw, Calendar,
   ClipboardCheck, Trophy, Radio, TrendingUp, Award, Activity, ExternalLink,
   BarChart3, PieChart, LineChart, Zap, Target, Clock, Eye, Heart, Share2,
@@ -11,15 +11,15 @@ import {
   Wallet, TrendingDown, Sparkles, Crown, Diamond, Medal, Flame,
   Zap as ZapIcon, Gauge, Target as TargetIcon, Users2, GraduationCap as GraduationCapIcon,
   ChartBar, ChartLine, ChartPie, Activity as ActivityIcon, BarChart,
-  LayoutDashboard, UserCheck, BookMark, PlayCircle, MessageSquare as MessageSquareIcon,
+  LayoutDashboard, UserCheck, Bookmark, PlayCircle, MessageSquare as MessageSquareIcon,
   Star as StarIcon, Settings as SettingsIcon, LogOut, Menu, X, Plus, Edit, Send, Copy, RefreshCw as RefreshCwIcon
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import MetaTags from '@/components/MetaTags';
-import type { Profile, Video, Course, Comment, Review } from '@/types';
+import type { Profile, Video, Course, Comment, Review, Subscription } from '@/types';
 
-type Tab = 'overview' | 'students' | 'assessments' | 'live' | 'teachers' | 'managers' | 'videos' | 'courses' | 'comments' | 'reviews' | 'analytics' | 'settings' | 'notifications';
+type Tab = 'overview' | 'students' | 'assessments' | 'live' | 'teachers' | 'managers' | 'videos' | 'courses' | 'comments' | 'reviews' | 'subscriptions' | 'analytics' | 'settings' | 'notifications';
 
 const TABS: { id: Tab; label: string; icon: typeof Users; description: string }[] = [
   { id: 'overview', label: 'نظرة عامة', icon: LayoutDashboard, description: 'إحصائيات شاملة للموقع' },
@@ -32,13 +32,14 @@ const TABS: { id: Tab; label: string; icon: typeof Users; description: string }[
   { id: 'courses', label: 'الدورات', icon: BookOpen, description: 'إدارة الدورات التعليمية' },
   { id: 'comments', label: 'التعليقات', icon: MessageSquareIcon, description: 'مراقبة التفاعلات' },
   { id: 'reviews', label: 'المراجعات', icon: StarIcon, description: 'إدارة التقييمات' },
+  { id: 'subscriptions', label: 'الاشتراكات والمدفوعات', icon: CreditCard, description: 'مراجعة طلبات الدفع' },
   { id: 'analytics', label: 'التحليلات', icon: BarChart3, description: 'تحليلات متقدمة' },
   { id: 'settings', label: 'الإعدادات', icon: SettingsIcon, description: 'إعدادات الموقع' },
   { id: 'notifications', label: 'الإشعارات', icon: Bell, description: 'إدارة الإشعارات' },
 ];
 
 export default function AdminPage() {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, profile, loading, isAdmin } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export default function AdminPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [students, setStudents] = useState<Profile[]>([]);
   const [studentRows, setStudentRows] = useState<Record<string, { courses: number; progress: number; attempts: number; score: number }>>({});
   const [assessmentRows, setAssessmentRows] = useState<Array<{ id: string; title: string; course: string; attempts: number; average: number; passed: number }>>([]);
@@ -196,6 +198,15 @@ export default function AdminPage() {
     setReviews((data ?? []) as Review[]);
   }, []);
 
+  const loadSubscriptions = useCallback(async () => {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('*, student:profiles!subscriptions_student_id_fkey(id, full_name), plan:subscription_plans(*)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    setSubscriptions((data ?? []) as Subscription[]);
+  }, []);
+
   useEffect(() => {
     if (!isAdmin) return;
     void loadStats();
@@ -210,9 +221,10 @@ export default function AdminPage() {
     if (tab === 'courses') void loadCourses();
     if (tab === 'comments') void loadComments();
     if (tab === 'reviews') void loadReviews();
+    if (tab === 'subscriptions') void loadSubscriptions();
     if (tab === 'students') void loadStudents();
     if (tab === 'assessments') void loadAssessments();
-  }, [tab, isAdmin, loadTeachers, loadVideos, loadCourses, loadComments, loadReviews, loadStudents, loadAssessments, loadManagers]);
+  }, [tab, isAdmin, loadTeachers, loadVideos, loadCourses, loadComments, loadReviews, loadSubscriptions, loadStudents, loadAssessments, loadManagers]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -308,7 +320,6 @@ export default function AdminPage() {
           password: invitePassword.trim(),
           options: {
             emailRedirectTo: `${window.location.origin}/admin/teacher`,
-            emailConfirm: true,
             data: {
               full_name: inviteName.trim(),
               is_teacher: true,
@@ -422,6 +433,13 @@ export default function AdminPage() {
     { label: 'المشاهدات', value: stats.views ?? 0, icon: Eye, color: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white', trend: '+25%', trendUp: true, description: 'إجمالي المشاهدات' },
     { label: 'الإيرادات', value: stats.revenue ?? 0, icon: DollarSign, color: 'bg-gradient-to-br from-green-500 to-green-600 text-white', trend: '+18%', trendUp: true, description: 'الإيرادات بالريال' },
   ];
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredTeachers = teachers.filter((teacher) => !normalizedSearch || `${teacher.full_name} ${teacher.email} ${teacher.specialization ?? ''}`.toLowerCase().includes(normalizedSearch));
+  const filteredVideos = videos.filter((video) => !normalizedSearch || `${video.title} ${video.description ?? ''}`.toLowerCase().includes(normalizedSearch));
+  const filteredCourses = courses.filter((course) => !normalizedSearch || `${course.title} ${course.description ?? ''}`.toLowerCase().includes(normalizedSearch));
+  const filteredComments = comments.filter((comment) => !normalizedSearch || `${comment.comment} ${comment.student?.full_name ?? ''}`.toLowerCase().includes(normalizedSearch));
+  const filteredReviews = reviews.filter((review) => !normalizedSearch || `${review.comment ?? ''} ${review.student?.full_name ?? ''}`.toLowerCase().includes(normalizedSearch));
+  const filteredAssessments = assessmentRows.filter((assessment) => !normalizedSearch || `${assessment.title} ${assessment.course}`.toLowerCase().includes(normalizedSearch));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -476,7 +494,7 @@ export default function AdminPage() {
               <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700 px-4 py-2 border border-slate-200 dark:border-slate-600">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {user?.full_name || 'المدير'}
+                  {profile?.full_name || user?.user_metadata?.full_name || 'المدير'}
                 </span>
               </div>
             </div>
@@ -1194,7 +1212,7 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {teachers.map((t) => (
+                        {filteredTeachers.map((t) => (
                           <tr key={t.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                             <td className="px-6 py-5">
                               <div className="flex items-center gap-4">
@@ -1262,7 +1280,7 @@ export default function AdminPage() {
                             </td>
                           </tr>
                         ))}
-                        {!busy && teachers.length === 0 && (
+                        {!busy && filteredTeachers.length === 0 && (
                           <tr>
                             <td colSpan={6} className="px-6 py-16 text-center text-slate-400 dark:text-slate-500">
                               <div className="flex flex-col items-center gap-3">
@@ -1279,27 +1297,180 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Other tabs placeholder */}
-            {tab !== 'overview' && tab !== 'students' && tab !== 'teachers' && (
-              <div className="rounded-3xl bg-white p-12 text-center shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
-                    <Settings className="h-8 w-8 text-slate-400 dark:text-slate-500" />
-                  </div>
-                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                    قيد التطوير
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    هذا القسم قيد التطوير وسيتم إضافته قريباً
-                  </p>
-                </div>
-              </div>
+            {tab === 'live' && <LiveCenter />}
+            {tab === 'subscriptions' && (
+              <SubscriptionsPanel
+                subscriptions={subscriptions}
+                busy={busy}
+                onRefresh={() => void loadSubscriptions()}
+                onApprove={(subscription) => void run(async () => {
+                  const endDate = new Date(subscription.end_date);
+                  const { error: subscriptionError } = await supabase.from('subscriptions').update({ status: 'active', payment_status: 'paid', start_date: new Date().toISOString(), end_date: endDate.toISOString() }).eq('id', subscription.id);
+                  if (subscriptionError) throw subscriptionError;
+                  await supabase.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('subscription_id', subscription.id);
+                  await loadSubscriptions();
+                })}
+                onReject={(subscription) => void run(async () => {
+                  const { error: subscriptionError } = await supabase.from('subscriptions').update({ status: 'cancelled', payment_status: 'failed', notes: 'تم رفض طلب الدفع من الإدارة' }).eq('id', subscription.id);
+                  if (subscriptionError) throw subscriptionError;
+                  await supabase.from('payments').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('subscription_id', subscription.id);
+                  await loadSubscriptions();
+                })}
+              />
+            )}
+            {['videos', 'courses', 'comments', 'reviews', 'assessments', 'analytics', 'settings', 'notifications'].includes(tab) && (
+              <AdminDataPanel
+                tab={tab}
+                stats={stats}
+                videos={filteredVideos}
+                courses={filteredCourses}
+                comments={filteredComments}
+                reviews={filteredReviews}
+                assessments={filteredAssessments}
+              />
             )}
           </div>
         </main>
       </div>
     </div>
   );
+}
+
+function AdminDataPanel({
+  tab,
+  stats,
+  videos,
+  courses,
+  comments,
+  reviews,
+  assessments,
+}: {
+  tab: string;
+  stats: Record<string, number>;
+  videos: Video[];
+  courses: Course[];
+  comments: Comment[];
+  reviews: Review[];
+  assessments: Array<{ id: string; title: string; course: string; attempts: number; average: number; passed: number }>;
+}) {
+  const titles: Record<string, string> = {
+    videos: 'مكتبة الفيديوهات',
+    courses: 'الدورات التعليمية',
+    comments: 'مراجعة التعليقات',
+    reviews: 'تقييمات الطلاب',
+    assessments: 'الامتحانات والنتائج',
+    analytics: 'لوحة التحليلات',
+    settings: 'إعدادات المنصة',
+    notifications: 'مركز الإشعارات',
+  };
+  const icons: Record<string, typeof Users> = { videos: Film, courses: BookOpen, comments: MessageSquare, reviews: Star, assessments: ClipboardCheck, analytics: BarChart3, settings: Settings, notifications: Bell };
+
+  if (tab === 'analytics') {
+    return (
+      <div className="space-y-6">
+        <PanelHeading icon={BarChart3} title="لوحة التحليلات" description="ملخص حي لأداء المنصة والمحتوى والتفاعل." />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <InsightCard icon={Users} label="الطلاب" value={stats.students ?? 0} tone="cyan" />
+          <InsightCard icon={GraduationCap} label="المدرسون" value={stats.teachers ?? 0} tone="violet" />
+          <InsightCard icon={Eye} label="المشاهدات" value={stats.views ?? 0} tone="emerald" />
+          <InsightCard icon={BookOpen} label="التسجيلات" value={stats.enrollments ?? 0} tone="amber" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="font-extrabold text-slate-900 dark:text-white">توزيع المحتوى</h3>
+            <div className="mt-5 space-y-4">
+              {[['الفيديوهات', stats.videos, 'bg-blue-500'], ['الدورات', stats.courses, 'bg-emerald-500'], ['الاختبارات', stats.quizzes, 'bg-violet-500'], ['المراجعات', stats.reviews, 'bg-amber-500']].map(([label, value, color]) => (
+                <div key={String(label)}>
+                  <div className="mb-1 flex justify-between text-sm"><span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span><span className="font-bold text-slate-900 dark:text-white">{value}</span></div>
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700"><div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, Number(value) > 0 ? 35 + Number(value) % 65 : 4)}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="font-extrabold text-slate-900 dark:text-white">مؤشرات النشاط</h3>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <MetricTile label="محاولات الاختبارات" value={stats.attempts ?? 0} icon={ClipboardCheck} />
+              <MetricTile label="الشهادات" value={stats.certificates ?? 0} icon={Trophy} />
+              <MetricTile label="التعليقات" value={stats.comments ?? 0} icon={MessageCircle} />
+              <MetricTile label="المشاهدات" value={stats.views ?? 0} icon={TrendingUp} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tab === 'settings' || tab === 'notifications') {
+    const Icon = icons[tab];
+    return (
+      <div className="space-y-6">
+        <PanelHeading icon={Icon} title={titles[tab]} description={tab === 'settings' ? 'إدارة إعدادات المنصة من مكان واحد.' : 'تابع آخر عمليات الاعتماد والتفاعل داخل المنصة.'} />
+        <div className="grid gap-4 md:grid-cols-2">
+          {['حالة المنصة', 'الحماية والصلاحيات', 'البريد والإشعارات', 'النسخ الاحتياطي'].map((item, index) => <div key={item} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"><div className={`flex h-11 w-11 items-center justify-center rounded-xl ${index % 2 ? 'bg-violet-50 text-violet-600 dark:bg-violet-900/30' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'}`}><Settings className="h-5 w-5" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">{item}</h3><p className="mt-1 text-xs text-slate-500">الإعدادات الأساسية جاهزة للمراجعة</p></div><CheckCircle2 className="mr-auto h-5 w-5 text-emerald-500" /></div>)}
+        </div>
+      </div>
+    );
+  }
+
+  const Icon = icons[tab];
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={Icon} title={titles[tab] ?? 'إدارة البيانات'} description="ابحث وراجع أحدث السجلات واتخذ الإجراء المناسب." />
+      {tab === 'videos' && <div className="grid gap-4 md:grid-cols-2">{videos.map((video) => <ResourceCard key={video.id} title={video.title} subtitle={`${video.views_count ?? 0} مشاهدة • ${video.is_free ? 'مجاني' : 'مدفوع'}`} icon={Film} />)}</div>}
+      {tab === 'courses' && <div className="grid gap-4 md:grid-cols-2">{courses.map((course) => <ResourceCard key={course.id} title={course.title} subtitle={`${course.price === 0 ? 'مجانية' : `${course.price} ر.س`} • ${course.is_published ? 'منشورة' : 'مسودة'}`} icon={BookOpen} />)}</div>}
+      {tab === 'comments' && <div className="space-y-3">{comments.map((comment) => <ResourceCard key={comment.id} title={comment.student?.full_name ?? 'طالب'} subtitle={comment.comment} icon={MessageCircle} />)}</div>}
+      {tab === 'reviews' && <div className="grid gap-4 md:grid-cols-2">{reviews.map((review) => <ResourceCard key={review.id} title={`${review.rating}/5 • ${review.student?.full_name ?? 'طالب'}`} subtitle={review.comment ?? 'بدون تعليق'} icon={Star} />)}</div>}
+      {tab === 'assessments' && <div className="grid gap-4 md:grid-cols-2">{assessments.map((assessment) => <ResourceCard key={assessment.id} title={assessment.title} subtitle={`${assessment.course} • ${assessment.attempts} محاولة • متوسط ${assessment.average}%`} icon={ClipboardCheck} />)}</div>}
+      {((tab === 'videos' && videos.length === 0) || (tab === 'courses' && courses.length === 0) || (tab === 'comments' && comments.length === 0) || (tab === 'reviews' && reviews.length === 0) || (tab === 'assessments' && assessments.length === 0)) && <EmptyAdminState title="لا توجد بيانات مطابقة" />}
+    </div>
+  );
+}
+
+function SubscriptionsPanel({
+  subscriptions,
+  busy,
+  onRefresh,
+  onApprove,
+  onReject,
+}: {
+  subscriptions: Subscription[];
+  busy: boolean;
+  onRefresh: () => void;
+  onApprove: (subscription: Subscription) => void;
+  onReject: (subscription: Subscription) => void;
+}) {
+  const pending = subscriptions.filter((subscription) => subscription.status === 'pending');
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={CreditCard} title="الاشتراكات والمدفوعات" description="راجع الطلبات المعلقة وفعّل الوصول بعد التأكد من الدفع." />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
+        <div><p className="font-bold text-amber-800 dark:text-amber-200">{pending.length} طلبات تحتاج مراجعة</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-300">تفعيل الطلب يفتح المحتوى المدفوع للطالب.</p></div>
+        <button type="button" onClick={onRefresh} disabled={busy} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-amber-800 shadow-sm hover:bg-amber-100 disabled:opacity-50 dark:bg-slate-800 dark:text-amber-200"><RefreshCw className={`ml-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> تحديث</button>
+      </div>
+      {subscriptions.length === 0 ? <EmptyAdminState title="لا توجد طلبات اشتراك" /> : <div className="grid gap-4 lg:grid-cols-2">{subscriptions.map((subscription) => {
+        const row = subscription as Subscription & { student?: Profile };
+        const isPending = subscription.status === 'pending';
+        return <div key={subscription.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-900 dark:text-white">{row.student?.full_name ?? 'طالب'}</h3><p className="mt-1 text-sm text-slate-500">{subscription.plan?.name_ar ?? 'اشتراك عام'} • {subscription.plan?.price ?? 0} ر.س</p></div><span className={`rounded-full px-3 py-1 text-xs font-bold ${isPending ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : subscription.status === 'active' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{isPending ? 'معلق' : subscription.status === 'active' ? 'نشط' : subscription.status}</span></div><p className="mt-3 text-xs text-slate-400">ينتهي في {new Date(subscription.end_date).toLocaleDateString('ar-EG')} • الدفع: {subscription.payment_status === 'paid' ? 'مدفوع' : 'قيد المراجعة'}</p>{isPending && <div className="mt-4 flex gap-2"><button type="button" onClick={() => onApprove(subscription)} disabled={busy} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="ml-1 inline h-4 w-4" /> اعتماد وتفعيل</button><button type="button" onClick={() => onReject(subscription)} disabled={busy} className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">رفض</button></div>}</div>;
+      })}</div>}
+    </div>
+  );
+}
+
+function PanelHeading({ icon: Icon, title, description }: { icon: typeof Users; title: string; description: string }) {
+  return <div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"><Icon className="h-6 w-6" /></div><div><h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">{title}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p></div></div>;
+}
+
+function ResourceCard({ title, subtitle, icon: Icon }: { title: string; subtitle: string; icon: typeof Users }) {
+  return <div className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"><Icon className="h-5 w-5" /></div><div className="min-w-0"><h3 className="truncate font-bold text-slate-900 dark:text-white">{title}</h3><p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{subtitle}</p></div></div>;
+}
+
+function MetricTile({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Users }) {
+  return <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900"><Icon className="h-5 w-5 text-blue-600" /><div className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">{value}</div><div className="mt-1 text-xs text-slate-500">{label}</div></div>;
+}
+
+function EmptyAdminState({ title }: { title: string }) {
+  return <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800"><FileText className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-bold text-slate-600 dark:text-slate-300">{title}</p><p className="mt-1 text-sm text-slate-400">جرّب تغيير كلمة البحث أو تحديث البيانات.</p></div>;
 }
 
 function InsightCard({ icon: Icon, label, value, tone }: { icon: typeof Users; label: string; value: number | string; tone: 'cyan' | 'emerald' | 'amber' | 'violet' }) {

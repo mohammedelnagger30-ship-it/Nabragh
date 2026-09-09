@@ -49,7 +49,7 @@ export default function PricingPage() {
     setSubscribing(plan.id);
     const end = new Date();
     end.setMonth(end.getMonth() + Math.max(plan.duration_months, 1));
-    const { error } = await supabase.from('subscriptions').insert({
+    const { data: subscription, error } = await supabase.from('subscriptions').insert({
       student_id: user.id,
       teacher_id: null,
       plan_id: plan.id,
@@ -58,7 +58,18 @@ export default function PricingPage() {
       status: 'pending',
       payment_status: 'pending',
       notes: `طلب باقة ${plan.name_ar} - طريقة الدفع: ${methodLabels[details.method] ?? details.method}${details.phone ? ` - الجوال: ${details.phone}` : ''}`,
-    });
+    }).select('id').single();
+    if (!error && subscription) {
+      await supabase.from('payments').insert({
+        subscription_id: subscription.id,
+        student_id: user.id,
+        amount: plan.price,
+        currency: 'SAR',
+        method: details.method,
+        status: 'pending',
+        notes: `طلب باقة ${plan.name_ar}`,
+      });
+    }
     setSubscribing(null);
     if (error) {
       toast('تعذر إنشاء طلب الاشتراك. حاول مرة أخرى.', 'error');

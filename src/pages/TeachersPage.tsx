@@ -11,17 +11,14 @@ import { supabase, PROFILE_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { curricula, educationStages, getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
 import { isPublicTeacher } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
-import type { Profile, Category, Review } from '@/types';
+import type { Profile, Category } from '@/types';
 
 export default function TeachersPage() {
-  console.log('TeachersPage: Component mounted');
-  // const { profile } = useAuth();
-  const profile = null; // Temporarily disable auth
   const [searchParams, setSearchParams] = useSearchParams();
   const [teachers, setTeachers] = useState<Profile[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [reviews, setReviews] = useState<Record<string, { avg: number; count: number }>>({});
-  const [loading, setLoading] = useState(false); // Start with false to show immediately
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(searchParams.get('category'));
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'experience' | 'rating' | 'reviews'>('newest');
@@ -34,7 +31,6 @@ export default function TeachersPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [highlightedTeachers, setHighlightedTeachers] = useState<Profile[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isUsingDemoData, setIsUsingDemoData] = useState(true); // Start with demo data
 
   // Remove profile dependency to prevent blocking
   // useEffect(() => {
@@ -65,113 +61,61 @@ export default function TeachersPage() {
   };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { data: catData, error: catError } = await supabase.from('categories').select('*').order('sort_order', { ascending: true });
-        if (catError) {
-          console.error('Error fetching categories:', catError);
-        }
-        const cats = (catData as Category[]) ?? [];
-        setCategories(cats);
-      } catch (error) {
-        console.error('Error in categories useEffect:', error);
-        setCategories([]);
-      }
-    })();
-  }, []);
+        let cancelled = false;
+        setLoading(true);
+        setError(null);
 
-  // Load demo data immediately (simplified)
-  useEffect(() => {
-    console.log('TeachersPage: Loading demo data immediately...');
-    const demoTeachers: Profile[] = [
-      {
-        id: 'demo-1',
-        full_name: 'أحمد محمد',
-        email: 'ahmed@example.com',
-        bio: 'مدرس رياضيات متخصص في المرحلة الثانوية مع خبرة 10 سنوات',
-        avatar_url: null,
-        phone: null,
-        location: 'القاهرة',
-        website: null,
-        specialization: 'الرياضيات',
-        years_experience: 10,
-        cv_url: null,
-        is_teacher: true,
-        is_approved: true,
-        is_manager: false,
-        education_stage: 'secondary_3',
-        curriculum: 'national',
-        teaching_stages: ['secondary_1', 'secondary_2', 'secondary_3'],
-        teaching_curricula: ['national', 'languages'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'demo-2',
-        full_name: 'فاطمة علي',
-        email: 'fatima@example.com',
-        bio: 'مدرسة لغة عربية ومراجعة نحو وصرف',
-        avatar_url: null,
-        phone: null,
-        location: 'الإسكندرية',
-        website: null,
-        specialization: 'اللغة العربية',
-        years_experience: 8,
-        cv_url: null,
-        is_teacher: true,
-        is_approved: true,
-        is_manager: false,
-        education_stage: 'secondary_2',
-        curriculum: 'languages',
-        teaching_stages: ['preparatory_1', 'preparatory_2', 'preparatory_3', 'secondary_1', 'secondary_2', 'secondary_3'],
-        teaching_curricula: ['national', 'languages'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: 'demo-3',
-        full_name: 'محمود حسن',
-        email: 'mahmoud@example.com',
-        bio: 'مدرس فيزياء مع منهجية حديثة في الشرح',
-        avatar_url: null,
-        phone: null,
-        location: 'الجيزة',
-        website: null,
-        specialization: 'الفيزياء',
-        years_experience: 5,
-        cv_url: null,
-        is_teacher: true,
-        is_approved: true,
-        is_manager: false,
-        education_stage: 'secondary_3',
-        curriculum: 'national',
-        teaching_stages: ['secondary_1', 'secondary_2', 'secondary_3'],
-        teaching_curricula: ['national'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
+        const loadTeachers = async () => {
+          const [categoryResult, teacherResult] = await Promise.all([
+            supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+            supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('is_teacher', true).eq('is_approved', true).order('created_at', { ascending: false }).limit(100),
+          ]);
 
-    console.log('TeachersPage: Setting demo data', demoTeachers.length);
-    setTeachers(demoTeachers);
-    setHighlightedTeachers(demoTeachers.slice(0, 3));
-    setIsUsingDemoData(true);
-    console.log('TeachersPage: Setting loading to false');
-    setLoading(false);
+          if (categoryResult.error || teacherResult.error) throw new Error('تعذر تحميل بيانات المدرسين');
+          const loadedTeachers = ((teacherResult.data as Profile[]) ?? []).filter(isPublicTeacher);
+          const teacherIds = loadedTeachers.map((teacher) => teacher.id);
+          const reviewResult = teacherIds.length
+            ? await supabase.from('reviews').select('teacher_id, rating').in('teacher_id', teacherIds)
+            : { data: [], error: null };
+          if (reviewResult.error) throw reviewResult.error;
 
-    // Add demo reviews
-    const demoReviews: Record<string, { avg: number; count: number }> = {
-      'demo-1': { avg: 4.8, count: 125 },
-      'demo-2': { avg: 4.9, count: 98 },
-      'demo-3': { avg: 4.7, count: 76 },
-    };
-    setReviews(demoReviews);
-  }, []);
+          const reviewTotals = new Map<string, { total: number; count: number }>();
+          for (const review of reviewResult.data ?? []) {
+            const current = reviewTotals.get(review.teacher_id) ?? { total: 0, count: 0 };
+            reviewTotals.set(review.teacher_id, { total: current.total + review.rating, count: current.count + 1 });
+          }
+          const loadedReviews: Record<string, { avg: number; count: number }> = {};
+          reviewTotals.forEach((value, teacherId) => {
+            loadedReviews[teacherId] = { avg: value.total / value.count, count: value.count };
+          });
 
-  // Remove the problematic useEffect - now using single useEffect with demo data
+          if (!cancelled) {
+            setCategories((categoryResult.data as Category[]) ?? []);
+            setTeachers(loadedTeachers);
+            setHighlightedTeachers(loadedTeachers.slice(0, 3));
+            setReviews(loadedReviews);
+            setLoading(false);
+          }
+        };
+
+        void loadTeachers().catch((loadError) => {
+          console.error('Error loading teachers:', loadError);
+          if (!cancelled) {
+            setError('تعذر تحميل المدرسين. تحقق من الاتصال وحاول مرة أخرى.');
+            setLoading(false);
+          }
+        });
+
+        return () => {
+          cancelled = true;
+        };
+      }, []);
 
   const filtered = useMemo(() => {
     let result = teachers.filter((t) => {
+      if (selectedCategory && !t.teaching_curricula?.includes(selectedCategory) && t.specialization !== categories.find((category) => category.id === selectedCategory)?.name_ar) return false;
+      if (selectedStage && !t.teaching_stages?.includes(selectedStage)) return false;
+      if (selectedCurriculum && !t.teaching_curricula?.includes(selectedCurriculum)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return t.full_name.toLowerCase().includes(q) ||
@@ -211,7 +155,7 @@ export default function TeachersPage() {
     });
 
     return result;
-  }, [teachers, search, experienceFilter, sortBy, reviews]);
+  }, [teachers, search, experienceFilter, sortBy, reviews, selectedCategory, selectedStage, selectedCurriculum, categories]);
 
   const handleCategoryClick = (catId: string | null) => {
     setSelectedCategory(catId);
@@ -245,11 +189,6 @@ export default function TeachersPage() {
                 <span className="px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-semibold">
                   {teachers.length} مدرس متاح
                 </span>
-                {isUsingDemoData && (
-                  <span className="px-3 py-1 bg-amber-500/80 backdrop-blur-sm rounded-full text-white text-xs font-semibold">
-                    بيانات تجريبية
-                  </span>
-                )}
               </div>
             </div>
             <h1 className="mb-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
@@ -358,6 +297,7 @@ export default function TeachersPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                aria-label="البحث عن مدرس"
                 placeholder="ابحث عن مدرس بالاسم أو التخصص..."
                 className="min-h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-900 py-4 pl-4 pr-12 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               />

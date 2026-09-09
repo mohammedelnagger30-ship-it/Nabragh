@@ -103,6 +103,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query.length >= 2 && setShowResults(true)}
+          aria-label="البحث عن فيديو أو دورة أو مدرس"
           placeholder="ابحث عن فيديو، دورة، أو مدرس..."
           className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3.5 pl-12 pr-12 text-slate-800 dark:text-slate-100 shadow-sm transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 dark:focus:ring-blue-500/20"
         />

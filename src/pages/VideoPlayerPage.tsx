@@ -81,9 +81,18 @@ export default function VideoPlayerPage() {
         .limit(5);
       setRelatedVideos(related as unknown as Video[] ?? []);
 
-      const { data: authorizedUrl } = await supabase.rpc('get_video_playback_url', { target_video_id: vid.id });
-      setPlaybackUrl(authorizedUrl as string | null);
-      setHasAccess(Boolean(authorizedUrl));
+      const { data: authorizedPath } = await supabase.rpc('get_video_playback_url', { target_video_id: vid.id });
+      let playableUrl: string | null = null;
+      if (typeof authorizedPath === 'string' && authorizedPath) {
+        if (authorizedPath.startsWith('http')) {
+          playableUrl = authorizedPath;
+        } else {
+          const { data: signedUrl } = await supabase.storage.from('videos').createSignedUrl(authorizedPath, 3600);
+          playableUrl = signedUrl?.signedUrl ?? null;
+        }
+      }
+      setPlaybackUrl(playableUrl);
+      setHasAccess(Boolean(playableUrl));
 
       if (user) {
         const { data: fav } = await supabase

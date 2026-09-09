@@ -13,7 +13,8 @@ import type {
 } from '@/types';
 
 const DEFAULT_SETTINGS: TeacherPageSettings = {
-  teacher_id: '', primary_color: '#2563eb', secondary_color: '#06b6d4',
+  teacher_id: '', academy_name: 'منصتي التعليمية', slug: '', access_mode: 'public', require_approval: false, allow_free_preview: true, is_published: true,
+  primary_color: '#2563eb', secondary_color: '#06b6d4',
   accent_color: '#f59e0b', show_competitions: true, show_leaderboard: true, updated_at: new Date().toISOString(),
 };
 
@@ -41,7 +42,8 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
 
   const saveSettings = async () => {
     setSaving(true);
-    const { error } = await supabase.from('teacher_page_settings').upsert({ ...settings, teacher_id: teacherId, updated_at: new Date().toISOString() });
+    const slug = settings.slug.trim() || `teacher-${teacherId.slice(0, 8)}`;
+    const { error } = await supabase.from('teacher_page_settings').upsert({ ...settings, slug, teacher_id: teacherId, updated_at: new Date().toISOString() });
     setSaving(false);
     toast(error ? 'تعذر الحفظ' : 'تم حفظ إعدادات الصفحة 🎨', error ? 'error' : 'success');
     if (!error) await load();
@@ -76,6 +78,23 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h3 className="mb-5 flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Palette className="h-5 w-5 text-blue-600" /> تصميم صفحتي العامة</h3>
         <div className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">اسم المنصة
+              <input value={settings.academy_name} onChange={(e) => setSettings((s) => ({ ...s, academy_name: e.target.value }))} placeholder="منصة أستاذ أحمد" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal dark:border-slate-700 dark:bg-slate-900" />
+            </label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">الرابط المختصر
+              <div className="mt-2 flex items-center rounded-xl border border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900"><span className="px-3 text-slate-400">/academy/</span><input value={settings.slug} onChange={(e) => setSettings((s) => ({ ...s, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))} placeholder="ahmed-math" dir="ltr" className="min-w-0 flex-1 bg-transparent px-2 py-2.5 outline-none" /></div>
+              <span className="mt-1 block text-xs font-normal text-slate-400">سيتم إنشاء رابط تلقائي إذا تركته فارغًا.</span>
+            </label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">خصوصية المنصة
+              <select value={settings.access_mode} onChange={(e) => setSettings((s) => ({ ...s, access_mode: e.target.value as TeacherPageSettings['access_mode'] }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal dark:border-slate-700 dark:bg-slate-900"><option value="public">عامة</option><option value="private">خاصة للطلاب</option><option value="invite">بالدعوات فقط</option></select>
+            </label>
+            <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium dark:border-slate-700"><input type="checkbox" checked={settings.require_approval} onChange={(e) => setSettings((s) => ({ ...s, require_approval: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> مراجعة طلبات الانضمام</label>
+            <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium dark:border-slate-700"><input type="checkbox" checked={settings.is_published} onChange={(e) => setSettings((s) => ({ ...s, is_published: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> نشر المنصة في الموقع</label>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200"><input type="checkbox" checked={settings.allow_free_preview} onChange={(e) => setSettings((s) => ({ ...s, allow_free_preview: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> السماح بمعاينة المحتوى المجاني للزوار</label>
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">ألوان صفحتي</label>
             <div className="flex flex-wrap items-center gap-3">
