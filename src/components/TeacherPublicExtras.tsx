@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Crown, Gamepad2, Loader2, Medal, Play, Trophy, Users, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -87,43 +87,43 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
   return (
     <div className="space-y-8">
       {showGame && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: primary }}><Gamepad2 className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">لعبتنا التعليمية</h2>
-              <p className="text-sm text-slate-500">تحديات خاصة بهذه الصفحة — أجب واجمع النقاط وادخل ترتيب الأوائل</p>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">لعبتنا التعليمية</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">تحديات خاصة بهذه الصفحة — أجب واجمع النقاط وادخل ترتيب الأوائل</p>
             </div>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {competitions.map((c) => (
-              <button key={c.id} onClick={() => void (selected ? open(c) : open(c))} className={`rounded-2xl border p-4 text-right transition ${selected?.id === c.id ? 'border-transparent text-white' : 'border-slate-200 bg-white hover:shadow-md'}`} style={selected?.id === c.id ? { background: `linear-gradient(135deg, ${primary}, ${secondary})` } : undefined}>
+              <button key={c.id} onClick={() => void (selected ? open(c) : open(c))} className={`rounded-2xl border p-4 text-right transition ${selected?.id === c.id ? 'border-transparent text-white' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 hover:shadow-md'}`} style={selected?.id === c.id ? { background: `linear-gradient(135deg, ${primary}, ${secondary})` } : undefined}>
                 <div className="flex items-center justify-between">
                   <Zap className="h-5 w-5" style={{ color: selected?.id === c.id ? '#fff' : accent }} />
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selected?.id === c.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{boards[c.id]?.length ?? 0} مشارك</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selected?.id === c.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:text-slate-400 dark:bg-slate-700 dark:text-slate-300'}`}>{boards[c.id]?.length ?? 0} مشارك</span>
                 </div>
-                <div className="mt-2 font-extrabold text-slate-800" style={{ color: selected?.id === c.id ? '#fff' : undefined }}>{c.title}</div>
-                {c.description && <p className={`mt-1 line-clamp-2 text-xs ${selected?.id === c.id ? 'text-white/80' : 'text-slate-500'}`}>{c.description}</p>}
+                <div className="mt-2 font-extrabold text-slate-800 dark:text-slate-100" style={{ color: selected?.id === c.id ? '#fff' : undefined }}>{c.title}</div>
+                {c.description && <p className={`mt-1 line-clamp-2 text-xs ${selected?.id === c.id ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>{c.description}</p>}
                 <div className={`mt-2 flex items-center gap-1 text-xs font-bold ${selected?.id === c.id ? 'text-white' : ''}`} style={selected?.id === c.id ? undefined : { color: primary }}><Play className="h-3.5 w-3.5" /> ابدأ التحدي</div>
               </button>
             ))}
           </div>
 
           {selected ? (
-            <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/70 p-5">
+            <div className="mt-6 rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 p-5">
               <button onClick={() => setSelected(null)} className="mb-4 text-sm font-bold" style={{ color: primary }}>العودة لكل التحديات</button>
               {result ? (
-                <div className="rounded-2xl bg-white p-8 text-center shadow-sm" style={{ borderTop: `4px solid ${primary}` }}>
+                <div className="rounded-2xl bg-white dark:bg-slate-900 p-8 text-center shadow-sm" style={{ borderTop: `4px solid ${primary}` }}>
                   <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-                  <h3 className="mt-3 text-2xl font-extrabold text-slate-900">أحسنت! نتيجتك</h3>
+                  <h3 className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">أحسنت! نتيجتك</h3>
                   <div className="mt-5 flex justify-center gap-10">
-                    <div><div className="text-3xl font-extrabold" style={{ color: primary }}>{result.score}%</div><div className="text-xs text-slate-500">النتيجة</div></div>
-                    <div><div className="text-3xl font-extrabold" style={{ color: accent }}>+{result.points}</div><div className="text-xs text-slate-500">نقاط</div></div>
+                    <div><div className="text-3xl font-extrabold" style={{ color: primary }}>{result.score}%</div><div className="text-xs text-slate-500 dark:text-slate-400">النتيجة</div></div>
+                    <div><div className="text-3xl font-extrabold" style={{ color: accent }}>+{result.points}</div><div className="text-xs text-slate-500 dark:text-slate-400">نقاط</div></div>
                   </div>
                   <div className="mt-5 flex flex-wrap justify-center gap-3">
                     {topStudents.slice(0, 3).map((s, i) => (
-                      <div key={s.student_id} className="rounded-xl bg-slate-50 px-4 py-2 text-sm">
+                      <div key={s.student_id} className="rounded-xl bg-slate-50 dark:bg-slate-800 px-4 py-2 text-sm">
                         <span className="mr-1">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
                         <b>{s.full_name}</b> — {s.total_points} نقطة
                       </div>
@@ -133,14 +133,14 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
               ) : (
                 <div className="space-y-5">
                   {questions.map((q, i) => (
-                    <div key={q.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                    <div key={q.id} className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4">
                       <div className="mb-3 flex gap-3">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white" style={{ backgroundColor: primary }}>{i + 1}</span>
-                        <h4 className="font-bold leading-7 text-slate-800">{q.question}</h4>
+                        <h4 className="font-bold leading-7 text-slate-800 dark:text-slate-100">{q.question}</h4>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {q.options.map((option, oi) => (
-                          <button key={oi} onClick={() => setAnswers((cur) => ({ ...cur, [q.id]: oi }))} className={`rounded-xl border px-4 py-2.5 text-right text-sm font-semibold transition ${answers[q.id] === oi ? 'border-transparent text-white' : 'border-slate-200 text-slate-600 hover:border-slate-400'}`} style={answers[q.id] === oi ? { backgroundColor: primary } : undefined}>{option}</button>
+                          <button key={oi} onClick={() => setAnswers((cur) => ({ ...cur, [q.id]: oi }))} className={`rounded-xl border px-4 py-2.5 text-right text-sm font-semibold transition ${answers[q.id] === oi ? 'border-transparent text-white' : 'border-slate-200 text-slate-600 dark:text-slate-300 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300'}`} style={answers[q.id] === oi ? { backgroundColor: primary } : undefined}>{option}</button>
                         ))}
                       </div>
                     </div>
@@ -157,35 +157,35 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
           ) : (
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               {topStudents.slice(0, 3).map((s, i) => (
-                <div key={s.student_id} className="rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50 p-4 text-center shadow-sm">
+                <div key={s.student_id} className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-gradient-to-b from-white dark:from-slate-800 to-slate-50 dark:to-slate-900 p-4 text-center shadow-sm">
                   <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</div>
-                  <div className="mt-1 font-bold text-slate-800">{s.full_name}</div>
+                  <div className="mt-1 font-bold text-slate-800 dark:text-slate-100">{s.full_name}</div>
                   <div className="mt-1 text-xl font-extrabold" style={{ color: primary }}>{s.total_points}</div>
-                  <div className="text-[11px] text-slate-400">نقطة</div>
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500">نقطة</div>
                 </div>
               ))}
-              {topStudents.length === 0 && <div className="col-span-3 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">لا يوجد ترتيب بعد — كن أول من يلعب!</div>}
+              {topStudents.length === 0 && <div className="col-span-3 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400 dark:text-slate-500">لا يوجد ترتيب بعد — كن أول من يلعب!</div>}
             </div>
           )}
         </div>
       )}
 
       {showBoard && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: accent }}><Trophy className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">أفضل الطلاب</h2>
-              <p className="text-sm text-slate-500">الأوائل في تحدياتنا حسب النقاط</p>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">أفضل الطلاب</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">الأوائل في تحدياتنا حسب النقاط</p>
             </div>
           </div>
           <div className="mt-5 space-y-2">
             {topStudents.slice(0, 5).map((s) => (
-              <div key={s.student_id} className="flex items-center gap-3 rounded-xl border border-slate-100 px-4 py-2.5">
-                <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-extrabold ${s.rank === 1 ? 'bg-amber-100 text-amber-700' : s.rank === 2 ? 'bg-slate-200 text-slate-600' : 'bg-orange-100 text-orange-700'}`}>{s.rank}</span>
-                <span className="min-w-0 flex-1 truncate font-bold text-slate-700">{s.full_name}</span>
-                <span className="text-xs text-slate-400">{s.competitions_played} لعب</span>
-                <span className="font-extrabold" style={{ color: primary }}>{s.total_points} <span className="text-[10px] font-normal text-slate-400">نقطة</span></span>
+              <div key={s.student_id} className="flex items-center gap-3 rounded-xl border border-slate-100 dark:border-slate-700 px-4 py-2.5">
+                <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-extrabold ${s.rank === 1 ? 'bg-amber-100 text-amber-700' : s.rank === 2 ? 'bg-slate-200 text-slate-600 dark:text-slate-300' : 'bg-orange-100 text-orange-700'}`}>{s.rank}</span>
+                <span className="min-w-0 flex-1 truncate font-bold text-slate-700 dark:text-slate-200">{s.full_name}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">{s.competitions_played} لعب</span>
+                <span className="font-extrabold" style={{ color: primary }}>{s.total_points} <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">نقطة</span></span>
               </div>
             ))}
           </div>
@@ -193,21 +193,21 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
       )}
 
       {showHonors && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: accent }}><Medal className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">التكريم</h2>
-              <p className="text-sm text-slate-500">أوسمة الطلاب المتفوقين في هذه الصفحة</p>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">التكريم</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">أوسمة الطلاب المتفوقين في هذه الصفحة</p>
             </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {honors.map((h) => (
-              <div key={h.id} className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4">
+              <div key={h.id} className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:border-amber-900/40 dark:from-amber-900/20 dark:to-slate-800 p-4">
                 <Crown className="h-5 w-5 text-amber-500" />
-                <div className="mt-1 font-extrabold text-slate-800">{h.title}</div>
-                {h.description && <p className="mt-0.5 text-xs text-slate-500">{h.description}</p>}
-                <div className="mt-2 flex items-center gap-1 text-xs text-slate-400"><Users className="h-3 w-3" /> {h.student?.full_name ?? 'طالب'}</div>
+                <div className="mt-1 font-extrabold text-slate-800 dark:text-slate-100">{h.title}</div>
+                {h.description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{h.description}</p>}
+                <div className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Users className="h-3 w-3" /> {h.student?.full_name ?? 'طالب'}</div>
               </div>
             ))}
           </div>
@@ -215,21 +215,21 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
       )}
 
       {showPlans && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl text-white" style={{ backgroundColor: primary }}><Crown className="h-5 w-5" /></div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">باقات الاشتراك</h2>
-              <p className="text-sm text-slate-500">باقات حصرية للوصول الكامل لمحتوى هذه الصفحة</p>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">باقات الاشتراك</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">باقات حصرية للوصول الكامل لمحتوى هذه الصفحة</p>
             </div>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => (
-              <div key={plan.id} className="rounded-2xl border border-slate-100 p-5 shadow-sm" style={{ borderTop: `4px solid ${primary}` }}>
-                <div className="font-extrabold text-slate-800">{plan.name_ar}</div>
+              <div key={plan.id} className="rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm" style={{ borderTop: `4px solid ${primary}` }}>
+                <div className="font-extrabold text-slate-800 dark:text-slate-100">{plan.name_ar}</div>
                 <div className="mt-2 text-2xl font-extrabold" style={{ color: primary }}>{plan.price === 0 ? 'مجاناً' : `${plan.price} ر.س`}</div>
-                <div className="text-xs text-slate-500">/ {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}</div>
-                <ul className="mt-3 space-y-1 text-xs text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400">/ {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}</div>
+                <ul className="mt-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
                   {plan.features.filter((f): f is string => typeof f === 'string').map((f, i) => (
                     <li key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> {f}</li>
                   ))}

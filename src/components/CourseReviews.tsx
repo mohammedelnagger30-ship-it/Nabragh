@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Star, MessageSquare, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -20,11 +20,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadReviews();
-  }, [courseId]);
-
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('course_reviews')
@@ -49,7 +45,11 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [courseId, user]);
+
+  useEffect(() => {
+    void loadReviews();
+  }, [loadReviews]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +84,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
       setShowForm(false);
       setRating(0);
       setComment('');
-      loadReviews();
+      void loadReviews();
     } catch (error) {
       console.error('Error submitting review:', error);
       toast('حدث خطأ أثناء إرسال التقييم', 'error');

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Reply, Send, Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -18,20 +18,28 @@ export default function Comments({ videoId }: CommentsProps) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    void loadComments();
-  }, [videoId]);
-
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     const { data } = await supabase
       .from('comments')
-      .select('*, student:profiles!comments_student_id_fkey(*)')
+      .select('*, student:profiles!comments_student_id_fkey(id, full_name, avatar_url)')
       .eq('video_id', videoId)
-      .is('parent_id', null)
       .order('created_at', { ascending: false });
-    setComments((data as Comment[]) ?? []);
+    const allComments = (data as Comment[]) ?? [];
+    const repliesByParent = new Map<string, Comment[]>();
+    allComments.filter((comment) => comment.parent_id).forEach((reply) => {
+      const replies = repliesByParent.get(reply.parent_id!) ?? [];
+      replies.push(reply);
+      repliesByParent.set(reply.parent_id!, replies);
+    });
+    setComments(allComments
+      .filter((comment) => !comment.parent_id)
+      .map((comment) => ({ ...comment, replies: repliesByParent.get(comment.id) ?? [] })));
     setIsLoading(false);
-  };
+  }, [videoId]);
+
+  useEffect(() => {
+    void loadComments();
+  }, [loadComments]);
 
   const handleSubmitComment = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -45,7 +53,7 @@ export default function Comments({ videoId }: CommentsProps) {
         student_id: user.id,
         parent_id: replyTo,
       })
-      .select('*, student:profiles!comments_student_id_fkey(*)')
+      .select('*, student:profiles!comments_student_id_fkey(id, full_name, avatar_url)')
       .single();
 
     setIsSubmitting(false);

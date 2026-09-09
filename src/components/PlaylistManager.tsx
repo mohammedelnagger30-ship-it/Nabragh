@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ListPlus, Plus, Trash2, Lock, Globe, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -20,18 +20,17 @@ export default function PlaylistManager({ videoId, onAddToPlaylist }: PlaylistMa
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadPlaylists();
+  const loadPlaylists = useCallback(async () => {
+    if (!user) {
+      setPlaylists([]);
+      setIsLoading(false);
+      return;
     }
-  }, [user]);
-
-  const loadPlaylists = async () => {
     try {
       const { data } = await supabase
         .from('playlists')
         .select('*, playlist_videos(*)')
-        .eq('student_id', user?.id)
+        .eq('student_id', user.id)
         .order('created_at', { ascending: false });
       
       setPlaylists((data as Playlist[]) ?? []);
@@ -40,7 +39,11 @@ export default function PlaylistManager({ videoId, onAddToPlaylist }: PlaylistMa
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    void loadPlaylists();
+  }, [loadPlaylists]);
 
   const handleCreatePlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
