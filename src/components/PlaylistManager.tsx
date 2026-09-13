@@ -32,7 +32,7 @@ export default function PlaylistManager({ videoId, onAddToPlaylist }: PlaylistMa
         .select('*, playlist_videos(*)')
         .eq('student_id', user.id)
         .order('created_at', { ascending: false });
-      
+
       setPlaylists((data as Playlist[]) ?? []);
     } catch (error) {
       console.error('Error loading playlists:', error);
@@ -152,120 +152,116 @@ export default function PlaylistManager({ videoId, onAddToPlaylist }: PlaylistMa
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-4">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ListPlus className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            <h3 className="font-semibold text-slate-900 dark:text-white">قوائم التشغيل</h3>
-          </div>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            قائمة جديدة
-          </button>
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+      <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <ListPlus className="h-5 w-5 text-blue-400" />
+          <h3 className="font-bold text-white">قوائم التشغيل</h3>
         </div>
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          قائمة جديدة
+        </button>
       </div>
 
       {showCreateForm && (
-        <form onSubmit={handleCreatePlaylist} className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-          <div className="space-y-3">
-            <input
-              type="text"
-              value={newPlaylistName}
-              onChange={(e) => setNewPlaylistName(e.target.value)}
-              placeholder="اسم القائمة"
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoFocus
-            />
-            <textarea
-              value={newPlaylistDescription}
-              onChange={(e) => setNewPlaylistDescription(e.target.value)}
-              placeholder="وصف القائمة (اختياري)"
-              rows={2}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={isCreating || !newPlaylistName.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    جاري الإنشاء...
-                  </>
-                ) : (
-                  'إنشاء'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                إلغاء
-              </button>
-            </div>
+        <form onSubmit={handleCreatePlaylist} className="space-y-3 border-b border-slate-800 bg-slate-950/60 px-5 py-4">
+          <input
+            type="text"
+            value={newPlaylistName}
+            onChange={(e) => setNewPlaylistName(e.target.value)}
+            placeholder="اسم القائمة"
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
+            autoFocus
+          />
+          <textarea
+            value={newPlaylistDescription}
+            onChange={(e) => setNewPlaylistDescription(e.target.value)}
+            placeholder="وصف القائمة (اختياري)"
+            rows={2}
+            className="w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={isCreating || !newPlaylistName.trim()}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جاري الإنشاء...
+                </>
+              ) : (
+                'إنشاء'
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateForm(false)}
+              className="rounded-lg px-4 py-2 text-sm text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+            >
+              إلغاء
+            </button>
           </div>
         </form>
       )}
 
-      <div className="divide-y divide-slate-200 dark:divide-slate-700 max-h-96 overflow-y-auto">
+      <div className="max-h-96 divide-y divide-slate-800 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         ) : playlists.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-            <ListPlus className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-            <p>لا توجد قوائم تشغيل</p>
-            <p className="text-sm mt-1">أنشئ قائمة جديدة لحفظ الفيديوهات المفضلة</p>
+          <div className="py-10 text-center text-slate-500">
+            <ListPlus className="mx-auto mb-3 h-12 w-12 text-slate-700" />
+            <p className="font-medium text-slate-400">لا توجد قوائم تشغيل</p>
+            <p className="mt-1 text-sm">أنشئ قائمة جديدة لحفظ الفيديوهات المفضلة</p>
           </div>
         ) : (
           playlists.map((playlist) => (
-            <div key={playlist.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+            <div key={playlist.id} className="px-5 py-4 transition hover:bg-slate-800/60">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-slate-900 dark:text-white truncate">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center gap-2">
+                    <h4 className="truncate font-medium text-white">
                       {playlist.name}
                     </h4>
                     {playlist.is_public ? (
-                      <Globe className="w-4 h-4 text-slate-400" />
+                      <Globe className="h-4 w-4 shrink-0 text-slate-500" />
                     ) : (
-                      <Lock className="w-4 h-4 text-slate-400" />
+                      <Lock className="h-4 w-4 shrink-0 text-slate-500" />
                     )}
                   </div>
                   {playlist.description && (
-                    <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">
+                    <p className="line-clamp-2 text-sm text-slate-400">
                       {playlist.description}
                     </p>
                   )}
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="mt-1 text-xs text-slate-500">
                     {playlist.playlist_videos?.length || 0} فيديو
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex shrink-0 items-center gap-1">
                   {videoId && (
                     <button
                       onClick={() => addVideoToPlaylist(playlist.id)}
-                      className="p-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-600/20 hover:text-blue-300"
                       title="إضافة الفيديو"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="h-4 w-4" />
                     </button>
                   )}
                   <button
                     onClick={() => handleDeletePlaylist(playlist.id)}
-                    className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-red-600/20 hover:text-red-400"
                     title="حذف القائمة"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>

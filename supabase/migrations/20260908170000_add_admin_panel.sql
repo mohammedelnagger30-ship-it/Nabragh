@@ -62,6 +62,10 @@ BEGIN
     RAISE EXCEPTION 'permission denied: not an admin';
   END IF;
   UPDATE profiles SET is_approved = approved WHERE id = target_id;
+  IF approved THEN
+    INSERT INTO notifications (user_id, type, title, body, link)
+    VALUES (target_id, 'teacher_approved', 'تم تفعيل حسابك كمدرس', 'حسابك كمدرس قد تمت مراجعته وتمت الموافقة عليه. يمكنك الآن الوصول إلى لوحة تحكم المدرس.', '/admin/teacher');
+  END IF;
 END;
 $$;
 

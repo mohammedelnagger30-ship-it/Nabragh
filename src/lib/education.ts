@@ -53,8 +53,26 @@ export const getStagesForCurriculum = (curriculum?: string | null) => {
   });
 };
 
+export const STAGE_GROUPS = [
+  {
+    name: 'المرحلة الابتدائية',
+    key: 'primary',
+    stages: educationStages.filter((s) => s.group === 'المرحلة الابتدائية'),
+  },
+  {
+    name: 'المرحلة الإعدادية',
+    key: 'preparatory',
+    stages: educationStages.filter((s) => s.group === 'المرحلة الإعدادية'),
+  },
+  {
+    name: 'المرحلة الثانوية',
+    key: 'secondary',
+    stages: educationStages.filter((s) => s.group === 'المرحلة الثانوية'),
+  },
+];
+
 export const getEducationStageLabel = (value?: string | null) =>
-  educationStages.find((stage) => stage.value === value)?.label ?? 'كل المراحل';
+  educationStages.find((stage) => stage.value === value)?.label ?? 'حدد المرحلة الدراسية';
 
 export const getCurriculumLabel = (value?: string | null) =>
   curricula.find((item) => item.value === value)?.label ?? 'كل المناهج';

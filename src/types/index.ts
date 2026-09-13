@@ -4,7 +4,9 @@ export interface Profile {
   email: string;
   bio: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
   phone: string | null;
+  guardian_phone: string | null;
   location: string | null;
   website: string | null;
   specialization: string | null;
@@ -13,6 +15,10 @@ export interface Profile {
   is_teacher: boolean;
   is_approved: boolean;
   is_manager: boolean;
+  is_verified: boolean;
+  is_featured?: boolean;
+  featured_order?: number;
+  teacher_tier?: 'free' | 'premium' | string;
   education_stage: string | null;
   curriculum: string | null;
   teaching_stages: string[] | null;
@@ -42,7 +48,10 @@ export interface Video {
   course_id: string | null;
   duration_seconds: number;
   views_count: number;
+  is_featured?: boolean;
+  featured_order?: number;
   is_free: boolean;
+  is_pinned?: boolean;
   education_stage: string | null;
   curriculum: string | null;
   created_at: string;
@@ -60,7 +69,12 @@ export interface Course {
   thumbnail_url: string | null;
   level: 'beginner' | 'intermediate' | 'advanced';
   price: number;
+  subscription_price: number;
+  subscription_duration_months: number;
   is_published: boolean;
+  is_featured?: boolean;
+  featured_order?: number;
+  views_count?: number;
   education_stage: string | null;
   curriculum: string | null;
   created_at: string;
@@ -187,13 +201,16 @@ export interface Subscription {
   student_id: string;
   teacher_id: string | null;
   plan_id: string | null;
-  start_date: string;
-  end_date: string;
+  course_id?: string | null;
+  access_type?: 'subscription' | 'purchase';
+  start_date?: string | null;
+  end_date?: string | null;
   status: string;
   payment_status?: string;
   notes?: string | null;
   plan?: SubscriptionPlan;
   teacher?: Profile;
+  course?: Course;
 }
 
 export interface TeacherStaff {
@@ -266,6 +283,7 @@ export interface Competition {
   starts_at: string | null;
   ends_at: string | null;
   status: 'draft' | 'published' | 'archived';
+  allowed_subscribers_only?: boolean;
   created_at: string;
   questions?: CompetitionQuestion[];
 }
@@ -313,6 +331,18 @@ export interface TeacherPageSettings {
   accent_color: string;
   show_competitions: boolean;
   show_leaderboard: boolean;
+  updated_at: string;
+}
+
+export interface LiveSession {
+  id: string;
+  teacher_id: string;
+  title: string | null;
+  room_url: string | null;
+  is_live: boolean;
+  started_at: string | null;
+  viewers_count: number;
+  created_at: string;
   updated_at: string;
 }
 
@@ -366,6 +396,15 @@ export interface TeacherTopStudent {
   total_points: number;
   competitions_played: number;
   rank: number;
+}
+
+export interface TeacherUsageStats {
+  tier: 'free' | 'premium';
+  videos_used: number;
+  courses_used: number;
+  videos_limit: number;
+  courses_limit: number;
+  academy_published: boolean;
 }
 
 export interface StudentSubjectLeaderboard {

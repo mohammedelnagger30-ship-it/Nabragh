@@ -37,6 +37,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
               .select(`*, teacher:profiles!courses_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
               .ilike('title', `%${query}%`)
               .eq('is_published', true)
+              .eq('is_visible', true)
               .limit(5),
             supabase
               .from('profiles')

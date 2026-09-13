@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Moon, Sun, Bell, Home, BookOpen } from 'lucide-react';
+import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Moon, Sun, Bell, Home, BookOpen, Trophy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { homePath } from '@/lib/roles';
 import { supabase } from '@/lib/supabase';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 export default function Navbar() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const { setTheme, actualTheme } = useTheme();
+  const siteSettings = useSiteSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -50,7 +53,6 @@ export default function Navbar() {
     { to: '/categories', label: 'التخصصات' },
     { to: '/competitions', label: 'المنافسات' },
     { to: '/search', label: 'البحث' },
-    { to: '/pricing', label: 'الباقات' },
   ];
 
   return (
@@ -61,7 +63,7 @@ export default function Navbar() {
             <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-blue-600 via-blue-600 to-cyan-500 shadow-lg shadow-blue-500/25 transition-transform group-hover:scale-105">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-lg font-extrabold tracking-normal text-slate-800 dark:text-white sm:text-xl">منصة العلم</span>
+            <span className="max-w-[9.5rem] truncate text-lg font-extrabold tracking-normal text-slate-800 dark:text-white sm:max-w-none sm:text-xl">{String(siteSettings.site_name ?? 'منصة العلم')}</span>
           </Link>
 
           <div className="hidden items-center gap-1 md:flex">
@@ -107,14 +109,7 @@ export default function Navbar() {
                   </Link>
                 )}
                 <Link
-                  to={profile?.is_teacher ? '/admin/teacher' : '/dashboard'}
-                  className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  لوحة التحكم
-                </Link>
-                <Link
-                  to="/settings"
+                  to={`${homePath(profile, isAdmin)}?tab=account`}
                   className="flex items-center gap-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 px-2.5 py-1.5 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
                   title="الإعدادات"
                 >
@@ -189,14 +184,7 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link
-                  to={profile?.is_teacher ? '/admin/teacher' : '/dashboard'}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                >
-                  لوحة التحكم
-                </Link>
-                <Link
-                  to="/settings"
+                  to={`${homePath(profile, isAdmin)}?tab=account`}
                   onClick={() => setMobileOpen(false)}
                   className="block px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                 >
@@ -230,13 +218,14 @@ export default function Navbar() {
           </div>
         )}
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+      <div className="fixed inset-x-4 bottom-3 z-50 max-w-md mx-auto rounded-full border border-slate-200/80 bg-white/95 px-3 py-1.5 shadow-2xl backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/95 md:hidden">
+        <div className="grid grid-cols-5 gap-1 items-center">
           {[
             { to: '/', label: 'الرئيسية', icon: Home },
-            { to: '/search', label: 'البحث', icon: Search },
+            { to: '/teachers', label: 'المدرسون', icon: GraduationCap },
             { to: '/courses', label: 'الدورات', icon: BookOpen },
-            { to: user ? '/dashboard' : '/signin', label: user ? 'حسابي' : 'دخول', icon: user ? LayoutDashboard : User },
+            { to: '/competitions', label: 'المنافسات', icon: Trophy },
+            { to: user ? homePath(profile, isAdmin) : '/signin', label: user ? 'حسابي' : 'دخول', icon: user ? LayoutDashboard : User },
           ].map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.to;
@@ -245,10 +234,11 @@ export default function Navbar() {
                 key={item.to}
                 to={item.to}
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold transition-colors ${active ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`flex flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-extrabold transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400 font-extrabold scale-105' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
-                {item.label}
+                <Icon className={`h-4 w-4 transition-transform ${active ? 'scale-110' : ''}`} aria-hidden="true" />
+                <span>{item.label}</span>
+                {active && <span className="h-1 w-1 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse"></span>}
               </Link>
             );
           })}

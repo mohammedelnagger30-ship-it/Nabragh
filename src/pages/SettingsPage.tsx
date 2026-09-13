@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const { actualTheme, setTheme } = useTheme();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
 
   const [section, setSection] = useState<Section>('account');
   const [saving, setSaving] = useState(false);
@@ -42,6 +43,7 @@ export default function SettingsPage() {
   // profile
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [guardianPhone, setGuardianPhone] = useState('');
   const [locationVal, setLocationVal] = useState('');
   const [website, setWebsite] = useState('');
   const [specialization, setSpecialization] = useState('');
@@ -57,6 +59,7 @@ export default function SettingsPage() {
     if (!profile) return;
     setFullName(profile.full_name ?? '');
     setPhone(profile.phone ?? '');
+    setGuardianPhone(profile.guardian_phone ?? '');
     setLocationVal(profile.location ?? '');
     setWebsite(profile.website ?? '');
     setSpecialization(profile.specialization ?? '');
@@ -85,12 +88,29 @@ export default function SettingsPage() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const handleCoverChange = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith('image/')) { toast('الملف المختار ليس صورة', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast('حجم الصورة يجب أن يكون أقل من 5 ميجابايت', 'error'); return; }
+    setUploading(true);
+    const url = await uploadFile('avatars', file, user.id);
+    if (url) {
+      const { error } = await supabase.from('profiles').update({ cover_url: url, updated_at: new Date().toISOString() }).eq('id', user.id);
+      if (error) { toast('تعذر حفظ الغلاف', 'error'); } else { await refreshProfile(); toast('تم تحديث صورة الغلاف', 'success'); }
+    } else {
+      toast('فشل رفع الغلاف. حاول مرة أخرى', 'error');
+    }
+    setUploading(false);
+    if (coverRef.current) coverRef.current.value = '';
+  };
+
   const saveProfile = async () => {
     if (!user) return;
     setSaving(true);
     const { error } = await supabase.from('profiles').update({
       full_name: fullName,
       phone, location: locationVal, website,
+      guardian_phone: profile?.is_teacher ? null : guardianPhone || null,
       specialization: profile?.is_teacher ? specialization : null,
       bio,
       education_stage: profile?.is_teacher ? null : stage || null,
@@ -139,9 +159,10 @@ export default function SettingsPage() {
   if (!user || !profile) { navigate('/signin'); return null; }
 
   const avatar = profile.avatar_url;
+  const cover = profile.cover_url;
   const completionFields = profile.is_teacher
-    ? [fullName, specialization, bio, avatar, locationVal, stage, curriculum, website]
-    : [fullName, avatar, locationVal, stage, curriculum, bio];
+    ? [fullName, specialization, bio, avatar, locationVal, stage, curriculum, website, phone]
+    : [fullName, phone, guardianPhone, avatar, locationVal, stage, curriculum, bio];
   const completion = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
   return (
     <div className="min-h-screen bg-slate-50 pt-[4.5rem] pb-16 dark:bg-slate-900">
@@ -149,7 +170,33 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         {/* Header card with cover */}
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="h-32 bg-gradient-to-l from-blue-600 via-blue-500 to-cyan-400" />
+          <div className="relative h-32 bg-gradient-to-l from-blue-600 via-blue-500 to-cyan-400">
+          {cover && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${cover})` }} />}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent" />
+          {uploading && <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+          <button
+            onClick={() => coverRef.current?.click()}
+            disabled={uploading}
+            className="absolute bottom-3 left-3 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-60"
+            title="تغيير الغلاف"
+          >
+            <Camera className="h-4 w-4" />
+          </button>
+          {cover && (
+            <button
+              onClick={async () => {
+                const { error } = await supabase.from('profiles').update({ cover_url: null }).eq('id', user.id);
+                if (!error) { await refreshProfile(); toast('تم حذف الغلاف', 'info'); }
+              }}
+              className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/80 text-white backdrop-blur-sm transition hover:bg-rose-600"
+              title="حذف الغلاف"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+          <input ref={coverRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverChange(f); }} />
+        </div>
           <div className="px-6 pb-6">
             <div className="-mt-12 flex flex-col items-center gap-4 sm:flex-row sm:items-end">
               {/* Avatar */}
@@ -207,7 +254,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/40 dark:bg-blue-900/20"><GraduationCap className="h-5 w-5 text-blue-600" /><p className="mt-3 text-sm font-bold text-blue-900 dark:text-blue-200">{profile.is_teacher ? 'ملف المدرس' : 'ملف الطالب'}</p><p className="mt-1 text-xs leading-6 text-blue-700 dark:text-blue-300">{profile.is_teacher ? 'أظهر تخصصك وخبرتك للطلاب لبناء الثقة.' : 'أكمل بياناتك التعليمية لتحصل على ترشيحات أفضل.'}</p></div>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/40 dark:bg-blue-900/20"><GraduationCap className="h-5 w-5 text-blue-600" /><p className="mt-3 text-sm font-bold text-blue-900 dark:text-blue-200">{profile.is_teacher ? 'ملف المدرس' : 'ملف الطالب'}</p><p className="mt-1 text-xs leading-6 text-blue-700 dark:text-blue-300">{profile.is_teacher ? 'أظهر تخصصك وخبرتك للطلاب لبناء الثقة.' : 'أكمل بياناتك ورقم ولي الأمر ليكتمل ملفك الدراسي.'}</p></div>
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 dark:border-emerald-900/40 dark:bg-emerald-900/20"><BookOpen className="h-5 w-5 text-emerald-600" /><p className="mt-3 text-sm font-bold text-emerald-900 dark:text-emerald-200">خطوتك التالية</p><p className="mt-1 text-xs leading-6 text-emerald-700 dark:text-emerald-300">{profile.is_teacher ? 'حدّث نبذتك وأضف رابط منصتك التعليمية.' : 'تصفح الدورات وابدأ أول درس يناسب مرحلتك.'}</p></div>
           <div className="rounded-2xl border border-amber-100 bg-amber-50 p-5 dark:border-amber-900/40 dark:bg-amber-900/20"><Check className="h-5 w-5 text-amber-600" /><p className="mt-3 text-sm font-bold text-amber-900 dark:text-amber-200">حالة الحساب</p><p className="mt-1 text-xs leading-6 text-amber-700 dark:text-amber-300">{profile.is_teacher ? (profile.is_approved ? 'حسابك معتمد ويمكنك إدارة محتواك.' : 'حسابك قيد المراجعة من الإدارة.') : 'حسابك جاهز للتعلم ومتابعة تقدمك.'}</p></div>
         </div>
@@ -275,14 +322,22 @@ export default function SettingsPage() {
                     <label className={labelCls}><Phone className="mr-1 inline h-3.5 w-3.5" /> رقم الهاتف</label>
                     <input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="+966..." className={inputCls} />
                   </div>
+                  {!profile.is_teacher && (
+                    <div>
+                      <label className={labelCls}>رقم ولي الأمر</label>
+                      <input value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} dir="ltr" placeholder="+966..." className={inputCls} />
+                    </div>
+                  )}
                   <div>
                     <label className={labelCls}><MapPin className="mr-1 inline h-3.5 w-3.5" /> الموقع</label>
                     <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)} placeholder="الرياض، السعودية" className={inputCls} />
                   </div>
-                  <div>
-                    <label className={labelCls}><Globe className="mr-1 inline h-3.5 w-3.5" /> الموقع الإلكتروني</label>
-                    <input value={website} onChange={(e) => setWebsite(e.target.value)} dir="ltr" placeholder="https://..." className={inputCls} />
-                  </div>
+                  {profile.is_teacher && (
+                    <div>
+                      <label className={labelCls}><Globe className="mr-1 inline h-3.5 w-3.5" /> الموقع الإلكتروني</label>
+                      <input value={website} onChange={(e) => setWebsite(e.target.value)} dir="ltr" placeholder="https://..." className={inputCls} />
+                    </div>
+                  )}
                   <div>
                     <label className={labelCls}>{profile.is_teacher ? 'المرحلة التي تدرّسها' : 'المرحلة الدراسية'}</label>
                     <select value={stage} onChange={(e) => setStage(e.target.value)} className={inputCls}>

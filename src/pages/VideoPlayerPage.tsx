@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowRight, Play, Eye, Lock, Loader2, Heart, MessageSquare,
-  Clock, BookOpen, CheckCircle2
+  Clock, BookOpen, CheckCircle2, Calendar, ChevronLeft, Home
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -10,10 +10,24 @@ import { useToast } from '@/context/ToastContext';
 import Comments from '@/components/Comments';
 import SocialShare from '@/components/SocialShare';
 import PlaylistManager from '@/components/PlaylistManager';
+import FollowButton from '@/components/FollowButton';
 import MetaTags from '@/components/MetaTags';
 import StructuredData from '@/components/StructuredData';
 import { generateVideoStructuredData } from '@/components/structuredDataUtils';
 import type { Video, Profile, VideoProgress } from '@/types';
+
+function formatViews(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+}
+
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return '';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function VideoPlayerPage() {
   const { id } = useParams<{ id: string }>();
@@ -168,12 +182,12 @@ export default function VideoPlayerPage() {
   };
 
   if (loading) {
-    return <div className="pt-[4.5rem] min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+    return <div className="pt-[4.5rem] min-h-screen flex items-center justify-center bg-slate-950"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
   }
 
   if (!video) {
     return (
-      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center">
+      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center bg-slate-950">
         <p className="text-slate-500 mb-4">الفيديو غير موجود</p>
         <Link to="/" className="text-blue-600 hover:underline">العودة للرئيسية</Link>
       </div>
@@ -181,72 +195,112 @@ export default function VideoPlayerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 pt-[4.5rem]">
+    <div className="min-h-screen bg-slate-950 pt-[4.5rem] pb-16">
       <MetaTags title={`${video.title} | منصة العلم`} description={video.description ?? 'درس تعليمي على منصة العلم'} />
       <StructuredData data={generateVideoStructuredData(video)} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-slate-400 mb-4 flex-wrap">
-          <Link to="/" className="hover:text-white transition-colors">الرئيسية</Link>
-          <span>/</span>
-          {teacher && (
-            <>
-              <Link to={`/teacher/${teacher.id}`} className="hover:text-white transition-colors">{teacher.full_name}</Link>
-              <span>/</span>
-            </>
-          )}
-          <span className="text-slate-300 truncate">{video.title}</span>
-        </div>
+        <nav className="mb-4 sm:mb-6 lg:mb-8 flex flex-wrap items-center gap-y-2 text-xs sm:text-sm" aria-label="مسار التنقل">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+            <Link to="/" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white sm:px-2.5 sm:py-1.5">
+              <Home className="h-3 w-3 sm:h-4 sm:w-4" />
+              الرئيسية
+            </Link>
+            {teacher && (
+              <>
+                <ChevronLeft className="h-3 w-3 shrink-0 text-slate-600 sm:h-4 sm:w-4" />
+                <Link to={`/teacher/${teacher.id}`} className="inline-flex max-w-[10rem] items-center truncate rounded-lg px-2 py-1 font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white sm:max-w-[12rem] sm:px-2.5 sm:py-1.5">
+                  {teacher.full_name}
+                </Link>
+              </>
+            )}
+            <ChevronLeft className="h-3 w-3 shrink-0 text-slate-600 sm:h-4 sm:w-4" />
+            <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-lg bg-slate-800/80 px-2 py-1 font-bold text-white sm:px-3 sm:py-1.5">
+              {video.title}
+            </span>
+          </div>
+        </nav>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Video Player + Info */}
-          <div className="lg:col-span-2">
-            <div className="aspect-video bg-black rounded-2xl overflow-hidden relative">
-              {hasAccess ? (
-                <video
-                  ref={videoRef}
-                  src={playbackUrl ?? undefined}
-                  controls
-                  autoPlay
-                  className="w-full h-full"
-                  controlsList="nodownload"
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onPause={() => void saveProgress()}
-                  onEnded={() => void saveProgress()}
-                />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
-                  <div className="w-20 h-20 rounded-full bg-blue-600/20 flex items-center justify-center mb-4">
-                    <Lock className="w-10 h-10 text-blue-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">هذا المحتوى مخصص للمشتركين</h3>
-                  <p className="text-slate-400 mb-6 text-center max-w-md">
-                    اشترك مع هذا المدرس للوصول إلى هذا الفيديو وجميع الفيديوهات الأخرى
-                  </p>
-                  <div className="flex gap-3">
-                    <Link to="/pricing" className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all">
-                      عرض الباقات
-                    </Link>
-                    {teacher && (
-                      <Link to={`/teacher/${teacher.id}`} className="px-6 py-2.5 bg-white/10 text-white font-semibold rounded-xl border border-white/20 hover:bg-white/20 transition-all">
-                        صفحة المدرس
-                      </Link>
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
+          {/* ===== Main column ===== */}
+          <div className="lg:col-span-2 min-w-0">
+            {/* Player */}
+            <div className="overflow-hidden rounded-xl sm:rounded-2xl bg-black shadow-2xl shadow-blue-950/40 ring-1 ring-slate-800">
+              <div className="aspect-video relative">
+                {hasAccess ? (
+                  <video
+                    ref={videoRef}
+                    src={playbackUrl ?? undefined}
+                    controls
+                    autoPlay
+                    className="h-full w-full"
+                    controlsList="nodownload"
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onPause={() => void saveProgress()}
+                    onEnded={() => void saveProgress()}
+                  />
+                ) : !video.is_free ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 px-4 sm:px-6">
+                    <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/20 sm:mb-4 sm:h-20 sm:w-20">
+                      <Lock className="h-8 w-8 text-blue-400 sm:h-10 sm:w-10" />
+                    </div>
+                    <h3 className="mb-2 text-center text-lg font-bold text-white sm:text-xl">هذا الدرس ضمن اشتراك الدورة</h3>
+                    <p className="mb-4 max-w-md text-center text-sm text-slate-400 sm:mb-6 sm:text-base">
+                      {video.course
+                        ? `اشترك في دورة «${video.course.title}» لفتح هذا الدرس وجميع الدروس المدفوعة.`
+                        : 'اشترك مع هذا المدرس للحصول على جميع الفيديوهات المدفوعة.'}
+                    </p>
+                    {video.course && (video.course.subscription_price > 0 || video.course.price > 0) && (
+                      <div className="mb-6 flex flex-wrap justify-center gap-3">
+                        {video.course.subscription_price > 0 && (
+                          <div className="rounded-2xl border border-blue-500/40 bg-blue-600/10 px-5 py-3 text-center">
+                            <p className="text-xs text-blue-300">اشتراك شهري</p>
+                            <p className="mt-1 text-2xl font-extrabold text-white">{video.course.subscription_price} <span className="text-sm font-medium text-slate-400">ر.س/شهر</span></p>
+                          </div>
+                        )}
+                        {video.course.price > 0 && (
+                          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-3 text-center">
+                            <p className="text-xs text-amber-300">دفعة واحدة</p>
+                            <p className="mt-1 text-2xl font-extrabold text-white">{video.course.price} <span className="text-sm font-medium text-slate-400">ر.س</span></p>
+                          </div>
+                        )}
+                      </div>
                     )}
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {video.course && (
+                        <Link to={`/course/${video.course.id}`} className="rounded-xl bg-gradient-to-l from-blue-600 to-cyan-500 px-7 py-3 font-bold text-white transition hover:shadow-lg hover:shadow-blue-500/30">
+                          الاشتراك في الدورة
+                        </Link>
+                      )}
+                      {teacher && (
+                        <Link to={`/teacher/${teacher.id}`} className="rounded-xl border border-white/20 bg-white/10 px-7 py-3 font-bold text-white transition hover:bg-white/20">
+                          صفحة المدرس
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 px-6">
+                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/10">
+                      <Play className="h-10 w-10 text-white" />
+                    </div>
+                    <h3 className="mb-2 text-xl font-bold text-white">الفيديو غير متاح حاليًا</h3>
+                    <p className="mb-6 max-w-md text-center text-slate-400">حدثت مشكلة في تحميل الفيديو. حاول إعادة تحميل الصفحة أو تواصل مع المدرس.</p>
+                    <button onClick={() => window.location.reload()} className="rounded-xl bg-white px-6 py-2.5 font-bold text-slate-900 transition hover:bg-slate-200">إعادة تحميل</button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Video Info */}
-            <div className="mt-4">
-              <div className="mb-3 flex items-start justify-between gap-4">
-                <h1 className="text-2xl font-bold text-white">{video.title}</h1>
+            {/* Title + actions */}
+            <div className="mt-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <h1 className="min-w-0 max-w-2xl text-xl font-bold leading-relaxed text-white sm:text-2xl">{video.title}</h1>
                 <div className="flex shrink-0 items-center gap-2">
                   <SocialShare title={video.title} description={video.description ?? undefined} />
-                  {user && !profile?.is_teacher && <PlaylistManager videoId={video.id} />}
                   {user && !profile?.is_teacher && (
                     <button onClick={toggleFavorite}
-                      className={`flex items-center gap-2 rounded-xl px-3 py-2 font-medium transition-all ${
+                      className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
                         isFavorited ? 'bg-rose-500/20 text-rose-400' : 'bg-white/10 text-slate-300 hover:bg-white/20'
                       }`}>
                       <Heart className={`h-5 w-5 ${isFavorited ? 'fill-rose-400' : ''}`} />
@@ -256,164 +310,175 @@ export default function VideoPlayerPage() {
                 </div>
               </div>
 
+              {/* Meta chips */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-slate-300"><Eye className="h-3.5 w-3.5" /> {formatViews(video.views_count + 1)} مشاهدة</span>
+                {video.duration_seconds > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-slate-300"><Clock className="h-3.5 w-3.5" /> {formatDuration(video.duration_seconds)}</span>}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-slate-300"><Calendar className="h-3.5 w-3.5" /> {new Date(video.created_at).toLocaleDateString('ar-EG')}</span>
+                {video.category && <span className="rounded-full bg-blue-600/20 px-3 py-1.5 text-xs font-medium text-blue-300">{video.category.name_ar}</span>}
+                {!video.is_free && <span className="rounded-full bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-400">للمشتركين</span>}
+                {video.course && (
+                  <Link to={`/course/${video.course_id}`} className="inline-flex items-center gap-1.5 rounded-full bg-cyan-600/20 px-3 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-600/30">
+                    <BookOpen className="h-3.5 w-3.5" /> {video.course.title}
+                  </Link>
+                )}
+              </div>
+
+              {/* Speed selector */}
               {hasAccess && (
-                <div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-                  <label htmlFor="playback-rate">سرعة التشغيل</label>
+                <div className="mt-5 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+                  <label htmlFor="playback-rate" className="text-sm text-slate-300">سرعة التشغيل</label>
                   <select id="playback-rate" value={playbackRate} onChange={(event) => {
                     const rate = Number(event.target.value);
                     setPlaybackRate(rate);
                     if (videoRef.current) videoRef.current.playbackRate = rate;
-                  }} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-slate-200 outline-none">
+                  }} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 outline-none">
                     {[0.75, 1, 1.25, 1.5, 2].map((rate) => <option key={rate} value={rate}>{rate}x</option>)}
                   </select>
                 </div>
               )}
 
-              <div className="flex items-center gap-4 text-sm text-slate-400 mb-4 flex-wrap">
-                <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> {video.views_count + 1} مشاهدة</span>
-                {video.category && <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs">{video.category.name_ar}</span>}
-                <span>{new Date(video.created_at).toLocaleDateString('ar-EG')}</span>
-                {video.course && (
-                  <Link to={`/course/${video.course_id}`} className="flex items-center gap-1 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-xs hover:bg-blue-600/30 transition-colors">
-                    <BookOpen className="w-3 h-3" /> {video.course.title}
-                  </Link>
-                )}
-              </div>
-
-              {/* Progress bar */}
+              {/* Progress */}
               {progress && progress.total_seconds > 0 && (
-                <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-400 flex items-center gap-2">
-                      {progress.is_completed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Clock className="w-4 h-4 text-blue-400" />}
+                <div className="mt-5 rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm text-slate-400">
+                      {progress.is_completed ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Clock className="h-4 w-4 text-blue-400" />}
                       {progress.is_completed ? 'تمت المشاهدة' : 'تقدمك في هذا الدرس'}
                     </span>
                     <span className="text-sm font-bold text-white">
                       {Math.round((progress.watched_seconds / progress.total_seconds) * 100)}%
                     </span>
                   </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${progress.is_completed ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}
-                      style={{ width: `${(progress.watched_seconds / progress.total_seconds) * 100}%` }}
-                    />
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                    <div className={`h-full rounded-full transition-all ${progress.is_completed ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`} style={{ width: `${(progress.watched_seconds / progress.total_seconds) * 100}%` }} />
                   </div>
                 </div>
               )}
 
+              {/* Description */}
               {video.description && (
-                <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 mb-4">
-                  <h3 className="text-white font-semibold mb-2">وصف الدرس</h3>
-                  <p className="text-slate-400 leading-relaxed whitespace-pre-line">{video.description}</p>
+                <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                  <h3 className="mb-2.5 font-bold text-white">وصف الدرس</h3>
+                  <p className="whitespace-pre-line leading-7 text-slate-400">{video.description}</p>
                 </div>
               )}
 
-              {/* Teacher Card */}
+              {/* Teacher card */}
               {teacher && (
-                <div className="mt-4 bg-slate-900 rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 text-xl font-bold text-blue-600">
                     {teacher.avatar_url ? (
-                      <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full rounded-full object-cover" />
+                      <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xl font-bold text-blue-600">{teacher.full_name.charAt(0)}</span>
+                      <span>{teacher.full_name.charAt(0)}</span>
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-white">{teacher.full_name}</h3>
-                    <p className="text-sm text-slate-400">{teacher.specialization ?? 'مدرس'}</p>
+                    <p className="truncate text-sm text-slate-400">{teacher.specialization ?? 'مدرس'}</p>
                   </div>
-                  <Link to={`/teacher/${teacher.id}`}
-                    className="px-4 py-2 bg-white/10 text-white font-medium rounded-xl hover:bg-white/20 transition-colors flex items-center gap-2 text-sm">
-                    زيارة الصفحة <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Tabs: Comments / Related */}
-            <div className="mt-6">
-              <div className="flex gap-1 border-b border-slate-800 mb-4">
-                <button
-                  onClick={() => setActiveTab('comments')}
-                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'comments' ? 'border-blue-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
-                  }`}>
-                  <MessageSquare className="w-4 h-4 inline ml-1" /> التعليقات
-                </button>
-                <button
-                  onClick={() => setActiveTab('related')}
-                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'related' ? 'border-blue-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200'
-                  }`}>
-                  <Play className="w-4 h-4 inline ml-1" /> فيديوهات ذات صلة
-                </button>
-              </div>
-
-              {activeTab === 'comments' && (
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                  <Comments videoId={video.id} />
+                  <div className="flex shrink-0 items-center gap-2">
+                    {user && !profile?.is_teacher && <FollowButton teacherId={teacher.id} isFollowing={false} variant="outline" size="sm" />}
+                    <Link to={`/teacher/${teacher.id}`}
+                      className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20">
+                      زيارة الصفحة <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </div>
               )}
 
-              {activeTab === 'related' && (
-                <div className="space-y-3">
-                  {relatedVideos.length === 0 ? (
-                    <p className="text-slate-500 text-sm">لا توجد فيديوهات أخرى</p>
-                  ) : (
-                    relatedVideos.map((rv) => (
-                      <Link key={rv.id} to={`/video/${rv.id}`}
-                        className="group flex gap-3 bg-slate-900 rounded-xl p-3 border border-slate-800 hover:border-slate-700 transition-colors">
-                        <div className="w-28 aspect-video rounded-lg bg-slate-800 flex-shrink-0 flex items-center justify-center relative overflow-hidden">
-                          {rv.thumbnail_url ? (
-                            <img src={rv.thumbnail_url} alt={rv.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <Play className="w-6 h-6 text-slate-500 group-hover:text-blue-400 transition-colors" />
-                          )}
-                          {!rv.is_free && <div className="absolute top-1 right-1"><Lock className="w-3 h-3 text-amber-400" /></div>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-white line-clamp-2 group-hover:text-blue-400 transition-colors">{rv.title}</h4>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                            <Eye className="w-3 h-3" /><span>{rv.views_count}</span>
+              {/* Tabs: Comments / Related */}
+              <div className="mt-8">
+                <div className="mb-4 flex gap-1 border-b border-slate-800">
+                  <button
+                    onClick={() => setActiveTab('comments')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                      activeTab === 'comments' ? 'border-b-2 border-blue-500 text-white' : 'border-b-2 border-transparent text-slate-400 hover:text-slate-200'
+                    }`}>
+                    <MessageSquare className="h-4 w-4" /> التعليقات
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('related')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                      activeTab === 'related' ? 'border-b-2 border-blue-500 text-white' : 'border-b-2 border-transparent text-slate-400 hover:text-slate-200'
+                    }`}>
+                    <Play className="h-4 w-4" /> فيديوهات ذات صلة ({relatedVideos.length})
+                  </button>
+                </div>
+
+                {activeTab === 'comments' && (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                    <Comments videoId={video.id} />
+                  </div>
+                )}
+
+                {activeTab === 'related' && (
+                  <div className="space-y-3">
+                    {relatedVideos.length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">لا توجد فيديوهات أخرى</p>
+                    ) : (
+                      relatedVideos.map((rv) => (
+                        <Link key={rv.id} to={`/video/${rv.id}`}
+                          className="group flex gap-3 rounded-xl border border-slate-800 bg-slate-900 p-3 transition hover:border-slate-700">
+                          <div className="relative flex aspect-video w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800">
+                            {rv.thumbnail_url ? (
+                              <img src={rv.thumbnail_url} alt={rv.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <Play className="h-6 w-6 text-slate-500 transition group-hover:text-blue-400" />
+                            )}
+                            {!rv.is_free && <div className="absolute right-1 top-1"><Lock className="h-3.5 w-3.5 text-amber-400" /></div>}
+                            {rv.duration_seconds > 0 && <div className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[10px] font-bold text-white">{formatDuration(rv.duration_seconds)}</div>}
                           </div>
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              )}
+                          <div className="min-w-0 flex-1">
+                            <h4 className="line-clamp-2 text-sm font-medium text-white transition group-hover:text-blue-400">{rv.title}</h4>
+                            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                              <Eye className="h-3.5 w-3.5" /><span>{formatViews(rv.views_count)}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Sidebar: Related Videos */}
-          <div>
-            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-              <Play className="w-5 h-5 text-blue-400" /> فيديوهات ذات صلة
-            </h3>
-            {relatedVideos.length === 0 ? (
-              <p className="text-slate-500 text-sm">لا توجد فيديوهات أخرى</p>
-            ) : (
-              <div className="space-y-3">
-                {relatedVideos.map((rv) => (
-                  <Link key={rv.id} to={`/video/${rv.id}`}
-                    className="group flex gap-3 bg-slate-900 rounded-xl p-3 border border-slate-800 hover:border-slate-700 transition-colors">
-                    <div className="w-28 aspect-video rounded-lg bg-slate-800 flex-shrink-0 flex items-center justify-center relative overflow-hidden">
-                      {rv.thumbnail_url ? (
-                        <img src={rv.thumbnail_url} alt={rv.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <Play className="w-6 h-6 text-slate-500 group-hover:text-blue-400 transition-colors" />
-                      )}
-                      {!rv.is_free && <div className="absolute top-1 right-1"><Lock className="w-3 h-3 text-amber-400" /></div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-white line-clamp-2 group-hover:text-blue-400 transition-colors">{rv.title}</h4>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                        <Eye className="w-3 h-3" /><span>{rv.views_count}</span>
+          {/* ===== Sidebar ===== */}
+          <div className="min-w-0 space-y-6 lg:col-span-1">
+            <div>
+              <h3 className="mb-3 font-bold text-white">فيديوهات ذات صلة</h3>
+              {relatedVideos.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">لا توجد فيديوهات أخرى</p>
+              ) : (
+                <div className="space-y-3">
+                  {relatedVideos.map((rv) => (
+                    <Link key={rv.id} to={`/video/${rv.id}`}
+                      className="group flex gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 transition hover:border-slate-700">
+                      <div className="relative flex aspect-video w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800">
+                        {rv.thumbnail_url ? (
+                          <img src={rv.thumbnail_url} alt={rv.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <Play className="h-6 w-6 text-slate-500 transition group-hover:text-blue-400" />
+                        )}
+                        {!rv.is_free && <div className="absolute right-1 top-1"><Lock className="h-3.5 w-3.5 text-amber-400" /></div>}
+                        {rv.duration_seconds > 0 && <div className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[10px] font-bold text-white">{formatDuration(rv.duration_seconds)}</div>}
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="line-clamp-2 text-sm font-medium text-white transition group-hover:text-blue-400">{rv.title}</h4>
+                        <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+                          <Eye className="h-3.5 w-3.5" /><span>{formatViews(rv.views_count)} مشاهدة</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {user && !profile?.is_teacher && (
+              <PlaylistManager videoId={video.id} />
             )}
           </div>
         </div>

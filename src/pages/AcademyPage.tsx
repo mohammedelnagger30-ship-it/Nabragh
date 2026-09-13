@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, CheckCircle2, GraduationCap, LockKeyhole, Play, Users } from 'lucide-react';
+import { ArrowRight, BookOpen, LockKeyhole, Play, Users } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
@@ -35,7 +35,7 @@ export default function AcademyPage() {
 
     const [{ data: profileData }, { data: courseData }, { data: videoData }, membershipResult] = await Promise.all([
       supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('id', academySettings.teacher_id).maybeSingle(),
-      supabase.from('courses').select('*, category:categories(*)').eq('teacher_id', academySettings.teacher_id).eq('is_published', true).order('created_at', { ascending: false }),
+      supabase.from('courses').select('*, category:categories(*)').eq('teacher_id', academySettings.teacher_id).eq('is_published', true).eq('is_visible', true).order('sort_order', { ascending: true }).order('created_at', { ascending: false }),
       supabase.from('videos').select(VIDEO_PUBLIC_COLUMNS).eq('teacher_id', academySettings.teacher_id).order('created_at', { ascending: false }).limit(12),
       user ? supabase.from('academy_memberships').select('status').eq('teacher_id', academySettings.teacher_id).eq('student_id', user.id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     ]);
@@ -84,6 +84,10 @@ export default function AcademyPage() {
 
   if (!settings || !teacher) {
     return <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-[4.5rem] dark:bg-slate-950"><div className="text-center"><LockKeyhole className="mx-auto h-12 w-12 text-slate-300" /><h1 className="mt-4 text-2xl font-extrabold text-slate-800 dark:text-white">المنصة غير متاحة</h1><p className="mt-2 text-slate-500">الرابط غير صحيح أو المنصة غير منشورة.</p><Link to="/teachers" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">استكشاف المدرسين <ArrowRight className="h-4 w-4" /></Link></div></div>;
+  }
+
+  if (!settings.is_published && user?.id !== settings.teacher_id) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-[4.5rem] dark:bg-slate-950"><div className="text-center"><LockKeyhole className="mx-auto h-12 w-12 text-slate-300" /><h1 className="mt-4 text-2xl font-extrabold text-slate-800 dark:text-white">المنصة قيد الإعداد</h1><p className="mt-2 text-slate-500">هذه المنصة لم تُنشر بعد. عد لاحقاً لمشاهدتها.</p><Link to="/teachers" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">استكشاف المدرسين <ArrowRight className="h-4 w-4" /></Link></div></div>;
   }
 
   const isRestricted = settings.access_mode !== 'public';

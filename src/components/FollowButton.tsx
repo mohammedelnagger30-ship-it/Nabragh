@@ -79,8 +79,8 @@ export default function FollowButton({
       ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
       : 'bg-blue-600 text-white hover:bg-blue-700',
     secondary: isFollowing
-      ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-      : 'bg-cyan-600 text-white hover:bg-cyan-700',
+      ? 'bg-slate-500/20 text-white hover:bg-slate-500/30 ring-1 ring-white/30 dark:ring-slate-600'
+      : 'bg-white text-blue-700 shadow-sm hover:bg-blue-50 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500',
     outline: isFollowing
       ? 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
       : 'border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20',

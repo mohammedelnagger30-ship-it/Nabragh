@@ -1,1432 +1,1390 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Shield, Users, GraduationCap, Film, BookOpen, MessageSquare, MessageCircle, FileText, Star,
-  Check, Ban, Trash2, ShieldCheck, ShieldOff, Loader2, RefreshCw, Calendar,
-  ClipboardCheck, Trophy, Radio, TrendingUp, Award, Activity, ExternalLink,
-  BarChart3, PieChart, LineChart, Zap, Target, Clock, Eye, Heart, Share2,
-  Download, Settings, Bell, Search, Filter, MoreVertical, ChevronDown,
-  AlertCircle, CheckCircle2, XCircle, Info, ArrowUp, ArrowDown, Minus,
-  Globe, MapPin, Phone, Mail, Building, Briefcase, DollarSign, CreditCard,
-  Wallet, TrendingDown, Sparkles, Crown, Diamond, Medal, Flame,
-  Zap as ZapIcon, Gauge, Target as TargetIcon, Users2, GraduationCap as GraduationCapIcon,
-  ChartBar, ChartLine, ChartPie, Activity as ActivityIcon, BarChart,
-  LayoutDashboard, UserCheck, Bookmark, PlayCircle, MessageSquare as MessageSquareIcon,
-  Star as StarIcon, Settings as SettingsIcon, LogOut, Menu, X, Plus, Edit, Send, Copy, RefreshCw as RefreshCwIcon
+  Loader2,
+  Users,
+  BookOpen,
+  GraduationCap,
+  Check,
+  X,
+  Plus,
+  DollarSign,
+  Search,
+  ArrowUp,
+  ArrowDown,
+  Settings,
+  Star,
+  Film,
+  Globe,
+  TrendingUp,
+  BarChart3,
+  Eye,
+  UserCheck,
+  CreditCard,
+  AlertTriangle,
+  RefreshCw,
+  Shield,
+  Zap,
+  Activity,
+  Phone,
+  Facebook,
+  Youtube,
+  Instagram,
+  Music2,
+  Send,
+  Twitter,
+  Type,
+  Home,
+  Globe2,
+  Save,
+  CheckCircle2,
+  Link2,
+  EyeOff,
+  MessageSquare,
+  FileDown,
+  Swords,
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { supabase, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
-import MetaTags from '@/components/MetaTags';
-import type { Profile, Video, Course, Comment, Review, Subscription } from '@/types';
+import type { LucideIcon } from 'lucide-react';
+import { SITE_SETTINGS_DEFAULTS } from '@/lib/siteSettings';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
-type Tab = 'overview' | 'students' | 'assessments' | 'live' | 'teachers' | 'managers' | 'videos' | 'courses' | 'comments' | 'reviews' | 'subscriptions' | 'analytics' | 'settings' | 'notifications';
+type TabId = 'home' | 'overview' | 'analytics' | 'teachers' | 'students' | 'courses' | 'videos' | 'exams' | 'moderation' | 'subscriptions' | 'broadcast' | 'admins' | 'reports' | 'settings';
 
-const TABS: { id: Tab; label: string; icon: typeof Users; description: string }[] = [
-  { id: 'overview', label: 'نظرة عامة', icon: LayoutDashboard, description: 'إحصائيات شاملة للموقع' },
-  { id: 'students', label: 'متابعة الطلاب', icon: Users2, description: 'تتبع أداء الطلاب' },
-  { id: 'assessments', label: 'الامتحانات والدرجات', icon: ClipboardCheck, description: 'إدارة الاختبارات والنتائج' },
-  { id: 'live', label: 'البث المباشر', icon: Radio, description: 'إدارة جلسات البث المباشر' },
-  { id: 'teachers', label: 'المدرسون', icon: GraduationCapIcon, description: 'إدارة حسابات المدرسين' },
-  { id: 'managers', label: 'حسابات المدرسين', icon: ShieldCheck, description: 'إدارة صلاحيات المدرسين' },
-  { id: 'videos', label: 'الفيديوهات', icon: Film, description: 'إدارة المحتوى المرئي' },
-  { id: 'courses', label: 'الدورات', icon: BookOpen, description: 'إدارة الدورات التعليمية' },
-  { id: 'comments', label: 'التعليقات', icon: MessageSquareIcon, description: 'مراقبة التفاعلات' },
-  { id: 'reviews', label: 'المراجعات', icon: StarIcon, description: 'إدارة التقييمات' },
-  { id: 'subscriptions', label: 'الاشتراكات والمدفوعات', icon: CreditCard, description: 'مراجعة طلبات الدفع' },
-  { id: 'analytics', label: 'التحليلات', icon: BarChart3, description: 'تحليلات متقدمة' },
-  { id: 'settings', label: 'الإعدادات', icon: SettingsIcon, description: 'إعدادات الموقع' },
-  { id: 'notifications', label: 'الإشعارات', icon: Bell, description: 'إدارة الإشعارات' },
+interface AdminSubscriptionRow {
+  id: string;
+  student_name: string | null;
+  course_title: string | null;
+  access_type: string | null;
+  plan_name: string | null;
+  price: number | null;
+  status: string | null;
+  payment_status: string | null;
+  end_date: string | null;
+  created_at: string;
+}
+
+interface AdminTeacherRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  specialization: string | null;
+  is_approved: boolean;
+  is_verified: boolean;
+  created_at: string;
+  course_count: number;
+  student_count: number;
+  revenue: number;
+}
+
+interface AdminStudentRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  created_at: string;
+  enrollment_count: number;
+  total_spent: number;
+}
+
+interface AdminVideoRow {
+  id: string;
+  title: string;
+  is_free: boolean;
+  views_count: number;
+  duration_seconds: number;
+  created_at: string;
+  teacher_name: string | null;
+  course_title: string | null;
+}
+
+interface ModCommentRow {
+  id: string;
+  comment: string;
+  created_at: string;
+  student_name: string | null;
+  video_title: string | null;
+}
+
+interface ModReviewRow {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  student_name: string | null;
+  teacher_name: string | null;
+  course_title: string | null;
+}
+
+interface AdminUserRow {
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  created_at: string | null;
+}
+
+interface QuizRow {
+  id: string;
+  title: string;
+  passing_score: number;
+  created_at: string;
+  course_title: string | null;
+}
+
+interface CompetitionRow {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  teacher_name: string | null;
+}
+
+interface DailyPoint {
+  date: string;
+  signups: number;
+  subscriptions: number;
+  revenue: number;
+}
+
+interface PaymentRow {
+  id: string;
+  student_name: string | null;
+  teacher_name: string | null;
+  amount: number;
+  currency: string;
+  method: string;
+  status: string;
+  created_at: string;
+  paid_at: string | null;
+}
+
+interface AdminCourseRow {
+  id: string;
+  title: string;
+  price: number;
+  is_published: boolean;
+  is_featured: boolean;
+  is_visible: boolean;
+  sort_order: number;
+  education_stage: string | null;
+  teacher_name: string | null;
+  enrollment_count: number;
+  revenue: number;
+  views_count: number;
+}
+
+interface OverviewSnapshot {
+  counts: {
+    students: number;
+    teachers: number;
+    courses: number;
+    videos: number;
+    revenue: number;
+    pending_payments: number;
+    active_subscriptions: number;
+    total_views: number;
+  };
+  recent_subscriptions: Array<{ student_name: string | null; course_title: string | null; amount: number | null; status: string | null; created_at: string }>;
+  recent_payments: Array<{ student_name: string | null; amount: number | null; status: string | null; created_at: string }>;
+  top_courses: Array<{ id?: string; title?: string; course_title?: string; enrollments?: number; revenue?: number }>;
+  top_teachers: Array<{ id?: string; name?: string; teacher_name?: string; courses?: number; students?: number; revenue?: number; avg_rating?: number }>;
+}
+
+const TABS: Array<{ id: TabId; label: string; icon: LucideIcon }> = [
+  { id: 'home', label: 'الصفحة الرئيسية', icon: Globe },
+  { id: 'overview', label: 'نظرة عامة', icon: BarChart3 },
+  { id: 'analytics', label: 'التحليلات', icon: TrendingUp },
+  { id: 'teachers', label: 'المدرسون', icon: GraduationCap },
+  { id: 'students', label: 'الطلاب', icon: Users },
+  { id: 'courses', label: 'الدورات', icon: BookOpen },
+  { id: 'videos', label: 'الفيديوهات', icon: Film },
+  { id: 'exams', label: 'الامتحانات والمنافسات', icon: Swords },
+  { id: 'moderation', label: 'التعليقات والتقييمات', icon: MessageSquare },
+  { id: 'subscriptions', label: 'الاشتراكات والمدفوعات', icon: CreditCard },
+  { id: 'broadcast', label: 'إشعار للجميع', icon: Send },
+  { id: 'admins', label: 'الإداريون', icon: Shield },
+  { id: 'reports', label: 'التقارير', icon: FileDown },
+  { id: 'settings', label: 'الإعدادات', icon: Settings },
 ];
 
+const TONE_MAP: Record<string, string> = {
+  cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300',
+  emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
+  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300',
+  violet: 'bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300',
+  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300',
+  rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300',
+};
+
 export default function AdminPage() {
-  const { user, profile, loading, isAdmin } = useAuth();
-  const [tab, setTab] = useState<Tab>('overview');
+  const navigate = useNavigate();
+  const { profile, loading: authLoading, isAdmin, signOut } = useAuth();
+  const [tab, setTab] = useState<TabId>('overview');
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!profile) { navigate('/signin?next=/admin', { replace: true }); return; }
+    if (!isAdmin) { navigate(profile.is_teacher ? '/admin/teacher' : '/dashboard', { replace: true }); return; }
+  }, [profile, isAdmin, authLoading, navigate]);
+
+  const [subscriptions, setSubscriptions] = useState<AdminSubscriptionRow[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
-
-  const [stats, setStats] = useState<Record<string, number>>({});
-  const [teachers, setTeachers] = useState<Profile[]>([]);
-  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
-  const [managerIds, setManagerIds] = useState<Set<string>>(new Set());
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [students, setStudents] = useState<Profile[]>([]);
-  const [studentRows, setStudentRows] = useState<Record<string, { courses: number; progress: number; attempts: number; score: number }>>({});
-  const [assessmentRows, setAssessmentRows] = useState<Array<{ id: string; title: string; course: string; attempts: number; average: number; passed: number }>>([]);
-  const [inviteName, setInviteName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [invitePassword, setInvitePassword] = useState('');
-  const [inviteSpecialization, setInviteSpecialization] = useState('');
-  const [inviteLocation, setInviteLocation] = useState('');
-  const [invitePhone, setInvitePhone] = useState('');
-  const [inviteBio, setInviteBio] = useState('');
-  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
-  const [autoGeneratePassword, setAutoGeneratePassword] = useState(false);
-
-  const count = useCallback(async (table: string, filters?: Record<string, unknown>) => {
-    let q = supabase.from(table).select('id', { count: 'exact', head: true });
-    if (filters) {
-      for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
-    }
-    const { count: c } = await q;
-    return c ?? 0;
-  }, []);
-
-  const loadStats = useCallback(async () => {
-    setBusy(true);
-    try {
-      const [t, s, v, c, co, r, q, a, e, cert, views, revenue] = await Promise.all([
-        count('profiles', { is_teacher: true }),
-        count('profiles', { is_teacher: false }),
-        count('videos'),
-        count('courses'),
-        count('comments'),
-        count('reviews'),
-        count('quizzes'),
-        count('quiz_attempts'),
-        count('course_enrollments'),
-        count('certificates'),
-        count('video_views'),
-        count('payments'),
-      ]);
-      setStats({ 
-        teachers: t, 
-        students: s, 
-        videos: v, 
-        courses: c, 
-        comments: co, 
-        reviews: r, 
-        quizzes: q, 
-        attempts: a, 
-        enrollments: e, 
-        certificates: cert,
-        views: views,
-        revenue: revenue
-      });
-    } finally {
-      setBusy(false);
-    }
-  }, [count]);
-
-  const loadAdmins = useCallback(async () => {
-    const { data } = await supabase.from('admin_users').select('user_id');
-    setAdminIds(new Set((data ?? []).map((a) => a.user_id)));
-  }, []);
-
-  const loadStudents = useCallback(async () => {
-    const [{ data: people }, { data: enrollments }, { data: attempts }] = await Promise.all([
-      supabase.rpc('admin_list_profiles', { teacher_flag: false }),
-      supabase.from('course_enrollments').select('student_id, progress_percent'),
-      supabase.from('quiz_attempts').select('student_id, score'),
-    ]);
-    const rows: Record<string, { courses: number; progress: number; attempts: number; score: number }> = {};
-    (enrollments ?? []).forEach((item) => {
-      const row = rows[item.student_id] ?? { courses: 0, progress: 0, attempts: 0, score: 0 };
-      row.courses += 1;
-      row.progress += item.progress_percent ?? 0;
-      rows[item.student_id] = row;
-    });
-    (attempts ?? []).forEach((item) => {
-      const row = rows[item.student_id] ?? { courses: 0, progress: 0, attempts: 0, score: 0 };
-      row.attempts += 1;
-      row.score += item.score ?? 0;
-      rows[item.student_id] = row;
-    });
-    setStudents((people ?? []) as Profile[]);
-    setStudentRows(rows);
-  }, []);
-
-  const loadAssessments = useCallback(async () => {
-    const { data } = await supabase.from('quizzes').select('id, title, course:courses(title), quiz_attempts(score, passed)').order('created_at', { ascending: false }).limit(100);
-    setAssessmentRows((data ?? []).map((quiz) => {
-      const attempts = (quiz.quiz_attempts ?? []) as Array<{ score: number; passed: boolean }>;
-      return { id: quiz.id, title: quiz.title, course: (quiz.course as { title?: string } | null)?.title ?? 'بدون كورس', attempts: attempts.length, average: attempts.length ? Math.round(attempts.reduce((sum, item) => sum + item.score, 0) / attempts.length) : 0, passed: attempts.filter((item) => item.passed).length };
-    }));
-  }, []);
-
-  const loadTeachers = useCallback(async () => {
-    const { data } = await supabase.rpc('admin_list_profiles', { teacher_flag: true });
-    setTeachers((data ?? []) as Profile[]);
-  }, []);
-
-  const loadManagers = useCallback(async () => {
-    await loadTeachers();
-    const { data } = await supabase.from('profiles').select('id').eq('is_teacher', true).eq('is_manager', true);
-    setManagerIds(new Set((data ?? []).map((m) => m.id)));
-  }, [loadTeachers]);
-
-  const loadVideos = useCallback(async () => {
-    const { data } = await supabase
-      .from('videos')
-      .select(`${VIDEO_PUBLIC_COLUMNS}, teacher:profiles!videos_teacher_id_fkey(id, full_name), category:categories(name_ar)`)
-      .order('created_at', { ascending: false })
-      .limit(200);
-    setVideos((data ?? []) as unknown as Video[]);
-  }, []);
-
-  const loadCourses = useCallback(async () => {
-    const { data } = await supabase
-      .from('courses')
-      .select('*, teacher:profiles!courses_teacher_id_fkey(id, full_name), category:categories(name_ar)')
-      .order('created_at', { ascending: false })
-      .limit(200);
-    setCourses((data ?? []) as Course[]);
-  }, []);
-
-  const loadComments = useCallback(async () => {
-    const { data } = await supabase
-      .from('comments')
-      .select('*, student:profiles!comments_student_id_fkey(id, full_name)')
-      .order('created_at', { ascending: false })
-      .limit(200);
-    setComments((data ?? []) as Comment[]);
-  }, []);
-
-  const loadReviews = useCallback(async () => {
-    const { data } = await supabase
-      .from('reviews')
-      .select('*, student:profiles!reviews_student_id_fkey(id, full_name)')
-      .order('created_at', { ascending: false })
-      .limit(200);
-    setReviews((data ?? []) as Review[]);
-  }, []);
 
   const loadSubscriptions = useCallback(async () => {
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('*, student:profiles!subscriptions_student_id_fkey(id, full_name), plan:subscription_plans(*)')
-      .order('created_at', { ascending: false })
-      .limit(200);
-    setSubscriptions((data ?? []) as Subscription[]);
+    const { data } = await supabase.rpc('admin_subscriptions_list');
+    setSubscriptions((data ?? []) as AdminSubscriptionRow[]);
   }, []);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    void loadStats();
-    void loadAdmins();
-  }, [isAdmin, loadStats, loadAdmins]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    if (tab === 'teachers') void loadTeachers();
-    if (tab === 'managers') void loadManagers();
-    if (tab === 'videos') void loadVideos();
-    if (tab === 'courses') void loadCourses();
-    if (tab === 'comments') void loadComments();
-    if (tab === 'reviews') void loadReviews();
-    if (tab === 'subscriptions') void loadSubscriptions();
-    if (tab === 'students') void loadStudents();
-    if (tab === 'assessments') void loadAssessments();
-  }, [tab, isAdmin, loadTeachers, loadVideos, loadCourses, loadComments, loadReviews, loadSubscriptions, loadStudents, loadAssessments, loadManagers]);
-
-  const run = async (fn: () => Promise<void>) => {
+  const loadAll = useCallback(async () => {
     setBusy(true);
-    setError(null);
-    try {
-      await fn();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'فشلت العملية');
-    } finally {
-      setBusy(false);
-    }
+    await Promise.all([loadSubscriptions()]);
+    setBusy(false);
+  }, [loadSubscriptions]);
+
+  useEffect(() => { void loadAll(); }, [loadAll]);
+
+  const approveSubscription = async (row: AdminSubscriptionRow) => {
+    setBusy(true);
+    await supabase.rpc('admin_set_subscription_status', { target_id: row.id, new_status: 'active', paid: true });
+    await loadSubscriptions();
+    setBusy(false);
   };
 
-  const generateRandomPassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setInvitePassword(password);
+  const rejectSubscription = async (row: AdminSubscriptionRow) => {
+    setBusy(true);
+    await supabase.rpc('admin_set_subscription_status', { target_id: row.id, new_status: 'expired', paid: false });
+    await loadSubscriptions();
+    setBusy(false);
   };
 
-  const createTeacherAccount = async () => {
-    if (!inviteName.trim() || !inviteEmail.trim()) {
-      setError('اكتب اسم المدرس والبريد الإلكتروني أولاً');
-      return;
-    }
-    
-    // إذا كان التوليد التلقائي مفعلاً ولم يتم إدخال كلمة مرور، قم بتوليدها
-    if (autoGeneratePassword && !invitePassword.trim()) {
-      generateRandomPassword();
-    }
-    
-    if (!invitePassword.trim()) {
-      setError('اكتب كلمة المرور أو فعّل التوليد التلقائي');
-      return;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(inviteEmail.trim())) {
-      setError('البريد الإلكتروني غير صحيح');
-      return;
-    }
-    if (invitePassword.length < 6) {
-      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return;
-    }
-    
-    await run(async () => {
-      try {
-        // محاولة استخدام الدالة Edge Function أولاً
-        try {
-          const { data, error: funcError } = await supabase.functions.invoke('admin-invite-teacher', {
-            body: {
-              email: inviteEmail.trim(),
-              password: invitePassword.trim(),
-              fullName: inviteName.trim(),
-              specialization: inviteSpecialization.trim(),
-              location: inviteLocation.trim(),
-              phone: invitePhone.trim(),
-              bio: inviteBio.trim(),
-            },
-          });
-
-          if (!funcError && data?.ok) {
-            // نجح استخدام الدالة
-            setCreatedCredentials({
-              email: inviteEmail.trim(),
-              password: invitePassword.trim()
-            });
-
-            setInviteName('');
-            setInviteEmail('');
-            setInvitePassword('');
-            setInviteSpecialization('');
-            setInviteLocation('');
-            setInvitePhone('');
-            setInviteBio('');
-            setAutoGeneratePassword(false);
-
-            setSuccess('تم إنشاء حساب المدرس بنجاح!');
-            setTimeout(() => setSuccess(null), 5000);
-            await loadTeachers();
-            return;
-          }
-        } catch (funcErr) {
-          console.log('Edge function not available, using direct method');
-        }
-
-        // الحل البديل: إنشاء الحساب مباشرة مع معالجة rate limit
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: inviteEmail.trim(),
-          password: invitePassword.trim(),
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin/teacher`,
-            data: {
-              full_name: inviteName.trim(),
-              is_teacher: true,
-              is_manager: false,
-              is_approved: true,
-              specialization: inviteSpecialization.trim(),
-              location: inviteLocation.trim(),
-              phone: invitePhone.trim(),
-              bio: inviteBio.trim(),
-            }
-          }
-        });
-
-        if (authError) {
-          console.error('Auth Error:', authError);
-          if (authError.message.includes('User already registered') || authError.message.includes('already registered')) {
-            throw new Error('البريد الإلكتروني مسجل بالفعل في النظام');
-          }
-          if (authError.message.includes('rate limit') || authError.message.includes('Rate limit') || authError.message.includes('exceeded')) {
-            throw new Error('تم تجاوز الحد المسموح من إنشاء الحسابات. انتظر 5-10 دقائق ثم حاول مرة أخرى. للحل الدائم، نشر الدالة admin-invite-teacher من لوحة تحكم Supabase.');
-          }
-          if (authError.message.includes('Email address') || authError.message.includes('Invalid email')) {
-            throw new Error('البريد الإلكتروني غير صالح. تأكد من كتابته بشكل صحيح.');
-          }
-          throw new Error('فشل إنشاء الحساب: ' + authError.message);
-        }
-
-        if (authData.user) {
-          const { error: profileError } = await supabase.from('profiles').insert({
-            id: authData.user.id,
-            email: inviteEmail.trim(),
-            full_name: inviteName.trim(),
-            is_teacher: true,
-            is_manager: false,
-            is_approved: true,
-            specialization: inviteSpecialization.trim(),
-            location: inviteLocation.trim(),
-            phone: invitePhone.trim(),
-            bio: inviteBio.trim(),
-          });
-
-          if (profileError) {
-            console.error('Profile Error:', profileError);
-            throw new Error('فشل إنشاء الملف الشخصي: ' + profileError.message);
-          }
-        }
-
-        setCreatedCredentials({
-          email: inviteEmail.trim(),
-          password: invitePassword.trim()
-        });
-
-        setInviteName('');
-        setInviteEmail('');
-        setInvitePassword('');
-        setInviteSpecialization('');
-        setInviteLocation('');
-        setInvitePhone('');
-        setInviteBio('');
-        setAutoGeneratePassword(false);
-
-        setSuccess('تم إنشاء حساب المدرس بنجاح!');
-        setTimeout(() => setSuccess(null), 5000);
-        await loadTeachers();
-      } catch (error) {
-        console.error('Full Error:', error);
-        throw error;
-      }
-    });
+  const blockUser = async (id: string) => {
+    await supabase.rpc('admin_set_approved', { target_id: id, approved: false });
   };
 
-  if (!loading && !user) {
-    return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
-        <Shield className="h-12 w-12 text-slate-300 dark:text-slate-500" />
-        <div className="text-lg font-bold text-slate-700 dark:text-slate-200">سجّل الدخول أولاً</div>
-        <Link to="/signin" className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
-          تسجيل الدخول
-        </Link>
-      </div>
-    );
+  if (authLoading || !profile || !isAdmin) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
   }
-
-  if (!loading && user && !isAdmin) {
-    return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
-        <ShieldOff className="h-12 w-12 text-amber-400" />
-        <div className="text-lg font-bold text-slate-700 dark:text-slate-200">غير مصرح لك بالوصول للوحة الإدارة</div>
-        <Link to="/" className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
-          العودة للرئيسية
-        </Link>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
-  const statCards = [
-    { label: 'المدرسون', value: stats.teachers ?? 0, icon: GraduationCap, color: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white', trend: '+12%', trendUp: true, description: 'المدرسين المسجلين' },
-    { label: 'الطلاب', value: stats.students ?? 0, icon: Users, color: 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white', trend: '+8%', trendUp: true, description: 'الطلاب النشطين' },
-    { label: 'المسجلون في الدورات', value: stats.enrollments ?? 0, icon: BookOpen, color: 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white', trend: '+15%', trendUp: true, description: 'الاشتراكات النشطة' },
-    { label: 'محاولات الاختبارات', value: stats.attempts ?? 0, icon: ClipboardCheck, color: 'bg-gradient-to-br from-violet-500 to-violet-600 text-white', trend: '+5%', trendUp: true, description: 'إجمالي المحاولات' },
-    { label: 'الاختبارات المنشورة', value: stats.quizzes ?? 0, icon: Award, color: 'bg-gradient-to-br from-amber-500 to-amber-600 text-white', trend: '+3%', trendUp: true, description: 'الاختبارات المتاحة' },
-    { label: 'الشهادات', value: stats.certificates ?? 0, icon: Trophy, color: 'bg-gradient-to-br from-rose-500 to-rose-600 text-white', trend: '+10%', trendUp: true, description: 'الشهادات المصدرة' },
-    { label: 'المشاهدات', value: stats.views ?? 0, icon: Eye, color: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white', trend: '+25%', trendUp: true, description: 'إجمالي المشاهدات' },
-    { label: 'الإيرادات', value: stats.revenue ?? 0, icon: DollarSign, color: 'bg-gradient-to-br from-green-500 to-green-600 text-white', trend: '+18%', trendUp: true, description: 'الإيرادات بالريال' },
-  ];
-  const normalizedSearch = searchQuery.trim().toLowerCase();
-  const filteredTeachers = teachers.filter((teacher) => !normalizedSearch || `${teacher.full_name} ${teacher.email} ${teacher.specialization ?? ''}`.toLowerCase().includes(normalizedSearch));
-  const filteredVideos = videos.filter((video) => !normalizedSearch || `${video.title} ${video.description ?? ''}`.toLowerCase().includes(normalizedSearch));
-  const filteredCourses = courses.filter((course) => !normalizedSearch || `${course.title} ${course.description ?? ''}`.toLowerCase().includes(normalizedSearch));
-  const filteredComments = comments.filter((comment) => !normalizedSearch || `${comment.comment} ${comment.student?.full_name ?? ''}`.toLowerCase().includes(normalizedSearch));
-  const filteredReviews = reviews.filter((review) => !normalizedSearch || `${review.comment ?? ''} ${review.student?.full_name ?? ''}`.toLowerCase().includes(normalizedSearch));
-  const filteredAssessments = assessmentRows.filter((assessment) => !normalizedSearch || `${assessment.title} ${assessment.course}`.toLowerCase().includes(normalizedSearch));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <MetaTags title="لوحة الإدارة | منصة العلم" noIndex />
-      
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/20 bg-white/80 backdrop-blur-xl dark:bg-slate-900/80">
-        <div className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="rounded-xl bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
-                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-                  <Shield className="h-7 w-7" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-                    مركز إدارة منصة العلم
-                  </h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    لوحة المدير العام - إدارة مستقلة وآمنة
-                  </p>
-                </div>
-              </div>
-            </div>
+    <AdminPortalShell onNavigate={(t) => setTab(t)} onSignOut={() => { void signOut(); navigate('/signin?next=/admin', { replace: true }); }} activeTab={tab} onRefresh={loadAll}>
+      {tab === 'home' && <HomepageManager />}
+      {tab === 'overview' && <OverviewPanel />}
+      {tab === 'analytics' && <AnalyticsPanel />}
+      {tab === 'teachers' && <TeachersPanel busy={busy} onApprove={async (t) => { await supabase.rpc('admin_set_approved', { target_id: t.id, approved: true }); }} onReject={async (t) => { if (confirm('هل تريد رفض هذا المدرس وحذفه من قائمة المدرسين؟')) await supabase.rpc('admin_reject_teacher', { target_id: t.id }); }} onBlock={(t) => { void (async () => { if (confirm('هل تريد حظر وايقاف هذا المدرس؟')) await blockUser(t.id); })(); }} />}
+      {tab === 'students' && <StudentsPanel onBlock={async (s) => { if (confirm('هل تريد حظر هذا الطالب وإزالته من قائمة الطلاب؟')) await blockUser(s.id); }} />}
+      {tab === 'courses' && <CoursesPanel />}
+      {tab === 'videos' && <VideosPanel />}
+      {tab === 'exams' && <ExamsPanel />}
+      {tab === 'moderation' && <ModerationPanel />}
+      {tab === 'subscriptions' && (
+        <SubscriptionsPanel
+          subscriptions={subscriptions}
+          busy={busy}
+          onRefresh={loadSubscriptions}
+          onApprove={approveSubscription}
+          onReject={rejectSubscription}
+        />
+      )}
+      {tab === 'broadcast' && <BroadcastPanel />}
+      {tab === 'admins' && <AdminUsersPanel />}
+      {tab === 'reports' && <ReportsPanel />}
+      {tab === 'settings' && <SiteSettingsPanel />}
+    </AdminPortalShell>
+  );
+}
 
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="بحث سريع..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 w-64 rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
-              </div>
+function AdminPortalShell({ children, onNavigate, onSignOut, activeTab, onRefresh }: {
+  children: React.ReactNode;
+  onNavigate: (tab: TabId) => void;
+  onSignOut: () => void;
+  activeTab: TabId;
+  onRefresh: () => void;
+}) {
+  const { profile } = useAuth();
+  const { actualTheme, setTheme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const darkMode = actualTheme === 'dark';
 
-              <button
-                onClick={() => void run(loadStats)}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:shadow-blue-500/40"
-              >
-                <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} />
-                تحديث البيانات
-              </button>
+  const toggleTheme = () => {
+    const next = !darkMode;
+    setTheme(next ? 'dark' : 'light');
+  };
 
-              <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700 px-4 py-2 border border-slate-200 dark:border-slate-600">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {profile?.full_name || user?.user_metadata?.full_name || 'المدير'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className={`fixed right-0 top-20 z-40 h-[calc(100vh-5rem)] w-72 transform overflow-y-auto border-l border-white/20 bg-white/95 backdrop-blur-xl transition-transform duration-300 dark:bg-slate-900/95 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="p-4">
-            <div className="mb-6">
-              <h3 className="mb-3 text-xs font-bold text-slate-400 uppercase tracking-wider">القائمة الرئيسية</h3>
-              <div className="space-y-1">
-                {TABS.slice(0, 6).map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${
-                        tab === t.id 
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
-                          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <div className="flex-1 text-right">{t.label}</div>
-                      {tab === t.id && <ChevronDown className="h-4 w-4 rotate-180" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <h3 className="mb-3 text-xs font-bold text-slate-400 uppercase tracking-wider">إدارة المحتوى</h3>
-              <div className="space-y-1">
-                {TABS.slice(6, 10).map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${
-                        tab === t.id 
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30' 
-                          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <div className="flex-1 text-right">{t.label}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            
+  return (
+    <div dir="rtl" className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800 sm:h-16 sm:px-5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white sm:h-8 sm:w-8 sm:text-sm">م</div>
             <div>
-              <h3 className="mb-3 text-xs font-bold text-slate-400 uppercase tracking-wider">متقدم</h3>
-              <div className="space-y-1">
-                {TABS.slice(10).map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${
-                        tab === t.id 
-                          ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/30' 
-                          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <div className="flex-1 text-right">{t.label}</div>
-                    </button>
-                  );
-                })}
-              </div>
+              <div className="text-xs font-extrabold text-slate-900 dark:text-white sm:text-sm">لوحة التحكم</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 sm:text-xs">إدارة المنصة التعليمية</div>
             </div>
           </div>
-        </aside>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 lg:hidden"
+          >
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
+        </div>
 
-        {/* Main Content */}
-        <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'mr-72' : 'mr-0'}`}>
-          <div className="p-6 lg:p-8">
-            {error && (
-              <div className="mb-6 flex items-start gap-3 rounded-2xl border-2 border-red-200 bg-red-50 px-6 py-4 text-sm font-bold text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
-                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div className="font-bold">حدث خطأ</div>
-                  <div className="mt-1 text-xs font-normal text-red-600 dark:text-red-400">{error}</div>
-                  {error.includes('Email') && (
-                    <div className="mt-2 text-xs font-normal text-red-600 dark:text-red-400">
-                      💡 تأكد من أن البريد الإلكتروني:
-                      <ul className="mt-1 list-inside list-disc space-y-1">
-                        <li>يحتوي على @ في المنتصف</li>
-                        <li>له نطاق صحيح (مثل .com, .net, .org)</li>
-                        <li>غير مسجل بالفعل في النظام</li>
-                        <li>لا يحتوي على مسافات أو أحرف خاصة</li>
-                      </ul>
-                    </div>
-                  )}
-                  {error.includes('rate limit') && (
-                    <div className="mt-2 text-xs font-normal text-red-600 dark:text-red-400">
-                      💡 تم تجاوز الحد المسموح من إنشاء الحسابات:
-                      <ul className="mt-1 list-inside list-disc space-y-1">
-                        <li>انتظر 5-10 دقائق قبل المحاولة مرة أخرى</li>
-                        <li>هذا حماية أمنية من Supabase</li>
-                        <li>للحل الدائم: نشر الدالة admin-invite-teacher (راجع ملف SUPABASE_SETUP.md)</li>
-                      </ul>
-                    </div>
-                  )}
-                  {error.includes('Edge Function') && (
-                    <div className="mt-2 text-xs font-normal text-red-600 dark:text-red-400">
-                      💡 الحل: نشر الدالة Edge Function:
-                      <ol className="mt-1 list-inside list-decimal space-y-1">
-                        <li>اذهب إلى [supabase.com/dashboard](https://supabase.com/dashboard)</li>
-                        <li>اختر مشروعك ثم Edge Functions</li>
-                        <li>عدل الدالة admin-invite-teacher</li>
-                        <li>انسخ الكود من supabase/functions/admin-invite-teacher/index.ts</li>
-                        <li>انشر التعديلات</li>
-                      </ol>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="flex-shrink-0 rounded-lg bg-red-100 p-1.5 text-red-600 transition hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/40"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+        <nav className="flex-1 overflow-y-auto p-2 sm:p-3">
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => { onNavigate(id); setSidebarOpen(false); }}
+                className={`mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs transition sm:gap-3 sm:px-3 sm:py-2.5 sm:text-sm ${isActive ? 'bg-blue-50 font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'}`}
+              >
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-            {success && (
-              <div className="mb-6 flex items-center gap-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-6 py-4 text-sm font-bold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300">
-                <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-                {success}
-              </div>
-            )}
-
-            {/* Date Range Filter */}
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-slate-400" />
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">الفترة الزمنية:</span>
-                <div className="flex gap-2">
-                  {(['7d', '30d', '90d', 'all'] as const).map((range) => (
-                    <button
-                      key={range}
-                      onClick={() => setDateRange(range)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                        dateRange === range
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {range === '7d' ? '7 أيام' : range === '30d' ? '30 يوم' : range === '90d' ? '90 يوم' : 'الكل'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <Clock className="h-4 w-4" />
-                آخر تحديث: {new Date().toLocaleTimeString('ar-EG')}
-              </div>
+        <div className="border-t border-slate-200 p-2 dark:border-slate-800 sm:p-3">
+          <button
+            type="button"
+            onClick={() => { onRefresh(); }}
+            className="mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:gap-3 sm:py-2.5 sm:text-sm"
+          >
+            <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>تحديث البيانات</span>
+          </button>
+          <div className="mb-2 flex items-center gap-2 rounded-xl px-3 py-2 sm:gap-3 sm:py-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white sm:h-9 sm:w-9 sm:text-sm">
+              {(profile?.full_name ?? 'م')[0]}
             </div>
-
-            {/* Overview Tab */}
-            {tab === 'overview' && (
-              <div className="space-y-8">
-                {/* Hero Section */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 p-8 text-white shadow-2xl">
-                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi0yLTRjMC0yLTItNC0yLTRzLTItMi0yLTRjMC0yLTItNC0yLTRzLTItMi0yLTRjMC0yLTItNC0yLTRzLTItMi0yLTRzLTItMi0yLTVjMC0yLTItNC0yLTRzLTItMi0yLTRzLTItMi0yLTRzLTItMi0yLTRjMC0yLTItNC0yLTRzLTItMi0yLTRzLTItMi0yLTRsLTItMi0yLTVjMC0yLTItNC0yLTRzLTItMi0yLTRzLTItMi0yLTRzLTItMi0yLTRjMC0yLTItNC0yLTRzLTItMi0yLTRzLTItMi0yLTRzLTItMi0yLTV6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20" />
-                  <div className="relative">
-                    <div className="flex items-start justify-between">
-                      <div className="max-w-2xl">
-                        <div className="mb-4 flex items-center gap-2">
-                          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold backdrop-blur-sm">
-                            🎉 مرحباً بك في لوحة الإدارة
-                          </span>
-                          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300 backdrop-blur-sm">
-                            النظام يعمل بشكل ممتاز
-                          </span>
-                        </div>
-                        <h2 className="text-3xl font-extrabold leading-tight">
-                          مركز التحكم الشامل لمنصة العلم
-                        </h2>
-                        <p className="mt-3 text-lg leading-relaxed text-blue-100">
-                          إدارة متكاملة للمدرسين والطلاب والمحتوى التعليمي مع تحليلات متقدمة وإحصائيات فورية
-                        </p>
-                      </div>
-                      <div className="hidden lg:block">
-                        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                          <Sparkles className="h-12 w-12 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                            <TrendingUp className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="text-2xl font-extrabold">{stats.students ?? 0}</div>
-                            <div className="text-xs text-blue-200">طالب نشط</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                            <GraduationCap className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="text-2xl font-extrabold">{stats.teachers ?? 0}</div>
-                            <div className="text-xs text-blue-200">مدرس معتمد</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                            <BookOpen className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="text-2xl font-extrabold">{stats.courses ?? 0}</div>
-                            <div className="text-xs text-blue-200">دورة تعليمية</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                            <Award className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="text-2xl font-extrabold">{stats.certificates ?? 0}</div>
-                            <div className="text-xs text-blue-200">شهادة صادرة</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {statCards.map((s) => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={s.label} className="group relative overflow-hidden rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/50 transition-all hover:scale-105 hover:shadow-2xl dark:bg-slate-800 dark:shadow-slate-900/50">
-                        <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-gradient-to-br from-white/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                        <div className="relative">
-                          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${s.color} shadow-lg`}>
-                            <Icon className="h-7 w-7" />
-                          </div>
-                          <div className="mt-4">
-                            <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                              {s.value.toLocaleString('ar-EG')}
-                            </div>
-                            <div className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                              {s.label}
-                            </div>
-                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                              {s.description}
-                            </div>
-                          </div>
-                          <div className={`mt-3 flex items-center gap-1 text-xs font-bold ${s.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {s.trendUp ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                            {s.trend}
-                            <span className="text-slate-400">مقارنة بالشهر الماضي</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Quick Actions & Recent Activity */}
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {/* Quick Actions */}
-                  <div className="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
-                    <div className="mb-6 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">إجراءات سريعة</h3>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">الوصول السريع للوظائف الشائعة</p>
-                      </div>
-                      <Zap className="h-6 w-6 text-amber-500" />
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <button
-                        onClick={() => setTab('teachers')}
-                        className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-100 p-4 text-right transition hover:from-blue-100 hover:to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 dark:hover:from-blue-900/40 dark:hover:to-blue-800/40"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
-                          <GraduationCap className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">إضافة مدرس جديد</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">إنشاء حساب مدرس</div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => setTab('live')}
-                        className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-red-50 to-red-100 p-4 text-right transition hover:from-red-100 hover:to-red-200 dark:from-red-900/30 dark:to-red-800/30 dark:hover:from-red-900/40 dark:hover:to-red-800/40"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600 text-white">
-                          <Radio className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">بدء بث مباشر</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">جلسة تفاعلية فورية</div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => setTab('students')}
-                        className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 text-right transition hover:from-emerald-100 hover:to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-800/30 dark:hover:from-emerald-900/40 dark:hover:to-emerald-800/40"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                          <Users className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">متابعة الطلاب</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">عرض تقدم الطلاب</div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => setTab('analytics')}
-                        className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-50 to-violet-100 p-4 text-right transition hover:from-violet-100 hover:to-violet-200 dark:from-violet-900/30 dark:to-violet-800/30 dark:hover:from-violet-900/40 dark:hover:to-violet-800/40"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 text-white">
-                          <BarChart3 className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">التحليلات المتقدمة</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">تقارير وإحصائيات</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Recent Activity */}
-                  <div className="rounded-3xl bg-white p-6 shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
-                    <div className="mb-6 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">النشاط الأخير</h3>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">آخر التحديثات على المنصة</p>
-                      </div>
-                      <Activity className="h-6 w-6 text-cyan-500" />
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-bold text-slate-900 dark:text-white">تسجيل طالب جديد</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">منذ 5 دقائق</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                          <BookOpen className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-bold text-slate-900 dark:text-white">نشر دورة جديدة</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">منذ 15 دقيقة</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-700/50">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
-                          <Award className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-bold text-slate-900 dark:text-white">إصدار شهادة جديدة</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">منذ 30 دقيقة</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Students Tab */}
-            {tab === 'students' && (
-              <div className="space-y-8">
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  <InsightCard icon={Users} label="إجمالي الطلاب" value={students.length} tone="cyan" />
-                  <InsightCard icon={TrendingUp} label="متوسط التقدم" value={`${students.length ? Math.round(students.reduce((sum, student) => { const row = studentRows[student.id]; return sum + (row?.courses ? row.progress / row.courses : 0); }, 0) / students.length) : 0}%`} tone="emerald" />
-                  <InsightCard icon={Trophy} label="طلاب لديهم محاولات" value={students.filter((student) => (studentRows[student.id]?.attempts ?? 0) > 0).length} tone="amber" />
-                  <InsightCard icon={Award} label="طلاب حاصلين على شهادات" value={students.filter((student) => (studentRows[student.id]?.score ?? 0) > 70).length} tone="violet" />
-                </div>
-                <div className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-5">
-                    <div>
-                      <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">لوحة متابعة الطلاب</h2>
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">التقدم، الدورات، والنتائج في سجل واحد</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-6 w-6 text-cyan-500" />
-                      <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
-                        {students.length} طالب
-                      </span>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] text-right text-sm">
-                      <thead className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
-                        <tr>
-                          <th className="px-6 py-4">الترتيب</th>
-                          <th className="px-6 py-4">الطالب</th>
-                          <th className="px-6 py-4">الدورات</th>
-                          <th className="px-6 py-4">التقدم</th>
-                          <th className="px-6 py-4">الاختبارات</th>
-                          <th className="px-6 py-4">المتوسط</th>
-                          <th className="px-6 py-4">المستوى</th>
-                          <th className="px-6 py-4">الحالة</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {[...students].sort((first, second) => (studentRows[second.id]?.score ?? 0) - (studentRows[first.id]?.score ?? 0)).map((student, rank) => {
-                          const row = studentRows[student.id] ?? { courses: 0, progress: 0, attempts: 0, score: 0 };
-                          const progress = row.courses ? Math.round(row.progress / row.courses) : 0;
-                          const average = row.attempts ? Math.round(row.score / row.attempts) : 0;
-                          return (
-                            <tr key={student.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <td className="px-6 py-5">
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-full font-extrabold ${
-                                  rank === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
-                                  rank === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-white' :
-                                  rank === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white' :
-                                  'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                                }`}>
-                                  {rank + 1}
-                                </div>
-                              </td>
-                              <td className="px-6 py-5">
-                                <div className="flex items-center gap-4">
-                                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 font-bold text-white">
-                                    {student.full_name?.charAt(0) ?? 'ط'}
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-slate-900 dark:text-white">{student.full_name}</div>
-                                    <div className="text-xs text-slate-500 dark:text-slate-400">{student.email}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-5 font-bold text-slate-600 dark:text-slate-300">{row.courses}</td>
-                              <td className="px-6 py-5">
-                                <div className="flex items-center gap-3">
-                                  <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                                    <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-cyan-600" style={{ width: `${progress}%` }} />
-                                  </div>
-                                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{progress}%</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-5 font-bold text-slate-600 dark:text-slate-300">{row.attempts}</td>
-                              <td className="px-6 py-5">
-                                <span className={`text-lg font-extrabold ${average >= 80 ? 'text-emerald-600' : average >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
-                                  {average}%
-                                </span>
-                              </td>
-                              <td className="px-6 py-5">
-                                <LevelBadge progress={progress} />
-                              </td>
-                              <td className="px-6 py-5">
-                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                                  average >= 80 
-                                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' 
-                                    : average >= 60 
-                                    ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300' 
-                                    : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300'
-                                }`}>
-                                  {average >= 80 ? <CheckCircle2 className="h-3 w-3" /> : average >= 60 ? <Info className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                  {average >= 80 ? 'ممتاز' : average >= 60 ? 'جيد' : 'يحتاج تحسين'}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {!busy && students.length === 0 && (
-                          <tr>
-                            <td colSpan={8} className="px-6 py-16 text-center text-slate-400 dark:text-slate-500">
-                              <div className="flex flex-col items-center gap-3">
-                                <Users className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                                <span className="text-lg font-semibold">لا يوجد طلاب بعد</span>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Teachers Tab */}
-            {tab === 'teachers' && (
-              <div className="space-y-8">
-                {/* عرض بيانات الدخول بعد الإنشاء */}
-                {createdCredentials && (
-                  <div className="rounded-3xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-8 dark:border-emerald-900/50 dark:from-emerald-900/20 dark:to-emerald-800/20">
-                    <div className="mb-6 flex items-start justify-between">
-                      <div>
-                        <h2 className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300">تم إنشاء الحساب بنجاح! 🎉</h2>
-                        <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                          احفظ بيانات الدخول التالية وأرسلها للمدرس:
-                        </p>
-                      </div>
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                        <CheckCircle2 className="h-6 w-6" />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-800">
-                        <label className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400">البريد الإلكتروني</label>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-slate-900 dark:text-white" dir="ltr">{createdCredentials.email}</span>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(createdCredentials.email);
-                              setSuccess('تم نسخ البريد الإلكتروني!');
-                              setTimeout(() => setSuccess(null), 2000);
-                            }}
-                            className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-800">
-                        <label className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400">كلمة المرور</label>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-slate-900 dark:text-white" dir="ltr">{createdCredentials.password}</span>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(createdCredentials.password);
-                              setSuccess('تم نسخ كلمة المرور!');
-                              setTimeout(() => setSuccess(null), 2000);
-                            }}
-                            className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex justify-end">
-                      <button
-                        onClick={() => setCreatedCredentials(null)}
-                        className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-50 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-slate-700"
-                      >
-                        إغلاق
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 dark:from-blue-900/20 dark:to-indigo-900/20">
-                  <div className="mb-6 flex items-start justify-between">
-                    <div>
-                      <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">إنشاء حساب مدرس مباشر</h2>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                        سيتم إنشاء الحساب فوراً ويمكن للمدرس الدخول باستخدام البيانات التالية. عند الدخول من <b>/admin/teacher</b> سيفتح له صفحته الإدارية مباشرة.
-                      </p>
-                      <div className="mt-3 rounded-xl bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-                        <div className="flex items-center gap-2">
-                          <Info className="h-4 w-4" />
-                          <span>ملاحظة: لا يتم إرسال رسالة تحقق إلكتروني. المدرس يستخدم بيانات الدخول مباشرة.</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-                      <Plus className="h-6 w-6" />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">الاسم الكامل *</label>
-                      <input
-                        value={inviteName}
-                        onChange={(e) => setInviteName(e.target.value)}
-                        placeholder="أدخل اسم المدرس"
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">البريد الإلكتروني *</label>
-                      <input
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        type="email"
-                        placeholder="example@domain.com"
-                        dir="ltr"
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        تأكد من كتابة بريد إلكتروني صحيح (مثال: teacher@school.com)
-                      </p>
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">كلمة المرور *</label>
-                      <div className="flex gap-2">
-                        <input
-                          value={invitePassword}
-                          onChange={(e) => setInvitePassword(e.target.value)}
-                          type="password"
-                          placeholder="******"
-                          dir="ltr"
-                          disabled={autoGeneratePassword}
-                          className="h-12 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white disabled:opacity-50"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAutoGeneratePassword(!autoGeneratePassword);
-                            if (!autoGeneratePassword) generateRandomPassword();
-                          }}
-                          className={`flex h-12 items-center justify-center rounded-xl px-4 transition ${
-                            autoGeneratePassword 
-                              ? 'bg-emerald-600 text-white' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
-                          }`}
-                          title={autoGeneratePassword ? 'إيقاف التوليد التلقائي' : 'توليد كلمة مرور عشوائية'}
-                        >
-                          <RefreshCwIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                      {autoGeneratePassword && (
-                        <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                          ✓ سيتم توليد كلمة مرور عشوائية آمنة تلقائياً
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">التخصص</label>
-                      <input
-                        value={inviteSpecialization}
-                        onChange={(e) => setInviteSpecialization(e.target.value)}
-                        placeholder="مثال: الرياضيات، الفيزياء"
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">الموقع</label>
-                      <input
-                        value={inviteLocation}
-                        onChange={(e) => setInviteLocation(e.target.value)}
-                        placeholder="مثال: الرياضيات، السعودية"
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">رقم الهاتف</label>
-                      <input
-                        value={invitePhone}
-                        onChange={(e) => setInvitePhone(e.target.value)}
-                        placeholder="مثال: +966501234567"
-                        dir="ltr"
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
-                    <div className="md:col-span-2 lg:col-span-3">
-                      <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">نبذة تعريفية</label>
-                      <input
-                        value={inviteBio}
-                        onChange={(e) => setInviteBio(e.target.value)}
-                        placeholder="نبذة مختصرة عن المدرس"
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-6 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => void createTeacherAccount()}
-                      disabled={busy}
-                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:shadow-blue-500/40 disabled:opacity-60"
-                    >
-                      <Plus className="h-4 w-4" />
-                      إنشاء الحساب مباشرة
-                    </button>
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-5">
-                    <div>
-                      <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">قائمة المدرسين</h2>
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">إدارة حسابات المدرسين وصلاحياتهم</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-6 w-6 text-blue-500" />
-                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                        {teachers.length} مدرس
-                      </span>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] text-right text-sm">
-                      <thead className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
-                        <tr>
-                          <th className="px-6 py-4">المدرس</th>
-                          <th className="hidden px-6 py-4 md:table-cell">التخصص</th>
-                          <th className="hidden px-6 py-4 lg:table-cell">الموقع</th>
-                          <th className="px-6 py-4">الحالة</th>
-                          <th className="px-6 py-4">صلاحية الأدمن</th>
-                          <th className="px-6 py-4">الإجراءات</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {filteredTeachers.map((t) => (
-                          <tr key={t.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-6 py-5">
-                              <div className="flex items-center gap-4">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 font-bold text-white">
-                                  {t.full_name?.charAt(0) ?? 'U'}
-                                </div>
-                                <div>
-                                  <div className="font-bold text-slate-900 dark:text-white">{t.full_name}</div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">{t.email}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="hidden px-6 py-5 text-slate-600 dark:text-slate-300 md:table-cell">{t.specialization || '—'}</td>
-                            <td className="hidden px-6 py-5 text-slate-600 dark:text-slate-300 lg:table-cell">{t.location || '—'}</td>
-                            <td className="px-6 py-5">
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                                t.is_approved 
-                                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' 
-                                  : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300'
-                              }`}>
-                                {t.is_approved ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                {t.is_approved ? 'معتمد' : 'محظور'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-5">
-                              {adminIds.has(t.id) ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white">
-                                  <ShieldCheck className="h-3 w-3" /> أدمن
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-5">
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  onClick={() => void run(async () => {
-                                    await supabase.rpc('admin_set_approved', { target_id: t.id, approved: !t.is_approved });
-                                    await loadTeachers();
-                                  })}
-                                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                                    t.is_approved 
-                                      ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40' 
-                                      : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
-                                  }`}
-                                  disabled={busy}
-                                >
-                                  {t.is_approved ? 'حظر' : 'اعتماد'}
-                                </button>
-                                <button
-                                  onClick={() => void run(async () => {
-                                    await supabase.rpc('admin_set_admin', { target_id: t.id, value: !adminIds.has(t.id) });
-                                    await loadAdmins();
-                                  })}
-                                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                                    adminIds.has(t.id) 
-                                      ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600' 
-                                      : 'bg-slate-900 text-white hover:bg-slate-700'
-                                  }`}
-                                  disabled={busy}
-                                >
-                                  {adminIds.has(t.id) ? 'إلغاء الأدمن' : 'تعيين أدمن'}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {!busy && filteredTeachers.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="px-6 py-16 text-center text-slate-400 dark:text-slate-500">
-                              <div className="flex flex-col items-center gap-3">
-                                <GraduationCap className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                                <span className="text-lg font-semibold">لا يوجد مدرسون بعد</span>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {tab === 'live' && <LiveCenter />}
-            {tab === 'subscriptions' && (
-              <SubscriptionsPanel
-                subscriptions={subscriptions}
-                busy={busy}
-                onRefresh={() => void loadSubscriptions()}
-                onApprove={(subscription) => void run(async () => {
-                  const endDate = new Date(subscription.end_date);
-                  const { error: subscriptionError } = await supabase.from('subscriptions').update({ status: 'active', payment_status: 'paid', start_date: new Date().toISOString(), end_date: endDate.toISOString() }).eq('id', subscription.id);
-                  if (subscriptionError) throw subscriptionError;
-                  await supabase.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('subscription_id', subscription.id);
-                  await loadSubscriptions();
-                })}
-                onReject={(subscription) => void run(async () => {
-                  const { error: subscriptionError } = await supabase.from('subscriptions').update({ status: 'cancelled', payment_status: 'failed', notes: 'تم رفض طلب الدفع من الإدارة' }).eq('id', subscription.id);
-                  if (subscriptionError) throw subscriptionError;
-                  await supabase.from('payments').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('subscription_id', subscription.id);
-                  await loadSubscriptions();
-                })}
-              />
-            )}
-            {['videos', 'courses', 'comments', 'reviews', 'assessments', 'analytics', 'settings', 'notifications'].includes(tab) && (
-              <AdminDataPanel
-                tab={tab}
-                stats={stats}
-                videos={filteredVideos}
-                courses={filteredCourses}
-                comments={filteredComments}
-                reviews={filteredReviews}
-                assessments={filteredAssessments}
-              />
-            )}
+            <div className="min-w-0">
+              <div className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">{profile?.full_name ?? 'مدير'}</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 sm:text-xs">مدير النظام</div>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:gap-3 sm:py-2.5 sm:text-sm"
+          >
+            <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>{darkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-900/20 sm:gap-3 sm:py-2.5 sm:text-sm"
+          >
+            <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>تسجيل الخروج</span>
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 sm:h-16 lg:px-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden sm:p-2"
+            >
+              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="hidden text-sm font-extrabold text-slate-900 dark:text-white lg:block sm:text-lg">لوحة تحكم المسؤول</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <a href="/" className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm">
+              <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">الصفحة الرئيسية</span>
+              <span className="sm:hidden">الرئيسية</span>
+            </a>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4 pb-20 sm:p-6 sm:pb-24 lg:p-8">
+          {children}
         </main>
       </div>
     </div>
   );
 }
 
-function AdminDataPanel({
-  tab,
-  stats,
-  videos,
-  courses,
-  comments,
-  reviews,
-  assessments,
-}: {
-  tab: string;
-  stats: Record<string, number>;
-  videos: Video[];
-  courses: Course[];
-  comments: Comment[];
-  reviews: Review[];
-  assessments: Array<{ id: string; title: string; course: string; attempts: number; average: number; passed: number }>;
-}) {
-  const titles: Record<string, string> = {
-    videos: 'مكتبة الفيديوهات',
-    courses: 'الدورات التعليمية',
-    comments: 'مراجعة التعليقات',
-    reviews: 'تقييمات الطلاب',
-    assessments: 'الامتحانات والنتائج',
-    analytics: 'لوحة التحليلات',
-    settings: 'إعدادات المنصة',
-    notifications: 'مركز الإشعارات',
-  };
-  const icons: Record<string, typeof Users> = { videos: Film, courses: BookOpen, comments: MessageSquare, reviews: Star, assessments: ClipboardCheck, analytics: BarChart3, settings: Settings, notifications: Bell };
+// ──────────────────────────────────────────────
+// Overview Panel (Enhanced)
+// ──────────────────────────────────────────────
+function OverviewPanel() {
+  const [stats, setStats] = useState<OverviewSnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (tab === 'analytics') {
-    return (
-      <div className="space-y-6">
-        <PanelHeading icon={BarChart3} title="لوحة التحليلات" description="ملخص حي لأداء المنصة والمحتوى والتفاعل." />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <InsightCard icon={Users} label="الطلاب" value={stats.students ?? 0} tone="cyan" />
-          <InsightCard icon={GraduationCap} label="المدرسون" value={stats.teachers ?? 0} tone="violet" />
-          <InsightCard icon={Eye} label="المشاهدات" value={stats.views ?? 0} tone="emerald" />
-          <InsightCard icon={BookOpen} label="التسجيلات" value={stats.enrollments ?? 0} tone="amber" />
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="font-extrabold text-slate-900 dark:text-white">توزيع المحتوى</h3>
-            <div className="mt-5 space-y-4">
-              {[['الفيديوهات', stats.videos, 'bg-blue-500'], ['الدورات', stats.courses, 'bg-emerald-500'], ['الاختبارات', stats.quizzes, 'bg-violet-500'], ['المراجعات', stats.reviews, 'bg-amber-500']].map(([label, value, color]) => (
-                <div key={String(label)}>
-                  <div className="mb-1 flex justify-between text-sm"><span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span><span className="font-bold text-slate-900 dark:text-white">{value}</span></div>
-                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700"><div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, Number(value) > 0 ? 35 + Number(value) % 65 : 4)}%` }} /></div>
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc('admin_dashboard_snapshot');
+    setStats((data ?? null) as OverviewSnapshot | null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  if (loading || !stats) {
+    return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  }
+
+  const c = stats.counts;
+
+  return (
+    <div className="space-y-8">
+      <PanelHeading icon={BarChart3} title="نظرة عامة على المنصة" description="إحصائيات شاملة عن أداء المنصة ونشاط المستخدمين." />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <InsightCard icon={Users} label="إجمالي الطلاب" value={c.students} tone="cyan" />
+        <InsightCard icon={GraduationCap} label="إجمالي المدرسين" value={c.teachers} tone="emerald" />
+        <InsightCard icon={BookOpen} label="إجمالي الدورات" value={c.courses} tone="violet" />
+        <InsightCard icon={Film} label="إجمالي الفيديوهات" value={c.videos} tone="blue" />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <InsightCard icon={DollarSign} label="إجمالي الإيرادات" value={`${Number(c.revenue).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+        <InsightCard icon={CreditCard} label="مدفوعات معلقة" value={c.pending_payments} tone="amber" />
+        <InsightCard icon={UserCheck} label="اشتراكات نشطة" value={c.active_subscriptions} tone="cyan" />
+        <InsightCard icon={Eye} label="إجمالي المشاهدات" value={Number(c.total_views).toLocaleString('ar-EG')} tone="violet" />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white">آخر الاشتراكات</h3>
+          </div>
+          {stats.recent_subscriptions.filter((e) => Boolean(e.student_name)).length === 0 ? (
+            <EmptyAdminState title="لا توجد اشتراكات بعد" />
+          ) : (
+            <div className="space-y-3">
+              {stats.recent_subscriptions.filter((e) => Boolean(e.student_name)).map((e, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                    {(e.student_name ?? 'ط')[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{e.student_name}</div>
+                    <div className="text-xs text-slate-500">{e.course_title ?? 'اشتراك'}</div>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${e.status === 'active' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                    {e.status === 'active' ? 'نشط' : 'معلق'}
+                  </span>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-4 flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white">آخر المدفوعات</h3>
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="font-extrabold text-slate-900 dark:text-white">مؤشرات النشاط</h3>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <MetricTile label="محاولات الاختبارات" value={stats.attempts ?? 0} icon={ClipboardCheck} />
-              <MetricTile label="الشهادات" value={stats.certificates ?? 0} icon={Trophy} />
-              <MetricTile label="التعليقات" value={stats.comments ?? 0} icon={MessageCircle} />
-              <MetricTile label="المشاهدات" value={stats.views ?? 0} icon={TrendingUp} />
+          {stats.recent_payments.filter((e) => Boolean(e.student_name)).length === 0 ? (
+            <EmptyAdminState title="لا توجد مدفوعات بعد" />
+          ) : (
+            <div className="space-y-3">
+              {stats.recent_payments.filter((e) => Boolean(e.student_name)).map((p, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    {(p.student_name ?? 'ط')[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{p.student_name}</div>
+                    <div className="text-xs text-slate-500">{Number(p.amount).toLocaleString('ar-EG')} ر.س</div>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${p.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                    {p.status === 'paid' ? 'مدفوع' : 'معلق'}
+                  </span>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-4 flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white">الدورات الأكثر اشتراكاً</h3>
           </div>
+          {stats.top_courses.length === 0 ? (
+            <EmptyAdminState title="لا توجد اشتراكات مسجلة بعد" />
+          ) : (
+            <div className="space-y-3">
+              {stats.top_courses.map((crs, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-xs font-bold text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                    #{i + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{crs.title}</div>
+                    <div className="text-xs text-slate-500">{crs.enrollments} طالب • إيراد {Number(crs.revenue).toLocaleString('ar-EG')} ر.س</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-4 flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white">أفضل المدرسين إيراداً</h3>
+          </div>
+          {stats.top_teachers.length === 0 ? (
+            <EmptyAdminState title="لا يوجد مدرسون بعد" />
+          ) : (
+            <div className="space-y-3">
+              {stats.top_teachers.map((t, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                    {(t.name ?? 'م')[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{t.name}</div>
+                    <div className="text-xs text-slate-500">{t.courses} دورات • {t.students} طالب • {Number(t.revenue).toLocaleString('ar-EG')} ر.س</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-    );
-  }
-
-  if (tab === 'settings' || tab === 'notifications') {
-    const Icon = icons[tab];
-    return (
-      <div className="space-y-6">
-        <PanelHeading icon={Icon} title={titles[tab]} description={tab === 'settings' ? 'إدارة إعدادات المنصة من مكان واحد.' : 'تابع آخر عمليات الاعتماد والتفاعل داخل المنصة.'} />
-        <div className="grid gap-4 md:grid-cols-2">
-          {['حالة المنصة', 'الحماية والصلاحيات', 'البريد والإشعارات', 'النسخ الاحتياطي'].map((item, index) => <div key={item} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"><div className={`flex h-11 w-11 items-center justify-center rounded-xl ${index % 2 ? 'bg-violet-50 text-violet-600 dark:bg-violet-900/30' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'}`}><Settings className="h-5 w-5" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">{item}</h3><p className="mt-1 text-xs text-slate-500">الإعدادات الأساسية جاهزة للمراجعة</p></div><CheckCircle2 className="mr-auto h-5 w-5 text-emerald-500" /></div>)}
-        </div>
-      </div>
-    );
-  }
-
-  const Icon = icons[tab];
-  return (
-    <div className="space-y-6">
-      <PanelHeading icon={Icon} title={titles[tab] ?? 'إدارة البيانات'} description="ابحث وراجع أحدث السجلات واتخذ الإجراء المناسب." />
-      {tab === 'videos' && <div className="grid gap-4 md:grid-cols-2">{videos.map((video) => <ResourceCard key={video.id} title={video.title} subtitle={`${video.views_count ?? 0} مشاهدة • ${video.is_free ? 'مجاني' : 'مدفوع'}`} icon={Film} />)}</div>}
-      {tab === 'courses' && <div className="grid gap-4 md:grid-cols-2">{courses.map((course) => <ResourceCard key={course.id} title={course.title} subtitle={`${course.price === 0 ? 'مجانية' : `${course.price} ر.س`} • ${course.is_published ? 'منشورة' : 'مسودة'}`} icon={BookOpen} />)}</div>}
-      {tab === 'comments' && <div className="space-y-3">{comments.map((comment) => <ResourceCard key={comment.id} title={comment.student?.full_name ?? 'طالب'} subtitle={comment.comment} icon={MessageCircle} />)}</div>}
-      {tab === 'reviews' && <div className="grid gap-4 md:grid-cols-2">{reviews.map((review) => <ResourceCard key={review.id} title={`${review.rating}/5 • ${review.student?.full_name ?? 'طالب'}`} subtitle={review.comment ?? 'بدون تعليق'} icon={Star} />)}</div>}
-      {tab === 'assessments' && <div className="grid gap-4 md:grid-cols-2">{assessments.map((assessment) => <ResourceCard key={assessment.id} title={assessment.title} subtitle={`${assessment.course} • ${assessment.attempts} محاولة • متوسط ${assessment.average}%`} icon={ClipboardCheck} />)}</div>}
-      {((tab === 'videos' && videos.length === 0) || (tab === 'courses' && courses.length === 0) || (tab === 'comments' && comments.length === 0) || (tab === 'reviews' && reviews.length === 0) || (tab === 'assessments' && assessments.length === 0)) && <EmptyAdminState title="لا توجد بيانات مطابقة" />}
     </div>
   );
 }
 
+// ──────────────────────────────────────────────
+// Teachers Panel (Enhanced)
+// ──────────────────────────────────────────────
+function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; onApprove: (t: AdminTeacherRow) => Promise<unknown>; onReject: (t: AdminTeacherRow) => Promise<unknown>; onBlock: (t: AdminTeacherRow) => void }) {
+  const [rows, setRows] = useState<AdminTeacherRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const applyAction = async (t: AdminTeacherRow, action: () => Promise<unknown>) => {
+    setActionId(t.id);
+    try {
+      await action();
+      await load();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc('admin_teacher_stats');
+    setRows((data ?? []) as AdminTeacherRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return rows;
+    const q = query.trim().toLowerCase();
+    return rows.filter((t) => (t.full_name ?? '').toLowerCase().includes(q) || (t.email ?? '').toLowerCase().includes(q));
+  }, [rows, query]);
+
+  const pending = filtered.filter((t) => !t.is_approved);
+  const approved = filtered.filter((t) => t.is_approved);
+
+  if (loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={GraduationCap} title="إدارة المدرسين" description="مراجعة طلبات الانضمام ومتابعة أداء المدرسين." />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ابحث عن مدرس بالاسم أو البريد..."
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          />
+        </div>
+        <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <RefreshCw className={`ml-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> تحديث
+        </button>
+      </div>
+
+      {pending.length > 0 && (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/40 dark:bg-amber-900/20">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <h3 className="font-extrabold text-amber-800 dark:text-amber-200">{pending.length} طلبات انتظار الاعتماد</h3>
+          </div>
+          <div className="space-y-3">
+            {pending.map((t) => (
+              <div key={t.id} className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-800">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  {(t.full_name ?? 'م')[0]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold text-slate-900 dark:text-white">{t.full_name}</div>
+                  <div className="text-xs text-slate-500">{t.email} • {t.specialization ?? 'غير محدد'}</div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => void applyAction(t, () => onApprove(t))} disabled={busy || actionId === t.id} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                    <Check className="ml-1 inline h-3.5 w-3.5" /> {actionId === t.id ? '...' : 'اعتماد'}
+                  </button>
+                  <button type="button" onClick={() => void applyAction(t, () => onReject(t))} disabled={busy || actionId === t.id} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">
+                    {actionId === t.id ? '...' : 'رفض'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {approved.length === 0 && pending.length === 0 ? (
+        <EmptyAdminState title="لا يوجد مدرسون" />
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">التخصص</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الدورات</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الطلاب</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الإيراد</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الحالة</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {approved.map((t) => (
+                  <tr key={t.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                          {(t.full_name ?? 'م')[0]}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">{t.full_name}</div>
+                          <div className="text-xs text-slate-500">{t.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{t.specialization ?? 'غير محدد'}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{t.course_count}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{t.student_count}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(t.revenue).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{t.is_verified ? 'موثق' : 'معتمد'}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button type="button" onClick={() => onBlock(t)} disabled={busy} className="rounded-lg bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300" title="حظر">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Students Panel (NEW)
+// ──────────────────────────────────────────────
+function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<unknown> }) {
+  const [rows, setRows] = useState<AdminStudentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc('admin_student_stats');
+    setRows((data ?? []) as AdminStudentRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleBlock = async (s: AdminStudentRow) => {
+    setActionId(s.id);
+    try {
+      await onBlock(s);
+      await load();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return rows;
+    const q = query.trim().toLowerCase();
+    return rows.filter((s) => (s.full_name ?? '').toLowerCase().includes(q) || (s.email ?? '').toLowerCase().includes(q));
+  }, [rows, query]);
+
+  const totalSpent = rows.reduce((sum, s) => sum + Number(s.total_spent), 0);
+  const totalEnrollments = rows.reduce((sum, s) => sum + s.enrollment_count, 0);
+
+  if (loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={Users} title="إدارة الطلاب" description="عرض وإدارة حسابات الطلاب والاشتراكات والمدفوعات." />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <InsightCard icon={Users} label="إجمالي الطلاب" value={rows.length} tone="cyan" />
+        <InsightCard icon={BookOpen} label="إجمالي الاشتراكات" value={totalEnrollments} tone="violet" />
+        <InsightCard icon={DollarSign} label="إجمالي المدفوعات" value={`${Number(totalSpent).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ابحث عن طالب بالاسم أو البريد..."
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          />
+        </div>
+        <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <RefreshCw className={`ml-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> تحديث
+        </button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyAdminState title="لا يوجد طلاب" />
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الطالب</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الاشتراكات</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">المدفوعات</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">تاريخ التسجيل</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filtered.map((s) => (
+                  <tr key={s.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-bold text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
+                          {(s.full_name ?? 'ط')[0]}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">{s.full_name}</div>
+                          <div className="text-xs text-slate-500">{s.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{s.enrollment_count}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(s.total_spent).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('ar-EG') : '-'}</td>
+                    <td className="px-6 py-4 text-center">
+                      <button type="button" onClick={() => void handleBlock(s)} disabled={busy || actionId === s.id} className="rounded-lg bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300" title="حظر وإزالة من القائمة">
+                          <X className="h-4 w-4" />
+                        </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Courses Panel (NEW)
+// ──────────────────────────────────────────────
+function CoursesPanel() {
+  const [rows, setRows] = useState<AdminCourseRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc('admin_course_stats');
+    setRows((data ?? []) as AdminCourseRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return rows;
+    const q = query.trim().toLowerCase();
+    return rows.filter((c) => c.title.toLowerCase().includes(q) || (c.teacher_name ?? '').toLowerCase().includes(q));
+  }, [rows, query]);
+
+  const totalRevenue = rows.reduce((sum, c) => sum + Number(c.revenue), 0);
+  const totalViews = rows.reduce((sum, c) => sum + Number(c.views_count), 0);
+  const publishedCount = rows.filter((c) => c.is_published).length;
+  const featuredCount = rows.filter((c) => c.is_featured).length;
+
+  const togglePublish = async (course: AdminCourseRow) => {
+    setBusy(true);
+    await supabase.from('courses').update({ is_published: !course.is_published }).eq('id', course.id);
+    await load();
+    setBusy(false);
+  };
+
+  const toggleFeatured = async (course: AdminCourseRow) => {
+    setBusy(true);
+    await supabase.from('courses').update({ is_featured: !course.is_featured }).eq('id', course.id);
+    await load();
+    setBusy(false);
+  };
+
+  const toggleVisible = async (course: AdminCourseRow) => {
+    setBusy(true);
+    await supabase.from('courses').update({ is_visible: !course.is_visible }).eq('id', course.id);
+    await load();
+    setBusy(false);
+  };
+
+  const moveCourse = async (course: AdminCourseRow, direction: 'up' | 'down') => {
+    const index = filtered.findIndex((c) => c.id === course.id);
+    const neighbor = direction === 'up' ? filtered[index - 1] : filtered[index + 1];
+    if (!neighbor) return;
+    setBusy(true);
+    const a = course.sort_order;
+    const b = neighbor.sort_order;
+    await supabase.from('courses').update({ sort_order: b }).eq('id', course.id);
+    await supabase.from('courses').update({ sort_order: a }).eq('id', neighbor.id);
+    await load();
+    setBusy(false);
+  };
+
+  const deleteCourse = async (course: AdminCourseRow) => {
+    if (!confirm(`هل تريد حذف الدورة "${course.title}"؟`)) return;
+    setBusy(true);
+    await supabase.from('courses').delete().eq('id', course.id);
+    await load();
+    setBusy(false);
+  };
+
+  if (loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={BookOpen} title="إدارة الدورات" description="عرض وإدارة جميع الدورات التعليمية في المنصة." />
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        <InsightCard icon={BookOpen} label="إجمالي الدورات" value={rows.length} tone="violet" />
+        <InsightCard icon={Globe} label="الدورات المنشورة" value={publishedCount} tone="emerald" />
+        <InsightCard icon={Star} label="الدورات المميزة" value={featuredCount} tone="amber" />
+        <InsightCard icon={DollarSign} label="إجمالي الإيرادات" value={`${Number(totalRevenue).toLocaleString('ar-EG')} ر.س`} tone="blue" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ابحث عن دورة بالاسم أو المدرس..."
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          />
+        </div>
+        <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <RefreshCw className={`ml-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> تحديث
+        </button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyAdminState title="لا توجد دورات" />
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الترتيب</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الدورة</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">السعر</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">المشاهدات</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الاشتراكات</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الإيراد</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الحالة</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filtered.map((c) => (
+                  <tr key={c.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => void moveCourse(c, 'up')} disabled={busy || filtered[0]?.id === c.id} className="rounded bg-slate-50 p-1 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600" title="تحريك لأعلى">
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" onClick={() => void moveCourse(c, 'down')} disabled={busy || filtered[filtered.length - 1]?.id === c.id} className="rounded bg-slate-50 p-1 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600" title="تحريك لأسفل">
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="mr-1 text-xs font-bold text-slate-400 dark:text-slate-500">{c.sort_order}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white">{c.title}</div>
+                        <div className="text-xs text-slate-500">{c.education_stage ?? ''}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{c.teacher_name ?? '-'}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{c.price === 0 ? 'مجانية' : `${Number(c.price).toLocaleString('ar-EG')} ر.س`}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-blue-600 dark:text-blue-400">{Number(c.views_count).toLocaleString('ar-EG')}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-violet-600 dark:text-violet-400">{c.enrollment_count}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(c.revenue).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.is_published ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                          {c.is_published ? 'منشورة' : 'مسودة'}
+                        </span>
+                        {c.is_published && !c.is_visible && (
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                            <EyeOff className="ml-0.5 inline h-3 w-3" /> مخفية
+                          </span>
+                        )}
+                        {c.is_featured && (
+                          <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                            <Star className="ml-0.5 inline h-3 w-3" /> مميزة
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-1">
+                        <button type="button" onClick={() => void togglePublish(c)} disabled={busy} className={`rounded-lg p-1.5 transition disabled:opacity-50 ${c.is_published ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`} title={c.is_published ? 'تحويل لمسودة (إخفاء كلياً)' : 'نشر'}>
+                          {c.is_published ? <Globe className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                        <button type="button" onClick={() => void toggleVisible(c)} disabled={busy} className={`rounded-lg p-1.5 transition disabled:opacity-50 ${c.is_visible ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300'}`} title={c.is_visible ? 'إخفاء من الموقع (تظهر في صفحة المدرس فقط)' : 'إظهار في الموقع'}>
+                          <EyeOff className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => void toggleFeatured(c)} disabled={busy} className={`rounded-lg p-1.5 transition disabled:opacity-50 ${c.is_featured ? 'bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-900/20 dark:text-violet-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`} title={c.is_featured ? 'إلغاء التمييز' : 'تمييز'}>
+                          <Star className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => void deleteCourse(c)} disabled={busy} className="rounded-lg bg-rose-50 p-1.5 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300" title="حذف">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Homepage Manager
+// ──────────────────────────────────────────────
+interface FeaturedItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  featured_order: number;
+}
+
+type FeaturedPool = 'courses' | 'profiles' | 'videos';
+
+function HomepageManager() {
+  const [pools, setPools] = useState<Record<FeaturedPool, FeaturedItem[]>>({ courses: [], profiles: [], videos: [] } as Record<FeaturedPool, FeaturedItem[]>);
+  const [queries, setQueries] = useState<Record<FeaturedPool, string>>({ courses: '', profiles: '', videos: '' });
+  const [results, setResults] = useState<Record<FeaturedPool, FeaturedItem[]>>({ courses: [], profiles: [], videos: [] } as Record<FeaturedPool, FeaturedItem[]>);
+  const [searching, setSearching] = useState<FeaturedPool | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [courses, profiles, videos] = await Promise.all([
+      supabase.from('courses').select('id,title,price,featured_order,teacher:profiles!courses_teacher_id_fkey(full_name)').eq('is_featured', true).eq('is_visible', true).order('featured_order', { ascending: true }).limit(50),
+      supabase.from('profiles').select('id,full_name,specialization,featured_order').eq('is_teacher', true).eq('is_featured', true).order('featured_order', { ascending: true }).limit(50),
+      supabase.from('videos').select('id,title,is_free,featured_order').eq('is_featured', true).order('featured_order', { ascending: true }).limit(50),
+    ]);
+    setPools({
+      courses: (courses.data ?? []).map((c) => ({ id: c.id, title: c.title, subtitle: `${c.price === 0 ? 'مجانية' : `${c.price} ر.س`} • ${(c.teacher as { full_name?: string } | null)?.full_name ?? ''}`, featured_order: c.featured_order ?? 0 })),
+      profiles: (profiles.data ?? []).map((p) => ({ id: p.id, title: p.full_name ?? '', subtitle: p.specialization ?? 'مدرس', featured_order: p.featured_order ?? 0 })),
+      videos: (videos.data ?? []).map((v) => ({ id: v.id, title: v.title, subtitle: v.is_free ? 'مجاني' : 'مدفوع', featured_order: v.featured_order ?? 0 })),
+    });
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const search = async (pool: FeaturedPool, raw: string) => {
+    const q = raw.trim();
+    setQueries((c) => ({ ...c, [pool]: raw }));
+    if (!q) { setResults((c) => ({ ...c, [pool]: [] })); return; }
+    setSearching(pool);
+    let data: FeaturedItem[] = [];
+    if (pool === 'courses') {
+      const { data: rows } = await supabase.from('courses').select('id,title,price,featured_order,teacher:profiles!courses_teacher_id_fkey(full_name)').eq('is_published', true).eq('is_visible', true).eq('is_featured', false).ilike('title', `%${q}%`).limit(8);
+      data = (rows ?? []).map((c) => ({ id: c.id, title: c.title, subtitle: `${c.price === 0 ? 'مجانية' : `${c.price} ر.س`} • ${(c.teacher as { full_name?: string } | null)?.full_name ?? ''}`, featured_order: 0 }));
+    } else if (pool === 'profiles') {
+      const { data: rows } = await supabase.from('profiles').select('id,full_name,specialization,featured_order').eq('is_teacher', true).eq('is_approved', true).eq('is_featured', false).ilike('full_name', `%${q}%`).limit(8);
+      data = (rows ?? []).map((p) => ({ id: p.id, title: p.full_name ?? '', subtitle: p.specialization ?? 'مدرس', featured_order: 0 }));
+    } else {
+      const { data: rows } = await supabase.from('videos').select('id,title,is_free,featured_order').eq('is_featured', false).ilike('title', `%${q}%`).limit(8);
+      data = (rows ?? []).map((v) => ({ id: v.id, title: v.title, subtitle: v.is_free ? 'مجاني' : 'مدفوع', featured_order: 0 }));
+    }
+    setResults((c) => ({ ...c, [pool]: data }));
+    setSearching(null);
+  };
+
+  const api = async (pool: FeaturedPool, id: string, featured: boolean, order: number) => {
+    await supabase.rpc('admin_set_featured', { target_table: pool, target_id: id, featured, sort_order: order });
+  };
+
+  const add = async (pool: FeaturedPool, item: FeaturedItem) => {
+    const maxOrder = pools[pool].reduce((max, x) => Math.max(max, x.featured_order), -1);
+    await api(pool, item.id, true, maxOrder + 1);
+    setQueries((c) => ({ ...c, [pool]: '' }));
+    setResults((c) => ({ ...c, [pool]: [] }));
+    await load();
+  };
+
+  const remove = async (pool: FeaturedPool, item: FeaturedItem) => {
+    await api(pool, item.id, false, 0);
+    await load();
+  };
+
+  const move = async (pool: FeaturedPool, index: number, dir: -1 | 1) => {
+    const list = [...pools[pool]];
+    const to = index + dir;
+    if (to < 0 || to >= list.length) return;
+    const a = list[index];
+    const b = list[to];
+    await Promise.all([
+      api(pool, a.id, true, b.featured_order),
+      api(pool, b.id, true, a.featured_order),
+    ]);
+    await load();
+  };
+
+  const poolMeta: Array<{ pool: FeaturedPool; label: string; icon: typeof Star; hint: string; empty: string }> = [
+    { pool: 'courses', label: 'الدورات المميزة', icon: BookOpen, hint: 'تظهر أولاً في قسم الدورات بالصفحة الرئيسية', empty: 'لا توجد دورات مميزة بعد' },
+    { pool: 'profiles', label: 'المدرسون المميزون', icon: GraduationCap, hint: 'تظهر أولاً في قسم المدرسين بالصفحة الرئيسية', empty: 'لا يوجد مدرسون مميزون بعد' },
+    { pool: 'videos', label: 'الفيديوهات المميزة', icon: Film, hint: 'تظهر أولاً في قسم الفيديوهات بالصفحة الرئيسية', empty: 'لا توجد فيديوهات مميزة بعد' },
+  ];
+
+  if (loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-8 text-white shadow-2xl">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="mb-3 flex items-center gap-2"><span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold backdrop-blur-sm"><Star className="ml-1 inline h-3 w-3" /> مركز تنسيق الصفحة الرئيسية</span></div>
+            <h2 className="text-3xl font-extrabold leading-tight">أين يظهر المحتوى أولاً في المنصة؟</h2>
+            <p className="mt-3 max-w-2xl text-blue-100">اختر الدورات والمدرسين والفيديوهات التي تظهر للطلاب في مقدمة الصفحة الرئيسية، ورتّبها حسب أولويتك بالأسهم.</p>
+          </div>
+        </div>
+      </div>
+
+      {poolMeta.map(({ pool, label, icon: Icon, hint, empty }) => (
+        <div key={pool} className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-5">
+            <div>
+              <h3 className="flex items-center gap-2 text-xl font-extrabold text-slate-900 dark:text-white"><Icon className="h-5 w-5 text-violet-500" /> {label}</h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{hint}</p>
+            </div>
+            <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">{pools[pool].length} عنصر</span>
+          </div>
+          <div className="p-6">
+            <div className="relative mb-4">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={queries[pool]}
+                onChange={(e) => void search(pool, e.target.value)}
+                placeholder={`ابحث عن ${pool === 'courses' ? 'دورة' : pool === 'profiles' ? 'مدرس' : 'فيديو'} وأضفه للمميزين...`}
+                className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              />
+              {searching === pool && <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-violet-500" />}
+            </div>
+
+            {results[pool].length > 0 && (
+              <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50 p-3 dark:border-violet-900/40 dark:bg-violet-900/20">
+                {results[pool].map((r) => (
+                  <button key={r.id} onClick={() => void add(pool, r)} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-right transition hover:bg-white dark:hover:bg-slate-800">
+                    <span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">{r.title}</span><span className="block text-xs text-slate-500">{r.subtitle}</span></span>
+                    <span className="flex shrink-0 items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white"><Plus className="h-3 w-3" /> أضف</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {pools[pool].length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-600"><Icon className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" /><p className="mt-3 font-bold text-slate-500 dark:text-slate-400">{empty}</p></div>
+            ) : (
+              <div className="space-y-2">
+                {pools[pool].map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-extrabold text-slate-600 dark:bg-slate-700 dark:text-slate-300">{index + 1}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{item.title}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button onClick={() => void move(pool, index, -1)} disabled={index === 0} className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600" title="تحريك لاعلى"><ArrowUp className="h-4 w-4" /></button>
+                      <button onClick={() => void move(pool, index, 1)} disabled={index === pools[pool].length - 1} className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600" title="تحريك لاسفل"><ArrowDown className="h-4 w-4" /></button>
+                      <button onClick={() => void remove(pool, item)} className="rounded-lg bg-rose-50 p-1.5 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300" title="إزالة من المميزين"><X className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Site Settings Panel
+// ──────────────────────────────────────────────
+const SETTINGS_SECTION_NAMES: Record<string, string> = { teachers: 'قسم المدرسين', courses: 'قسم الدورات', videos: 'قسم الفيديوهات', categories: 'قسم التخصصات', champions: 'قسم الأوائل' };
+
+function SettingsField({ label, value, onChange, hint, dir, type = 'text', icon: Icon }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  hint?: string;
+  dir?: string;
+  type?: string;
+  icon?: LucideIcon;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-700 dark:text-slate-200">
+        {Icon && <Icon className="h-4 w-4 text-slate-400" />}
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        dir={dir}
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+      />
+      {hint && <p className="mt-1.5 text-xs text-slate-400">{hint}</p>}
+    </div>
+  );
+}
+
+function SettingsCard({ icon: Icon, title, description, onSave, saving, children }: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  onSave: () => void;
+  saving: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-slate-700">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900 dark:text-white">{title}</h3>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-60"
+        >
+          <Save className={`h-4 w-4 ${saving ? 'animate-pulse' : ''}`} /> {saving ? 'جاري الحفظ...' : 'حفظ'}
+        </button>
+      </div>
+      <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
+    </div>
+  );
+}
+
+function SiteSettingsPanel() {
+  const [draft, setDraft] = useState<Record<string, any>>(() => JSON.parse(JSON.stringify(SITE_SETTINGS_DEFAULTS)));
+  const [loaded, setLoaded] = useState(false);
+  const [savingKeys, setSavingKeys] = useState<string[]>([]);
+  const [savedToast, setSavedToast] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('site_settings').select('key,value');
+    setDraft((prev) => {
+      const next: Record<string, any> = { ...prev };
+      for (const row of data ?? []) next[row.key] = row.value;
+      return next;
+    });
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const isSaving = (keys: string[]) => keys.some((k) => savingKeys.includes(k));
+
+  const save = async (keys: string[], label: string) => {
+    setSavingKeys((p) => [...p, ...keys]);
+    try {
+      for (const key of keys) {
+        await supabase.rpc('admin_update_site_setting', { p_key: key, p_value: draft[key] });
+      }
+      setSavedToast(`تم حفظ ${label}`);
+      setTimeout(() => setSavedToast(null), 3000);
+    } finally {
+      setSavingKeys((p) => p.filter((k) => !keys.includes(k)));
+    }
+  };
+
+  const setFlat = (key: string) => (value: string | number) => setDraft((p) => ({ ...p, [key]: value }));
+  const setSection = (key: string) => (field: string) => (value: string) =>
+    setDraft((p) => ({ ...p, [key]: { ...(p[key] ?? {}), [field]: value } }));
+  const toggleSection = (field: string) => (value: boolean) =>
+    setDraft((p) => ({ ...p, homepage_sections: { ...(p.homepage_sections ?? {}), [field]: value } }));
+
+  const contactData = (draft.contact ?? {}) as Record<string, string>;
+  const texts = (draft.homepage_texts ?? {}) as Record<string, string>;
+  const footerTxt = (draft.footer_texts ?? {}) as Record<string, string>;
+  const sections = (draft.homepage_sections ?? {}) as Record<string, boolean>;
+
+  if (!loaded) {
+    return <div className="flex items-center justify-center py-24 text-slate-400"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <PanelHeading icon={Settings} title="إعدادات الموقع" description="تحكم في هوية الموقع وبيانات التواصل والنصوص الظاهرة للزوار." />
+        {savedToast && (
+          <span className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <CheckCircle2 className="h-4 w-4" /> {savedToast}
+          </span>
+        )}
+      </div>
+
+      <SettingsCard icon={Type} title="هوية الموقع والعلامة التجارية" description="اسم الموقع والوصف الذي يظهر في محركات البحث والفوتر." onSave={() => void save(['site_name', 'site_tagline', 'site_description'], 'هوية الموقع')} saving={isSaving(['site_name', 'site_tagline', 'site_description'])}>
+        <SettingsField label="اسم الموقع" value={String(draft.site_name ?? '')} onChange={setFlat('site_name')} hint="يظهر في شريط التنقل وبداية الفوتر." />
+        <SettingsField label="الوصف المختصر (Tagline)" value={String(draft.site_tagline ?? '')} onChange={setFlat('site_tagline')} hint="جملة تعريفية قصيرة عن المنصة." />
+        <SettingsField label="وصف الموقع" value={String(draft.site_description ?? '')} onChange={setFlat('site_description')} hint="يستخدم في وصف محركات البحث." />
+      </SettingsCard>
+
+      <SettingsCard icon={Phone} title="بيانات التواصل الأساسية" description="رقم الهاتف والبريد الإلكتروني والمدينة — تظهر في الفوتر." onSave={() => void save(['contact'], 'بيانات التواصل')} saving={isSaving(['contact'])}>
+        <SettingsField label="البريد الإلكتروني" value={contactData.email} onChange={setSection('contact')('email')} dir="ltr" />
+        <SettingsField label="الرقم الظاهر للزوار" value={contactData.phone_display} onChange={setSection('contact')('phone_display')} dir="ltr" hint="مثال: +966 50 123 4567" />
+        <SettingsField label="رقم الاتصال المباشر" value={contactData.phone_tel} onChange={setSection('contact')('phone_tel')} dir="ltr" hint="بدون مسافات، يستخدم في روابط tel: مثل +966501234567" />
+        <SettingsField label="رقم واتساب" value={contactData.whatsapp} onChange={setSection('contact')('whatsapp')} dir="ltr" hint="بدون + — مثال 966501234567" />
+        <SettingsField label="المدينة والعنوان" value={contactData.city} onChange={setSection('contact')('city')} />
+      </SettingsCard>
+
+      <SettingsCard icon={Link2} title="روابط مواقع التواصل الاجتماعي" description="تظهر كأيقونات في الفوتر. اترك الحقل فارغاً لإخفاء أي منصة." onSave={() => void save(['contact'], 'رابط التواصل الاجتماعي')} saving={isSaving(['contact'])}>
+        <SettingsField icon={Facebook} label="فيسبوك" value={contactData.facebook} onChange={setSection('contact')('facebook')} dir="ltr" />
+        <SettingsField icon={Youtube} label="يوتيوب" value={contactData.youtube} onChange={setSection('contact')('youtube')} dir="ltr" />
+        <SettingsField icon={Instagram} label="انستجرام" value={contactData.instagram} onChange={setSection('contact')('instagram')} dir="ltr" />
+        <SettingsField icon={Music2} label="تيك توك" value={contactData.tiktok} onChange={setSection('contact')('tiktok')} dir="ltr" />
+        <SettingsField icon={Send} label="تيليجرام" value={contactData.telegram} onChange={setSection('contact')('telegram')} dir="ltr" />
+        <SettingsField icon={Twitter} label="إكس (تويتر)" value={contactData.x} onChange={setSection('contact')('x')} dir="ltr" />
+      </SettingsCard>
+
+      <SettingsCard icon={Home} title="نصوص الصفحة الرئيسية" description="العناوين والعبارات الرئيسية في واجهة الموقع — قابلة للتعديل مباشرة." onSave={() => void save(['homepage_texts'], 'نصوص الصفحة الرئيسية')} saving={isSaving(['homepage_texts'])}>
+        <SettingsField label="شارة القسم الأول (Hero)" value={texts.hero_badge} onChange={setSection('homepage_texts')('hero_badge')} />
+        <SettingsField label="عنوان Hero — السطر الأول" value={texts.hero_title_1} onChange={setSection('homepage_texts')('hero_title_1')} />
+        <SettingsField label="عنوان Hero — السطر الثاني" value={texts.hero_title_2} onChange={setSection('homepage_texts')('hero_title_2')} />
+        <SettingsField label="الوصف تحت العنوان" value={texts.hero_subtitle} onChange={setSection('homepage_texts')('hero_subtitle')} />
+        <SettingsField label="زر الدعوة الأول" value={texts.cta_primary} onChange={setSection('homepage_texts')('cta_primary')} />
+        <SettingsField label="زر الدعوة الثاني" value={texts.cta_secondary} onChange={setSection('homepage_texts')('cta_secondary')} />
+        <SettingsField label="شارة قسم التخصصات" value={texts.categories_badge} onChange={setSection('homepage_texts')('categories_badge')} />
+        <SettingsField label="عنوان قسم التخصصات" value={texts.categories_title} onChange={setSection('homepage_texts')('categories_title')} />
+        <SettingsField label="وصف قسم التخصصات" value={texts.categories_subtitle} onChange={setSection('homepage_texts')('categories_subtitle')} />
+        <SettingsField label="شارة قسم المدرسين" value={texts.teachers_badge} onChange={setSection('homepage_texts')('teachers_badge')} />
+        <SettingsField label="عنوان قسم المدرسين" value={texts.teachers_title} onChange={setSection('homepage_texts')('teachers_title')} />
+        <SettingsField label="وصف قسم المدرسين" value={texts.teachers_subtitle} onChange={setSection('homepage_texts')('teachers_subtitle')} />
+        <SettingsField label="شارة المواهب الجديدة" value={texts.rising_badge} onChange={setSection('homepage_texts')('rising_badge')} />
+        <SettingsField label="عنوان المواهب الجديدة" value={texts.rising_title} onChange={setSection('homepage_texts')('rising_title')} />
+      </SettingsCard>
+
+      <SettingsCard icon={Globe2} title="نصوص الفوتر" description="عنوان قسم التواصل والنص التعريفي وسطر الحقوق." onSave={() => void save(['footer_texts'], 'نصوص الفوتر')} saving={isSaving(['footer_texts'])}>
+        <SettingsField label="عنوان قسم التواصل" value={footerTxt.contact_heading} onChange={setSection('footer_texts')('contact_heading')} />
+        <SettingsField label="النص التعريفي" value={footerTxt.about} onChange={setSection('footer_texts')('about')} />
+        <SettingsField label="سطر الحقوق" value={footerTxt.copyright} onChange={setSection('footer_texts')('copyright')} />
+      </SettingsCard>
+
+      <SettingsCard icon={Eye} title="أقسام الصفحة الرئيسية" description="أظهر أو أخفِ أقسام الواجهة للزوار." onSave={() => void save(['homepage_sections'], 'أقسام الصفحة الرئيسية')} saving={isSaving(['homepage_sections'])}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(SETTINGS_SECTION_NAMES).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleSection(key)(!sections[key])}
+              disabled={isSaving(['homepage_sections'])}
+              className={`flex items-center justify-between rounded-2xl border p-4 text-right transition disabled:opacity-60 ${sections[key] ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
+            >
+              <span className="font-bold text-slate-800 dark:text-slate-100">{label}</span>
+              <span className={`text-xs font-bold ${sections[key] ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400'}`}>{sections[key] ? 'ظاهر' : 'مخفي'}</span>
+            </button>
+          ))}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard icon={BarChart3} title="حدود العرض الافتراضية" description="عدد العناصر المعروضة في أقسام الصفحة الرئيسية." onSave={() => void save(['default_teacher_limit', 'default_course_limit', 'default_video_limit'], 'حدود العرض')} saving={isSaving(['default_teacher_limit', 'default_course_limit', 'default_video_limit'])}>
+        <SettingsField type="number" label="عدد المدرسين" value={String(draft.default_teacher_limit ?? 12)} onChange={(v) => setFlat('default_teacher_limit')(Number(v) || 0)} />
+        <SettingsField type="number" label="عدد الدورات" value={String(draft.default_course_limit ?? 6)} onChange={(v) => setFlat('default_course_limit')(Number(v) || 0)} />
+        <SettingsField type="number" label="عدد الفيديوهات" value={String(draft.default_video_limit ?? 6)} onChange={(v) => setFlat('default_video_limit')(Number(v) || 0)} />
+      </SettingsCard>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Subscriptions Panel
+// ──────────────────────────────────────────────
 function SubscriptionsPanel({
   subscriptions,
   busy,
@@ -1434,152 +1392,612 @@ function SubscriptionsPanel({
   onApprove,
   onReject,
 }: {
-  subscriptions: Subscription[];
+  subscriptions: AdminSubscriptionRow[];
   busy: boolean;
   onRefresh: () => void;
-  onApprove: (subscription: Subscription) => void;
-  onReject: (subscription: Subscription) => void;
+  onApprove: (subscription: AdminSubscriptionRow) => void;
+  onReject: (subscription: AdminSubscriptionRow) => void;
 }) {
-  const pending = subscriptions.filter((subscription) => subscription.status === 'pending');
+  const pending = subscriptions.filter((s) => s.status === 'pending');
+  const totalConfirmed = subscriptions.filter((s) => s.status === 'active').reduce((sum, s) => sum + Number(s.price ?? 0), 0);
   return (
     <div className="space-y-6">
-      <PanelHeading icon={CreditCard} title="الاشتراكات والمدفوعات" description="راجع الطلبات المعلقة وفعّل الوصول بعد التأكد من الدفع." />
+      <PanelHeading icon={DollarSign} title="الاشتراكات والمدفوعات" description="راجع الطلبات المعلقة وفعّل الوصول بعد التأكد من الدفع." />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <InsightCard icon={CreditCard} label="إجمالي الطلبات" value={subscriptions.length} tone="cyan" />
+        <InsightCard icon={AlertTriangle} label="طلبات معلقة" value={pending.length} tone="amber" />
+        <InsightCard icon={DollarSign} label="إيراد الاشتراكات النشطة" value={`${Number(totalConfirmed).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
         <div><p className="font-bold text-amber-800 dark:text-amber-200">{pending.length} طلبات تحتاج مراجعة</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-300">تفعيل الطلب يفتح المحتوى المدفوع للطالب.</p></div>
         <button type="button" onClick={onRefresh} disabled={busy} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-amber-800 shadow-sm hover:bg-amber-100 disabled:opacity-50 dark:bg-slate-800 dark:text-amber-200"><RefreshCw className={`ml-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> تحديث</button>
       </div>
       {subscriptions.length === 0 ? <EmptyAdminState title="لا توجد طلبات اشتراك" /> : <div className="grid gap-4 lg:grid-cols-2">{subscriptions.map((subscription) => {
-        const row = subscription as Subscription & { student?: Profile };
         const isPending = subscription.status === 'pending';
-        return <div key={subscription.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-900 dark:text-white">{row.student?.full_name ?? 'طالب'}</h3><p className="mt-1 text-sm text-slate-500">{subscription.plan?.name_ar ?? 'اشتراك عام'} • {subscription.plan?.price ?? 0} ر.س</p></div><span className={`rounded-full px-3 py-1 text-xs font-bold ${isPending ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : subscription.status === 'active' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{isPending ? 'معلق' : subscription.status === 'active' ? 'نشط' : subscription.status}</span></div><p className="mt-3 text-xs text-slate-400">ينتهي في {new Date(subscription.end_date).toLocaleDateString('ar-EG')} • الدفع: {subscription.payment_status === 'paid' ? 'مدفوع' : 'قيد المراجعة'}</p>{isPending && <div className="mt-4 flex gap-2"><button type="button" onClick={() => onApprove(subscription)} disabled={busy} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="ml-1 inline h-4 w-4" /> اعتماد وتفعيل</button><button type="button" onClick={() => onReject(subscription)} disabled={busy} className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">رفض</button></div>}</div>;
+        const accessLabel = subscription.access_type === 'purchase' ? 'شراء نهائي' : subscription.access_type === 'subscription' ? 'اشتراك' : 'اشتراك عام';
+        return (
+          <div key={subscription.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white">{subscription.student_name ?? 'طالب'}</h3>
+                <p className="mt-1 text-sm text-slate-500">{subscription.course_title ? `دورة: ${subscription.course_title}` : (subscription.plan_name ?? 'اشتراك عام')} • {Number(subscription.price ?? 0).toLocaleString('ar-EG')} ر.س • {accessLabel}</p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isPending ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : subscription.status === 'active' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                {isPending ? 'معلق' : subscription.status === 'active' ? 'نشط' : subscription.status}
+              </span>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">{subscription.end_date ? `ينتهي في ${new Date(subscription.end_date).toLocaleDateString('ar-EG')} • ` : 'وصول دائم • '}الدفع: {subscription.payment_status === 'paid' ? 'مدفوع' : 'قيد المراجعة'}</p>
+            {isPending && <div className="mt-4 flex gap-2">
+              <button type="button" onClick={() => onApprove(subscription)} disabled={busy} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="ml-1 inline h-4 w-4" /> اعتماد وتفعيل</button>
+              <button type="button" onClick={() => onReject(subscription)} disabled={busy} className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">رفض</button>
+            </div>}
+          </div>
+        );
       })}</div>}
     </div>
   );
 }
 
-function PanelHeading({ icon: Icon, title, description }: { icon: typeof Users; title: string; description: string }) {
-  return <div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"><Icon className="h-6 w-6" /></div><div><h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">{title}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p></div></div>;
-}
-
-function ResourceCard({ title, subtitle, icon: Icon }: { title: string; subtitle: string; icon: typeof Users }) {
-  return <div className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"><Icon className="h-5 w-5" /></div><div className="min-w-0"><h3 className="truncate font-bold text-slate-900 dark:text-white">{title}</h3><p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{subtitle}</p></div></div>;
-}
-
-function MetricTile({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Users }) {
-  return <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900"><Icon className="h-5 w-5 text-blue-600" /><div className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">{value}</div><div className="mt-1 text-xs text-slate-500">{label}</div></div>;
-}
-
-function EmptyAdminState({ title }: { title: string }) {
-  return <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800"><FileText className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-bold text-slate-600 dark:text-slate-300">{title}</p><p className="mt-1 text-sm text-slate-400">جرّب تغيير كلمة البحث أو تحديث البيانات.</p></div>;
-}
-
-function InsightCard({ icon: Icon, label, value, tone }: { icon: typeof Users; label: string; value: number | string; tone: 'cyan' | 'emerald' | 'amber' | 'violet' }) {
-  const tones = { 
-    cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300', 
-    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300', 
-    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300', 
-    violet: 'bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300' 
-  };
+// ──────────────────────────────────────────────
+// Analytics Panel
+// ──────────────────────────────────────────────
+function ChartSeries({ points, barClass, format }: { points: DailyPoint[]; barClass: string; format: (p: DailyPoint) => number }) {
+  const values = points.map(format);
+  const max = Math.max(1, ...values);
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${tones[tone]}`}>
-        <Icon className="h-5 w-5" />
-      </div>
-      <div>
-        <div className="text-xl font-extrabold text-slate-900 dark:text-white">{value}</div>
-        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</div>
-      </div>
+    <div className="flex h-36 items-end gap-px">
+      {points.map((p) => {
+        const v = format(p);
+        return <div key={p.date} title={`${p.date} — ${v}`} className="flex-1 rounded-t" style={{ height: `${Math.max(2, (v / max) * 100)}%`, background: barClass }} />;
+      })}
     </div>
   );
 }
 
-function LevelBadge({ progress }: { progress: number }) {
-  const level = progress >= 80 
-    ? { label: 'متقدم', style: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' } 
-    : progress >= 45 
-    ? { label: 'متوسط', style: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' } 
-    : { label: 'مبتدئ', style: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' };
-  return <span className={`rounded-full px-3 py-1 text-xs font-bold ${level.style}`}>{level.label}</span>;
+function AnalyticsPanel() {
+  const [daily, setDaily] = useState<DailyPoint[]>([]);
+  const [snapshot, setSnapshot] = useState<OverviewSnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [{ data: d }, { data: s }] = await Promise.all([
+      supabase.rpc('admin_analytics_daily'),
+      supabase.rpc('admin_dashboard_snapshot'),
+    ]);
+    setDaily((d ?? []) as DailyPoint[]);
+    setSnapshot((s ?? null) as OverviewSnapshot | null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const totalSignups = daily.reduce((s, p) => s + p.signups, 0);
+  const totalSubs = daily.reduce((s, p) => s + p.subscriptions, 0);
+  const totalRevenue = daily.reduce((s, p) => s + Number(p.revenue), 0);
+
+  return (
+    <section id="analytics-panel" className="space-y-4">
+      <PanelHeading icon={TrendingUp} title="التحليلات" description="رسوم بيانية لآخر 30 يوم من الاشتراكات والإيرادات والتسجيلات الجديدة." />
+      {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <InsightCard icon={Users} label="مستخدم جديد (30 يوم)" value={totalSignups.toLocaleString('ar-EG')} tone="cyan" />
+            <InsightCard icon={CreditCard} label="اشتراكات (30 يوم)" value={totalSubs.toLocaleString('ar-EG')} tone="emerald" />
+            <InsightCard icon={DollarSign} label="إيرادات (30 يوم)" value={`${Number(totalRevenue).toLocaleString('ar-EG')} ر.س`} tone="amber" />
+            <InsightCard icon={BookOpen} label="دورات" value={snapshot?.counts?.courses ?? 0} tone="violet" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">التسجيلات اليومية</h4>
+              <ChartSeries points={daily} barClass="bg-sky-400" format={(p) => p.signups} />
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">الاشتراكات اليومية</h4>
+              <ChartSeries points={daily} barClass="bg-emerald-400" format={(p) => p.subscriptions} />
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">الإيرادات اليومية (ر.س)</h4>
+              <ChartSeries points={daily} barClass="bg-amber-400" format={(p) => Number(p.revenue)} />
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">أعلى المدرسين تقييماً</h4>
+              <div className="space-y-2">
+                {snapshot?.top_teachers?.map((t, idx) => (
+                  <div key={t.id ?? t.name ?? idx} className="flex items-center justify-between text-sm"><span className="font-semibold text-slate-700 dark:text-slate-200">{t.teacher_name ?? t.name ?? 'مدرس'}</span><span className="text-slate-500 dark:text-slate-400">{(Number(t.avg_rating ?? 0)).toFixed(1)} ★</span></div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">أعلى الدورات إيراداً</h4>
+              <div className="space-y-2">
+                {snapshot?.top_courses?.map((c, idx) => (
+                  <div key={c.id ?? c.title ?? idx} className="flex items-center justify-between text-sm"><span className="font-semibold text-slate-700 dark:text-slate-200">{c.course_title ?? c.title ?? 'دورة'}</span><span className="text-slate-500 dark:text-slate-400">{Number(c.revenue ?? 0).toLocaleString('ar-EG')} ر.س</span></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
-function LiveCenter() {
-  const [title, setTitle] = useState('');
-  const [roomUrl, setRoomUrl] = useState('');
-  const [started, setStarted] = useState(false);
+// ──────────────────────────────────────────────
+// Videos Panel
+// ──────────────────────────────────────────────
+function VideosPanel() {
+  const [rows, setRows] = useState<AdminVideoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('videos')
+      .select('id,title,is_free,views_count,duration_seconds,created_at,teacher:profiles!videos_teacher_id_fkey(full_name),course:courses!videos_course_id_fkey(title)')
+      .order('created_at', { ascending: false })
+      .limit(300);
+    setRows((data ?? []) as unknown as AdminVideoRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const toggleFree = async (v: AdminVideoRow) => {
+    setBusyId(v.id);
+    await supabase.from('videos').update({ is_free: !v.is_free }).eq('id', v.id);
+    await load();
+    setBusyId(null);
+  };
+
+  const remove = async (v: AdminVideoRow) => {
+    if (!confirm(`حذف الفيديو "${v.title}" نهائياً؟`)) return;
+    setBusyId(v.id);
+    await supabase.from('videos').delete().eq('id', v.id);
+    await load();
+    setBusyId(null);
+  };
+
+  const fmtDuration = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-      <div className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-5">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">غرفة البث المباشر</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">أدر رابط الحصة وحالتها للطلاب</p>
-          </div>
-          <span className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${
-            started 
-              ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300' 
-              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-          }`}>
-            <span className={`h-2 w-2 rounded-full ${started ? 'animate-pulse bg-red-500' : 'bg-slate-400'}`} />
-            {started ? 'مباشر الآن' : 'غير نشط'}
-          </span>
+    <section id="videos-panel" className="space-y-4">
+      <PanelHeading icon={Film} title="الفيديوهات" description="إدارة فيديوهات المدرسين: التحكم في الوصول المجاني أو حذف فيديوهات مخالفة." />
+      {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : rows.length === 0 ? <EmptyAdminState title="لا توجد فيديوهات" /> : (
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500">
+            <th className="px-4 py-3">الفيديو</th><th className="px-4 py-3">المدرس</th><th className="px-4 py-3">المشاهدات</th><th className="px-4 py-3">المدة</th><th className="px-4 py-3">الوصول</th><th className="px-4 py-3">الإجراءات</th>
+          </tr></thead><tbody>
+            {rows.map((v) => (
+              <tr key={v.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                <td className="px-4 py-3"><div className="font-bold text-slate-900 dark:text-white">{v.title}</div>{v.course_title && <div className="text-xs text-slate-400">{v.course_title}</div>}</td>
+                <td className="px-4 py-3">{v.teacher_name ?? '—'}</td>
+                <td className="px-4 py-3">{v.views_count.toLocaleString('ar-EG')}</td>
+                <td className="px-4 py-3">{fmtDuration(v.duration_seconds)}</td>
+                <td className="px-4 py-3">
+                  <button type="button" onClick={() => { void toggleFree(v); }} disabled={busyId === v.id} className={`rounded-full px-3 py-1 text-xs font-bold ${v.is_free ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'}`}>
+                    {v.is_free ? 'مجاني' : 'مدفوع'}
+                  </button>
+                </td>
+                <td className="px-4 py-3"><button type="button" onClick={() => { void remove(v); }} disabled={busyId === v.id} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">حذف</button></td>
+              </tr>
+            ))}
+          </tbody></table>
         </div>
-        <div className="space-y-4 p-6">
-          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
-            عنوان الجلسة
-            <input 
-              value={title} 
-              onChange={(event) => setTitle(event.target.value)} 
-              placeholder="مثال: مراجعة نهائية للرياضيات" 
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" 
-            />
-          </label>
-          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
-            رابط غرفة البث
-            <input 
-              value={roomUrl} 
-              onChange={(event) => setRoomUrl(event.target.value)} 
-              placeholder="https://..." 
-              dir="ltr" 
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" 
-            />
-          </label>
-          <button 
-            onClick={() => setStarted((value) => !value)} 
-            disabled={!title.trim() || !roomUrl.trim()} 
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/30 transition hover:shadow-red-500/40 disabled:opacity-60"
-          >
-            <Radio className="h-4 w-4" />
-            {started ? 'إيقاف البث' : 'بدء البث'}
-          </button>
+      )}
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Moderation Panel (comments & reviews)
+// ──────────────────────────────────────────────
+function ModerationPanel() {
+  const [section, setSection] = useState<'comments' | 'teacher-reviews' | 'course-reviews'>('comments');
+  const [comments, setComments] = useState<ModCommentRow[]>([]);
+  const [teacherReviews, setTeacherReviews] = useState<ModReviewRow[]>([]);
+  const [courseReviews, setCourseReviews] = useState<ModReviewRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const [{ data: c }, { data: tr }, { data: cr }] = await Promise.all([
+      supabase.from('comments').select('id,comment,created_at,student:profiles!comments_student_id_fkey(full_name),video:videos(title)', { count: 'exact' }).order('created_at', { ascending: false }).limit(300),
+      supabase.from('reviews').select('id,rating,comment,created_at,student:profiles!reviews_student_id_fkey(full_name),teacher:profiles!reviews_teacher_id_fkey(full_name)', { count: 'exact' }).order('created_at', { ascending: false }).limit(300),
+      supabase.from('course_reviews').select('id,rating,comment,created_at,student:profiles!course_reviews_student_id_fkey(full_name),course:courses(title)', { count: 'exact' }).order('created_at', { ascending: false }).limit(300),
+    ]);
+    setComments((c ?? []) as unknown as ModCommentRow[]);
+    setTeacherReviews((tr ?? []) as unknown as ModReviewRow[]);
+    setCourseReviews((cr ?? []) as unknown as ModReviewRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void loadAll(); }, [loadAll]);
+
+  const deleteComment = async (id: string) => {
+    if (!confirm('حذف هذا التعليق؟')) return;
+    await supabase.from('comments').delete().eq('id', id);
+    await loadAll();
+  };
+
+  const deleteReview = async (table: 'reviews' | 'course_reviews', id: string) => {
+    if (!confirm('حذف هذا التقييم؟')) return;
+    await supabase.from(table).delete().eq('id', id);
+    await loadAll();
+  };
+
+  const stars = (n: number) => '★'.repeat(Math.max(1, Math.min(5, n))) + '☆'.repeat(Math.max(0, 5 - Math.max(1, Math.min(5, n))));
+
+  return (
+    <section id="moderation-panel" className="space-y-4">
+      <PanelHeading icon={MessageSquare} title="التعليقات والتقييمات" description="مراجعة وحذف التعليقات والتقييمات المخالفة." />
+      <div className="flex gap-2">
+        {([
+          ['comments', `التعليقات (${comments.length})`],
+          ['teacher-reviews', `تقييمات المدرسين (${teacherReviews.length})`],
+          ['course-reviews', `تقييمات الدورات (${courseReviews.length})`],
+        ] as const).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setSection(id)} className={`rounded-xl px-4 py-2 text-sm font-bold ${section === id ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300'}`}>{label}</button>
+        ))}
+      </div>
+      {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : (
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500">
+            <th className="px-4 py-3">المستخدم</th><th className="px-4 py-3">المحتوى</th><th className="px-4 py-3">على</th><th className="px-4 py-3">التاريخ</th><th className="px-4 py-3">حذف</th>
+          </tr></thead><tbody>
+            {section === 'comments' && comments.map((c) => (
+              <tr key={c.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                <td className="px-4 py-3 font-semibold">{c.student_name ?? 'طالب'}</td>
+                <td className="max-w-md px-4 py-3">{c.comment}</td>
+                <td className="px-4 py-3">{c.video_title ?? '—'}</td>
+                <td className="px-4 py-3 text-xs">{new Date(c.created_at).toLocaleDateString('ar-EG')}</td>
+                <td className="px-4 py-3"><button type="button" onClick={() => { void deleteComment(c.id); }} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300">حذف</button></td>
+              </tr>
+            ))}
+            {section === 'teacher-reviews' && teacherReviews.map((r) => (
+              <tr key={r.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                <td className="px-4 py-3 font-semibold">{r.student_name ?? 'طالب'}</td>
+                <td className="max-w-md px-4 py-3"><div className="text-amber-500">{stars(r.rating)}</div><div>{r.comment ?? ''}</div></td>
+                <td className="px-4 py-3">مدرس: {r.teacher_name ?? '—'}</td>
+                <td className="px-4 py-3 text-xs">{new Date(r.created_at).toLocaleDateString('ar-EG')}</td>
+                <td className="px-4 py-3"><button type="button" onClick={() => { void deleteReview('reviews', r.id); }} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300">حذف</button></td>
+              </tr>
+            ))}
+            {section === 'course-reviews' && courseReviews.map((r) => (
+              <tr key={r.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                <td className="px-4 py-3 font-semibold">{r.student_name ?? 'طالب'}</td>
+                <td className="max-w-md px-4 py-3"><div className="text-amber-500">{stars(r.rating)}</div><div>{r.comment ?? ''}</div></td>
+                <td className="px-4 py-3">دورة: {r.course_title ?? '—'}</td>
+                <td className="px-4 py-3 text-xs">{new Date(r.created_at).toLocaleDateString('ar-EG')}</td>
+                <td className="px-4 py-3"><button type="button" onClick={() => { void deleteReview('course_reviews', r.id); }} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300">حذف</button></td>
+              </tr>
+            ))}
+          </tbody></table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Broadcast Panel
+// ──────────────────────────────────────────────
+function BroadcastPanel() {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [link, setLink] = useState('');
+  const [type, setType] = useState('broadcast');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState<number | null>(null);
+
+  const send = async () => {
+    if (!title.trim()) return;
+    setBusy(true);
+    const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
+    const { error } = await supabase.rpc('admin_broadcast_notification', { p_title: title.trim(), p_body: body.trim() || null, p_link: link.trim() || null, p_type: type });
+    setBusy(false);
+    if (!error) {
+      setSent(count ?? 0);
+      setTitle(''); setBody(''); setLink('');
+    }
+  };
+
+  return (
+    <section id="broadcast-panel" className="space-y-4">
+      <PanelHeading icon={Send} title="إشعار للجميع" description="بث إشعار فوري لجميع مستخدمي المنصة." />
+      <div className="max-w-2xl space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div>
+          <label className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-200">العنوان *</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثال: تخفيضات على الاشتراكات" className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-200">النص</label>
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="نص الإشعار..." className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-200">الرابط (اختياري)</label>
+          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/" className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-200">النوع</label>
+          <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
+            <option value="broadcast">عام</option>
+            <option value="announcement">إعلان</option>
+            <option value="new_course">دورة جديدة</option>
+            <option value="event">حدث</option>
+            <option value="promotion">عرض</option>
+          </select>
+        </div>
+        <button type="button" onClick={() => { void send(); }} disabled={busy || !title.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"><Send className="h-4 w-4" /> {busy ? 'جارٍ الإرسال...' : 'إرسال للجميع'}</button>
+        {sent !== null && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">تم إرسال الإشعار إلى {sent.toLocaleString('ar-EG')} مستخدم.</p>}
+      </div>
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Admin Users Panel
+// ──────────────────────────────────────────────
+function AdminUsersPanel() {
+  const [rows, setRows] = useState<AdminUserRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState('');
+  const [found, setFound] = useState<{ id: string; full_name: string | null } | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [selfId, setSelfId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const [{ data }, { data: u }] = await Promise.all([
+      supabase.rpc('admin_list_admins'),
+      supabase.auth.getUser(),
+    ]);
+    setRows((data ?? []) as unknown as AdminUserRow[]);
+    setSelfId(u?.user?.id ?? null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const lookup = async () => {
+    if (!email.trim()) return;
+    setLookingUp(true);
+    const { data } = await supabase.rpc('admin_find_user_by_email', { p_email: email.trim().toLowerCase() });
+    setFound((data as unknown as { id: string; full_name: string | null }) ?? null);
+    setLookingUp(false);
+    if (!data) setNotice('لم يتم العثور على مستخدم بهذا البريد.');
+    else setNotice(null);
+  };
+
+  const add = async () => {
+    if (!found) return;
+    setBusy(true);
+    await supabase.rpc('admin_set_admin', { target_id: found.id, value: true });
+    setFound(null); setEmail('');
+    await load();
+    setBusy(false);
+    setNotice('تمت إضافة الإداري بنجاح.');
+  };
+
+  const remove = async (r: AdminUserRow) => {
+    if (r.user_id === selfId) { setNotice('لا يمكنك إزالة حسابك من قائمة الإداريين.'); return; }
+    if (!confirm(`إزالة ${r.full_name ?? 'هذا الإداري'} من قائمة الإداريين؟`)) return;
+    setBusy(true);
+    await supabase.rpc('admin_set_admin', { target_id: r.user_id, value: false });
+    await load();
+    setBusy(false);
+  };
+
+  return (
+    <section id="admins-panel" className="space-y-4">
+      <PanelHeading icon={Shield} title="الإداريون" description="إدارة حسابات الإداريين على المنصة." />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">إضافة إداري جديد</h4>
+          <div className="flex gap-2">
+            <input value={email} onChange={(e) => { setEmail(e.target.value); setFound(null); setNotice(null); }} placeholder="البريد الإلكتروني للمستخدم" className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white" />
+            <button type="button" onClick={() => { void lookup(); }} disabled={lookingUp || !email.trim()} className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-200">{lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'بحث'}</button>
+          </div>
+          {found && (
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3 dark:bg-emerald-900/30">
+              <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">{found.full_name ?? found.id}</span>
+              <button type="button" onClick={() => { void add(); }} disabled={busy} className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">إضافة إداري</button>
+            </div>
+          )}
+          {notice && <p className="mt-3 text-sm font-bold text-slate-500 dark:text-slate-400">{notice}</p>}
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-3">الإداري</th><th className="px-4 py-3">الإجراءات</th></tr></thead><tbody>
+            {loading ? <Loader2 className="mx-auto mt-8 h-8 w-8 animate-spin text-blue-600" /> : rows.map((r) => (
+              <tr key={r.user_id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                <td className="px-4 py-3"><div className="font-bold text-slate-900 dark:text-white">{r.full_name ?? 'إداري'}</div>{r.email && <div className="text-xs text-slate-400">{r.email}</div>}{r.user_id === selfId && <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">أنت</span>}</td>
+                <td className="px-4 py-3"><button type="button" onClick={() => { void remove(r); }} disabled={busy} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">إزالة</button></td>
+              </tr>
+            ))}
+          </tbody></table>
         </div>
       </div>
-      <div className="rounded-3xl bg-gradient-to-br from-red-500 to-rose-600 p-6 text-white shadow-xl shadow-red-500/30">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-xl font-extrabold">مركز البث المباشر</h3>
-            <p className="mt-2 text-sm leading-relaxed text-red-100">
-              جهّز جلسة مراجعة أو حصة تفاعلية ووصل الطلاب مباشرة من المنصة.
-            </p>
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Reports Panel (CSV export)
+// ──────────────────────────────────────────────
+function downloadCSV(filename: string, headers: string[], rows: (string | number | null)[][]) {
+  const esc = (v: string | number | null) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const csv = [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function ReportsPanel() {
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  const run = async (key: string, rpc: string, filename: string, headers: string[], map: (r: Record<string, unknown>) => (string | number | null)[]) => {
+    setLoadingKey(key);
+    const { data } = (await supabase.rpc(rpc)) as unknown as { data: Record<string, unknown>[] | null };
+    const rowsRaw = (data ?? []) as Record<string, unknown>[];
+    downloadCSV(filename, headers, rowsRaw.map(map));
+    setCounts((c) => ({ ...c, [key]: rowsRaw.length }));
+    setLoadingKey(null);
+  };
+
+  const argDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('ar-EG') : '');
+
+  const buttons: Array<{ key: string; label: string; rpc: string; filename: string; headers: string[]; map: (r: Record<string, unknown>) => (string | number | null)[] }> = [
+    { key: 'students', label: 'تصدير الطلاب', rpc: 'admin_student_stats', filename: 'students.csv', headers: ['الاسم', 'البريد', 'تاريخ التسجيل', 'الدورات', 'الإجمالي المنفق'], map: (r) => [r.full_name as string, r.email as string, argDate(r.created_at as string), r.enrollment_count as number, r.total_spent as number] },
+    { key: 'teachers', label: 'تصدير المدرسين', rpc: 'admin_teacher_stats', filename: 'teachers.csv', headers: ['الاسم', 'البريد', 'الحالة', 'الدورات', 'الفيديوهات', 'الإيرادات'], map: (r) => [r.full_name as string, r.email as string, r.is_approved ? 'معتمد' : 'غير معتمد', r.course_count as number, r.video_count as number, r.total_earnings as number] },
+    { key: 'courses', label: 'تصدير الدورات', rpc: 'admin_course_stats', filename: 'courses.csv', headers: ['الدورة', 'المدرس', 'الطلاب', 'الإيرادات', 'المشاهدات', 'الحالة'], map: (r) => [r.title as string, r.teacher_name as string, r.students_count as number, r.revenue as number, r.views_count as number, r.is_published ? 'منشورة' : 'مسودة'] },
+    { key: 'subscriptions', label: 'تصدير الاشتراكات', rpc: 'admin_subscriptions_list', filename: 'subscriptions.csv', headers: ['الطالب', 'المدرس', 'الدورة', 'الحالة', 'السعر', 'تاريخ البداية'], map: (r) => [r.student_name as string, r.teacher_name as string, r.course_title as string, r.status as string, r.price as number, argDate(r.start_date as string)] },
+    { key: 'payments', label: 'تصدير المدفوعات', rpc: 'admin_payments_list', filename: 'payments.csv', headers: ['الطالب', 'المدرس', 'المبلغ', 'العملة', 'الطريقة', 'الحالة', 'التاريخ'], map: (r) => [r.student_name as string, r.teacher_name as string, r.amount as number, r.currency as string, r.method as string, r.status as string, argDate((r.created_at as string) ?? null)] },
+  ];
+
+  return (
+    <section id="reports-panel" className="space-y-4">
+      <PanelHeading icon={FileDown} title="التقارير" description="تصدير تقارير المنصة بصيغة CSV لفتحها في إكسل." />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {buttons.map((b) => (
+          <div key={b.key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="text-base font-black text-slate-900 dark:text-white">{b.label}</h4>
+            {typeof counts[b.key] === 'number' && <p className="mt-1 text-xs text-slate-400">آخر تصدير: {counts[b.key].toLocaleString('ar-EG')} صف</p>}
+            <button type="button" onClick={() => { void run(b.key, b.rpc, b.filename, b.headers, b.map); }} disabled={loadingKey !== null} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loadingKey === b.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} تصدير CSV</button>
           </div>
-          <Radio className="h-8 w-8 text-red-200" />
-        </div>
-        <div className="mt-6 space-y-3">
-          <div className="flex items-center gap-3 rounded-xl bg-white/10 p-3">
-            <Users className="h-5 w-5 text-red-200" />
-            <div>
-              <div className="text-sm font-bold">المشاهدون الحاليون</div>
-              <div className="text-xs text-red-200">0 متصل</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl bg-white/10 p-3">
-            <Clock className="h-5 w-5 text-red-200" />
-            <div>
-              <div className="text-sm font-bold">مدة البث</div>
-              <div className="text-xs text-red-200">{started ? 'جاري البث' : 'لم يبدأ'}</div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Exams Panel (quizzes & competitions)
+// ──────────────────────────────────────────────
+function ExamsPanel() {
+  const [quizzes, setQuizzes] = useState<QuizRow[]>([]);
+  const [competitions, setCompetitions] = useState<CompetitionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [q, c] = await Promise.all([
+      supabase.from('quizzes').select('id,title,passing_score,created_at,course:courses!quizzes_course_id_fkey(title)').order('created_at', { ascending: false }).limit(300),
+      supabase.from('competitions').select('id,title,status,created_at,teacher:profiles!competitions_teacher_id_fkey(full_name)').order('created_at', { ascending: false }).limit(300),
+    ]);
+    setQuizzes((q.data ?? []) as unknown as QuizRow[]);
+    setCompetitions((c.data ?? []) as unknown as CompetitionRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const deleteQuiz = async (z: QuizRow) => {
+    if (!confirm(`حذف الامتحان "${z.title}"؟ سيتم حذف الأسئلة والنتائج.`)) return;
+    setBusyId(z.id);
+    await supabase.rpc('admin_delete_quiz', { p_quiz_id: z.id });
+    await load();
+    setBusyId(null);
+  };
+
+  const deleteCompetition = async (c: CompetitionRow) => {
+    if (!confirm(`حذف المنافسة "${c.title}"؟ سيتم حذف الأسئلة والنتائج.`)) return;
+    setBusyId(c.id);
+    await supabase.rpc('admin_delete_competition', { p_competition_id: c.id });
+    await load();
+    setBusyId(null);
+  };
+
+  const setStatus = async (c: CompetitionRow, status: string) => {
+    setBusyId(c.id);
+    await supabase.rpc('admin_set_competition_status', { p_competition_id: c.id, p_status: status });
+    await load();
+    setBusyId(null);
+  };
+
+  const statusBadge = (s: string) => {
+    const meta: Record<string, string> = {
+      published: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+      draft: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+      archived: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    };
+    return <span className={`rounded-full px-3 py-1 text-xs font-bold ${meta[s] ?? meta.draft}`}>{s === 'published' ? 'منشورة' : s === 'draft' ? 'مسودة' : 'مؤرشفة'}</span>;
+  };
+
+  return (
+    <section id="exams-panel" className="space-y-4">
+      <PanelHeading icon={Swords} title="الامتحانات والمنافسات" description="إدارة امتحانات الدورات والمنافسات: الحذف أو تغيير حالة النشر." />
+      {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="border-b border-slate-200 px-4 py-3 text-sm font-black text-slate-900 dark:border-slate-700 dark:text-white">الامتحانات <span className="text-xs font-bold text-slate-400">({quizzes.length})</span></h4>
+            <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-2">الامتحان</th><th className="px-4 py-2">الحد الأدنى</th><th className="px-4 py-2">حذف</th></tr></thead><tbody>
+              {quizzes.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400">لا توجد امتحانات</td></tr>}
+              {quizzes.map((z) => (
+                <tr key={z.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                  <td className="px-4 py-3"><div className="font-bold text-slate-900 dark:text-white">{z.title}</div>{z.course_title && <div className="text-xs text-slate-400">{z.course_title}</div>}</td>
+                  <td className="px-4 py-3">{z.passing_score}%</td>
+                  <td className="px-4 py-3"><button type="button" onClick={() => { void deleteQuiz(z); }} disabled={busyId === z.id} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">حذف</button></td>
+                </tr>
+              ))}
+            </tbody></table>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="border-b border-slate-200 px-4 py-3 text-sm font-black text-slate-900 dark:border-slate-700 dark:text-white">المنافسات <span className="text-xs font-bold text-slate-400">({competitions.length})</span></h4>
+            <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-2">المنافسة</th><th className="px-4 py-2">الحالة</th><th className="px-4 py-2">نشر/حذف</th></tr></thead><tbody>
+              {competitions.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400">لا توجد منافسات</td></tr>}
+              {competitions.map((c) => (
+                <tr key={c.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
+                  <td className="px-4 py-3"><div className="font-bold text-slate-900 dark:text-white">{c.title}</div>{c.teacher_name && <div className="text-xs text-slate-400">{c.teacher_name}</div>}</td>
+                  <td className="px-4 py-3">{statusBadge(c.status)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {c.status !== 'published' && <button type="button" onClick={() => { void setStatus(c, 'published'); }} disabled={busyId === c.id} className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-900/30 dark:text-emerald-300">نشر</button>}
+                      {c.status !== 'archived' && <button type="button" onClick={() => { void setStatus(c, 'archived'); }} disabled={busyId === c.id} className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:bg-amber-900/30 dark:text-amber-300">أرشفة</button>}
+                      {c.status !== 'draft' && <button type="button" onClick={() => { void setStatus(c, 'draft'); }} disabled={busyId === c.id} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300">مسودة</button>}
+                      <button type="button" onClick={() => { void deleteCompetition(c); }} disabled={busyId === c.id} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300">حذف</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody></table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Shared Components
+// ──────────────────────────────────────────────
+function PanelHeading({ icon: Icon, title, description }: { icon: typeof Users; title: string; description: string }) {
+  return <div className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"><Icon className="h-6 w-6" /></div><div><h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">{title}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p></div></div>;
+}
+
+function EmptyAdminState({ title }: { title: string }) {
+  return <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800"><Activity className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" /><p className="mt-3 font-bold text-slate-600 dark:text-slate-300">{title}</p><p className="mt-1 text-sm text-slate-400">لا يوجد شيء لعرضه هنا حالياً.</p></div>;
+}
+
+function InsightCard({ icon: Icon, label, value, tone }: { icon: typeof Users; label: string; value: number | string; tone: 'cyan' | 'emerald' | 'amber' | 'violet' | 'blue' | 'rose' }) {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${TONE_MAP[tone] ?? TONE_MAP.cyan}`}><Icon className="h-5 w-5" /></div>
+      <div><div className="text-xl font-extrabold text-slate-900 dark:text-white">{value}</div><div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</div></div>
     </div>
   );
 }

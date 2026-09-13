@@ -1,0 +1,7 @@
+-- Seed detailed site settings for admin-controlled content
+INSERT INTO site_settings (key, value) VALUES
+  ('site_tagline', '"منصة تعليمية عربية تجمع الطلاب بالمدرسين في تجربة منظمة وآمنة."'::jsonb),
+  ('contact', '{"email":"info@manhatalilm.com","phone_display":"+966 50 123 4567","phone_tel":"+966501234567","whatsapp":"966501234567","city":"الرياض، المملكة العربية السعودية","facebook":"https://www.facebook.com","youtube":"https://www.youtube.com","instagram":"https://www.instagram.com","tiktok":"","telegram":"","x":"https://x.com"}'::jsonb),
+  ('homepage_texts', '{"hero_badge":"تعلم أذكى، من أي مكان","hero_title_1":"طريقك الأقصر","hero_title_2":"لإتقان أي مادة","hero_subtitle":"محتوى تعليمي منظم، مدرسون موثوقون، وتقدم محفوظ في مكان واحد. ابدأ درسَك التالي بثقة وبدون تشتت.","cta_primary":"ابدأ التعلم الآن","cta_secondary":"تصفح المدرسين","categories_badge":"التخصصات الدراسية","categories_title":"استكشف التخصصات","categories_subtitle":"مجموعة متنوعة من التخصصات الأكاديمية يدرسها لك أفضل المدرسين","teachers_badge":"دليل المدرسين","teachers_title":"المدرسين","teachers_subtitle":"اختر المدرس المناسب حسب التخصص والخبرة، وابدأ التعلم من منصته التعليمية.","rising_badge":"مواهب جديدة","rising_title":"مدرسون واعدون"}'::jsonb),
+  ('footer_texts', '{"about":"منصة تعليمية عربية تجمع الطلاب بالمدرسين في تجربة منظمة وآمنة.","copyright":"جميع الحقوق محفوظة","contact_heading":"تواصل معنا"}'::jsonb)
+ON CONFLICT (key) DO NOTHING;

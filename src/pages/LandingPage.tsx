@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
@@ -11,102 +11,97 @@ import LazyImage from '@/components/LazyImage';
 import { cache, generateCacheKey } from '@/lib/cache';
 import type { Profile, Category, Video, Course, WatchHistoryItem, StudentSubjectLeaderboard } from '@/types';
 import { getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
-import { isPublicTeacher, INTERNAL_TEACHER_ID } from '@/lib/teachers';
+import { isPublicTeacher, isTrustedTeacher, INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
 import { CardSkeleton, TeacherCardSkeleton, VideoCardSkeleton } from '@/components/SkeletonLoader';
+import { useSiteSettings } from '@/lib/siteSettings';
 
 export default function LandingPage() {
   const { user, profile } = useAuth();
+  const siteSettings = useSiteSettings();
+  const texts = siteSettings.homepage_texts ?? {};
   const [teachers, setTeachers] = useState<Profile[]>([]);
+  const [risingTeachers, setRisingTeachers] = useState<Profile[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [continueWatching, setContinueWatching] = useState<WatchHistoryItem[]>([]);
   const [champions, setChampions] = useState<StudentSubjectLeaderboard[]>([]);
   const [stats, setStats] = useState({ teachers: 0, videos: 0, students: 0, courses: 0 });
+  const [sections, setSections] = useState<Record<string, boolean>>({ teachers: true, courses: true, videos: true, categories: true, champions: true });
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
-    const timeoutId = window.setTimeout(() => {
-      if (isMounted) {
-        setHasLoadError(true);
-        setIsLoading(false);
-      }
-    }, 8000);
-
     setIsLoading(true);
     setHasLoadError(false);
 
     (async () => {
       try {
-        // Check cache for static data
         const categoriesCacheKey = generateCacheKey('categories', {});
         const statsCacheKey = generateCacheKey('stats', {});
-        
         const cachedCategories = cache.get(categoriesCacheKey);
         const cachedStats = cache.get(statsCacheKey);
 
-        let stats: { teachers: number; videos: number; students: number; courses: number };
-        
-        if (cachedStats) {
-          stats = cachedStats;
-        } else {
-          const [teacherCount, videoCount, studentCount, courseCount] = await Promise.all([
-            supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID),
-            supabase.from('videos').select('id', { count: 'exact', head: true }),
-            supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_teacher', false),
-            supabase.from('courses').select('id', { count: 'exact', head: true }),
-          ]);
-          stats = {
-            teachers: teacherCount.count ?? 0,
-            videos: videoCount.count ?? 0,
-            students: studentCount.count ?? 0,
-            courses: courseCount.count ?? 0,
-          };
-          cache.set(statsCacheKey, stats, 5 * 60 * 1000); // 5 minutes
-        }
-
-        const categoriesPromise = cachedCategories 
+        const categoriesPromise = cachedCategories
           ? Promise.resolve({ data: cachedCategories, error: null })
           : supabase.from('categories').select('*').order('sort_order', { ascending: true });
 
-        const [teacherResult, categoryResult, videoResult, courseResult] = await Promise.all([
-          supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID).order('created_at', { ascending: false }).limit(12),
+        const statsPromise = cachedStats
+          ? Promise.resolve({
+              teachers: cachedStats.teachers as number,
+              videos: cachedStats.videos as number,
+              students: cachedStats.students as number,
+              courses: cachedStats.courses as number,
+            })
+          : Promise.all([
+              supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID),
+              supabase.from('videos').select('id', { count: 'exact', head: true }),
+              supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_teacher', false),
+              supabase.from('courses').select('id', { count: 'exact', head: true }).eq('is_visible', true),
+            ]).then(([teacherCount, videoCount, studentCount, courseCount]) => {
+              const next = {
+                teachers: teacherCount.count ?? 0,
+                videos: videoCount.count ?? 0,
+                students: studentCount.count ?? 0,
+                courses: courseCount.count ?? 0,
+              };
+              cache.set(statsCacheKey, next, 5 * 60 * 1000);
+              return next;
+            });
+
+        const [teacherResult, categoryResult, videoResult, courseResult, loadedStats, championResult, sectionResult] = await Promise.all([
+          supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('is_teacher', true).eq('is_approved', true).not('id', 'eq', INTERNAL_TEACHER_ID).order('is_featured', { ascending: false }).order('featured_order', { ascending: true }).order('created_at', { ascending: false }).limit(12),
           categoriesPromise,
-          supabase.from('videos').select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`).order('views_count', { ascending: false }).limit(6),
-          supabase.from('courses').select('*, category:categories(*)').eq('is_published', true).order('created_at', { ascending: false }).limit(3),
+          supabase.from('videos').select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), teacher:profiles!videos_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`).order('is_featured', { ascending: false }).order('featured_order', { ascending: true }).order('views_count', { ascending: false }).limit(6),
+          supabase.from('courses').select('*, category:categories(*)').eq('is_published', true).eq('is_visible', true).order('is_featured', { ascending: false }).order('featured_order', { ascending: true }).order('sort_order', { ascending: true }).order('created_at', { ascending: false }).limit(3),
+          statsPromise,
+          supabase.from('student_subject_leaderboard').select('*').eq('subject_rank', 1).order('points', { ascending: false }).limit(12),
+          supabase.from('site_settings').select('value').eq('key', 'homepage_sections').maybeSingle(),
         ]);
 
-        if ([teacherResult, categoryResult, videoResult, courseResult].some((result) => result.error)) {
-          throw new Error('Unable to load landing page data');
-        }
+        if (teacherResult.error) console.warn('homepage teachers:', teacherResult.error.message);
+        if (categoryResult.error) console.warn('homepage categories:', categoryResult.error.message);
+        if (videoResult.error) console.warn('homepage videos:', videoResult.error.message);
+        if (courseResult.error) console.warn('homepage courses:', courseResult.error.message);
 
-        let champions: StudentSubjectLeaderboard[] = [];
-        try {
-          const { data: championData } = await supabase
-            .from('student_subject_leaderboard')
-            .select('*')
-            .eq('subject_rank', 1)
-            .order('points', { ascending: false })
-            .limit(12);
-          champions = (championData ?? []) as StudentSubjectLeaderboard[];
-        } catch {
-          // Ignore champion loading errors so the rest of the page still renders
-        }
+        const coreFailed = Boolean(
+          (teacherResult.error && !teacherResult.data)
+          && (categoryResult.error && !categoryResult.data)
+          && (videoResult.error && !videoResult.data)
+          && (courseResult.error && !courseResult.data),
+        );
 
-        // Cache static data
         if (!cachedCategories && categoryResult.data) {
-          cache.set(categoriesCacheKey, categoryResult.data, 10 * 60 * 1000); // 10 minutes
+          cache.set(categoriesCacheKey, categoryResult.data, 10 * 60 * 1000);
         }
 
         let historyData: WatchHistoryItem[] = [];
         if (user && !profile?.is_teacher) {
           const historyCacheKey = generateCacheKey('watch_history', { userId: user.id });
           const cachedHistory = cache.get(historyCacheKey);
-          
           if (cachedHistory) {
             historyData = cachedHistory;
           } else {
@@ -117,31 +112,85 @@ export default function LandingPage() {
               .order('watched_at', { ascending: false })
               .limit(4);
             historyData = data as WatchHistoryItem[] ?? [];
-            cache.set(historyCacheKey, historyData, 2 * 60 * 1000); // 2 minutes
+            cache.set(historyCacheKey, historyData, 2 * 60 * 1000);
           }
         }
 
-        if (isMounted) {
-          setTeachers(((teacherResult.data as Profile[] ?? []).filter(isPublicTeacher).slice(0, 4)));
-          setCategories(categoryResult.data as Category[] ?? []);
-          setVideos(videoResult.data as unknown as Video[] ?? []);
-          setCourses(courseResult.data as Course[] ?? []);
-          setStats(stats);
-          setContinueWatching(historyData);
-          setChampions(champions);
-          setHasLoadError(false);
+        if (!isMounted) return;
+
+        const parsed = (sectionResult.data?.value ?? {}) as Record<string, boolean>;
+        setSections({
+          teachers: parsed.teachers ?? true,
+          courses: parsed.courses ?? true,
+          videos: parsed.videos ?? true,
+          categories: parsed.categories ?? true,
+          champions: parsed.champions ?? true,
+        });
+
+        const loadedTeachers = ((teacherResult.data as Profile[] ?? []).filter(isPublicTeacher));
+        const adminFeatured = loadedTeachers.filter((t) => t.is_featured);
+        const otherTeachers = loadedTeachers.filter((t) => !t.is_featured);
+        let featuredCount: Profile[] = [...adminFeatured];
+        let risingCount: Profile[] = [];
+        try {
+          const teacherIds = otherTeachers.map((t) => t.id);
+          let reviewRows: Array<{ teacher_id: string; rating: number }> = [];
+          if (teacherIds.length) {
+            const { data: reviewData } = await supabase.from('reviews').select('teacher_id, rating').in('teacher_id', teacherIds);
+            reviewRows = (reviewData ?? []) as Array<{ teacher_id: string; rating: number }>;
+          }
+          const reviewTotals = new Map<string, { total: number; count: number }>();
+          for (const rev of reviewRows) {
+            const current = reviewTotals.get(rev.teacher_id) ?? { total: 0, count: 0 };
+            reviewTotals.set(rev.teacher_id, { total: current.total + rev.rating, count: current.count + 1 });
+          }
+          const reviewMap: Record<string, { avg: number; count: number }> = {};
+          reviewTotals.forEach((value, teacherId) => { reviewMap[teacherId] = { avg: value.total / value.count, count: value.count }; });
+          const ranked = [...otherTeachers].sort((a, b) => {
+            const ra = reviewMap[a.id];
+            const rb = reviewMap[b.id];
+            const aHas = Boolean(ra && ra.count > 0);
+            const bHas = Boolean(rb && rb.count > 0);
+            if (aHas !== bHas) return aHas ? -1 : 1;
+            const diff = (rb?.avg ?? 0) - (ra?.avg ?? 0);
+            if (diff !== 0) return diff;
+            const countDiff = (rb?.count ?? 0) - (ra?.count ?? 0);
+            if (countDiff !== 0) return countDiff;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+          const remainingSlots = Math.max(0, 4 - adminFeatured.length);
+          featuredCount = [...adminFeatured, ...ranked.slice(0, remainingSlots)];
+          const featuredIds = new Set(featuredCount.map((t) => t.id));
+          risingCount = otherTeachers
+            .filter((t) => !featuredIds.has(t.id))
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 4);
+        } catch {
+          const remainingSlots = Math.max(0, 4 - adminFeatured.length);
+          featuredCount = [...adminFeatured, ...otherTeachers.slice(0, remainingSlots)];
+          const featuredIds = new Set(featuredCount.map((t) => t.id));
+          risingCount = otherTeachers.filter((t) => !featuredIds.has(t.id)).slice(0, 4);
         }
-      } catch {
+
+        setTeachers(featuredCount);
+        setRisingTeachers(risingCount);
+        setCategories((categoryResult.data as Category[] | null) ?? []);
+        setVideos((videoResult.data as unknown as Video[] | null) ?? []);
+        setCourses((courseResult.data as Course[] | null) ?? []);
+        setStats(loadedStats);
+        setContinueWatching(historyData);
+        setChampions((championResult.data as StudentSubjectLeaderboard[] | null) ?? []);
+        setHasLoadError(coreFailed);
+      } catch (loadError) {
+        console.error('homepage load failed', loadError);
         if (isMounted) setHasLoadError(true);
       } finally {
-        window.clearTimeout(timeoutId);
         if (isMounted) setIsLoading(false);
       }
     })();
 
     return () => {
       isMounted = false;
-      window.clearTimeout(timeoutId);
     };
   }, [profile?.is_teacher, retryCount, user]);
 
@@ -190,75 +239,75 @@ export default function LandingPage() {
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="relative mx-auto max-w-7xl px-4 pb-8 pt-6 sm:px-6 sm:pb-16 sm:pt-12 lg:px-8">
+          <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
             <div className="text-center lg:text-right">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 dark:border-blue-800 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-blue-700 dark:text-blue-300 shadow-sm sm:text-sm">
-                <Sparkles className="w-4 h-4" />
-                تعلم أذكى، من أي مكان
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200/80 dark:border-blue-800 bg-white/90 dark:bg-slate-800 px-3 py-1.5 text-[10px] font-bold text-blue-800 dark:text-blue-300 shadow-sm shadow-blue-500/5 backdrop-blur-sm sm:mb-4 sm:px-4 sm:py-2 sm:text-xs">
+                <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-pulse sm:w-4 sm:h-4" />
+                {String(texts.hero_badge ?? 'تعلم أذكى، من أي مكان')}
               </div>
-              <h1 className="mb-5 px-1 pb-1 text-4xl font-extrabold leading-[1.35] text-slate-900 dark:text-white dark:text-white sm:px-0 sm:text-5xl sm:leading-[1.25] lg:text-[4.25rem]">
-                طريقك الأقصر
-                <span className="block bg-gradient-to-l from-blue-700 via-blue-600 to-cyan-500 bg-clip-text text-transparent">لإتقان أي مادة</span>
+              <h1 className="mb-3 px-1 pb-1 text-3xl font-extrabold leading-[1.2] text-slate-900 dark:text-white sm:px-0 sm:text-4xl sm:leading-[1.25] lg:text-[4.25rem]">
+                {String(texts.hero_title_1 ?? 'طريقك الأقصر')}
+                <span className="block bg-gradient-to-l from-indigo-700 via-blue-600 to-cyan-500 bg-clip-text text-transparent">{String(texts.hero_title_2 ?? 'لإتقان أي مادة')}</span>
               </h1>
-              <p className="mx-auto mb-8 max-w-xl text-base leading-8 text-slate-600 dark:text-slate-300 dark:text-slate-300 sm:text-lg lg:mr-0">
-                محتوى تعليمي منظم، مدرسون موثوقون، وتقدم محفوظ في مكان واحد. ابدأ درسَك التالي بثقة وبدون تشتت.
+              <p className="mx-auto mb-5 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:mb-6 sm:text-base sm:leading-7 lg:mr-0">
+                {String(texts.hero_subtitle ?? 'محتوى تعليمي منظم، مدرسون موثوقون، وتقدم محفوظ في مكان واحد. ابدأ درسَك التالي بثقة وبدون تشتت.')}
               </p>
-              <div className="flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+              <div className="flex flex-col justify-center gap-2.5 sm:flex-row sm:gap-3 lg:justify-start">
                 <Link
                   to="/signup"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/30 sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
                 >
-                  ابدأ التعلم الآن
-                  <ArrowLeft className="w-5 h-5" />
+                  {String(texts.cta_primary ?? 'ابدأ التعلم الآن')}
+                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
                 </Link>
                 <Link
                   to="/teachers"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-800 px-7 py-3.5 font-bold text-slate-700 dark:text-slate-200 dark:text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/20"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-white/90 dark:bg-slate-800 px-5 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/60 dark:hover:bg-blue-900/20 sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
                 >
-                  تصفح المدرسين
-                  <Users className="w-5 h-5" />
+                  {String(texts.cta_secondary ?? 'تصفح المدرسين')}
+                  <Users className="h-5 w-5 text-slate-500 dark:text-slate-400 sm:h-6 sm:w-6" />
                 </Link>
               </div>
 
               {/* Search bar */}
-              <div className="relative mx-auto mt-8 max-w-xl lg:mr-0">
+              <div className="relative mx-auto mt-4 max-w-xl sm:mt-6 lg:mr-0">
                 <SearchSuggestions />
               </div>
             </div>
 
             <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
-              <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/40 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center mb-3">
-                      <VideoIcon className="w-6 h-6 text-blue-600" />
+              <div className="relative z-10 grid grid-cols-2 gap-2 sm:gap-2.5 sm:gap-x-4">
+                <div className="space-y-2 sm:space-y-3 sm:space-y-4">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
+                    <div className="mb-2 h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
+                      <VideoIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
                     </div>
-                    <h3 className="mb-1 font-bold text-slate-800 dark:text-slate-100">فيديوهات HD</h3>
-                    <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">جودة عالية مع حماية كاملة للمحتوى</p>
+                    <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">فيديوهات HD</h3>
+                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">جودة عالية مع حماية كاملة للمحتوى</p>
                   </div>
-                  <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-xl shadow-blue-700/25 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3">
-                      <Shield className="w-6 h-6" />
+                  <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-700 to-blue-800 p-3 text-white shadow-xl shadow-blue-700/25 sm:p-6 transition-all hover:-translate-y-1">
+                    <div className="mb-2 h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
+                      <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
-                    <h3 className="font-bold mb-1">حماية كاملة</h3>
-                    <p className="text-xs leading-6 text-blue-50 sm:text-sm">حماية الفيديوهات والبيانات بأعلى المعايير</p>
+                    <h3 className="mb-1 text-sm font-bold sm:text-base">حماية كاملة</h3>
+                    <p className="text-[10px] leading-4 text-blue-50 sm:text-xs sm:leading-5 sm:leading-6">حماية الفيديوهات والبيانات بأعلى المعايير</p>
                   </div>
                 </div>
-                <div className="space-y-4 pt-8">
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/40 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center mb-3">
-                      <Award className="w-6 h-6 text-emerald-600" />
+                <div className="space-y-2 pt-4 sm:space-y-3 sm:space-y-4 sm:pt-8">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
+                    <div className="mb-2 h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
+                      <Award className="h-4 w-4 text-emerald-600 dark:text-emerald-400 sm:h-5 sm:w-5" />
                     </div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">مدرسون محترفون</h3>
-                    <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">نخبة من أفضل المدرسين في كل تخصص</p>
+                    <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">مدرسون محترفون</h3>
+                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">نخبة من أفضل المدرسين في كل تخصص</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/40 sm:p-6">
-                    <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center mb-3">
-                      <TrendingUp className="w-6 h-6 text-amber-600" />
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
+                    <div className="mb-2 h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
+                      <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400 sm:h-5 sm:w-5" />
                     </div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">تتبع التقدم</h3>
-                    <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">تابع تقدمك في كل مادة وكل درس</p>
+                    <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">تتبع التقدم</h3>
+                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">تابع تقدمك في كل مادة وكل درس</p>
                   </div>
                 </div>
               </div>
@@ -268,9 +317,9 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Bar */}
-      <section className="bg-slate-900 py-12">
+      <section className="bg-slate-900 py-10 sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-8">
             {[
               { icon: Users, label: 'مدرسون', value: stats.teachers, suffix: '+' },
               { icon: VideoIcon, label: 'فيديو تعليمي', value: stats.videos, suffix: '+' },
@@ -339,16 +388,16 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Categories Section */}
-      <section className="py-20 bg-white dark:bg-slate-800">
+      {sections.categories && (
+      <section className="bg-slate-50/50 py-10 dark:bg-slate-800 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
-              <BookOpen className="w-4 h-4" />
-              التخصصات الدراسية
+            <div className="inline-flex items-center gap-2 bg-blue-100/70 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-bold mb-4 shadow-sm border border-blue-200/50 dark:border-transparent">
+              <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              {String(texts.categories_badge ?? 'التخصصات الدراسية')}
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-3">استكشف التخصصات</h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">مجموعة متنوعة من التخصصات الأكاديمية يدرسها لك أفضل المدرسين</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 mb-3">{String(texts.categories_title ?? 'استكشف التخصصات')}</h2>
+            <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">{String(texts.categories_subtitle ?? 'مجموعة متنوعة من التخصصات الأكاديمية يدرسها لك أفضل المدرسين')}</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -360,13 +409,13 @@ export default function LandingPage() {
                 <Link
                   key={cat.id}
                   to={`/teachers?category=${cat.id}`}
-                  className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:border-slate-700 rounded-2xl p-5 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-500/50 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-2xl p-5 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all hover:-translate-y-1"
                 >
                   <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
                     <BookOpen className={`w-6 h-6 ${textClass}`} />
                   </div>
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{cat.name_ar}</h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-2">{cat.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{cat.description}</p>
                 </Link>
               );
             })}
@@ -374,49 +423,53 @@ export default function LandingPage() {
           {!isLoading && categories.length === 0 && <p className="mt-6 text-center text-sm text-slate-500">لا توجد تخصصات متاحة حاليًا.</p>}
         </div>
       </section>
+      )}
 
-      {/* Featured Teachers */}
-      {(isLoading || teachers.length > 0) && (
-        <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-blue-900/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10">
+      {/* Teachers directory preview */}
+      {sections.teachers && (isLoading || teachers.length > 0) && (
+        <section className="bg-gradient-to-br from-slate-50 to-blue-50/30 py-14 dark:from-slate-900 dark:to-blue-900/10 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
-                  <Award className="w-4 h-4" />
-                  مدرسون متميزون
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+                  <Award className="h-4 w-4" />
+                  {String(texts.teachers_badge ?? 'دليل المدرسين')}
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100">أفضل المدرسين</h2>
+                <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 sm:text-4xl">{String(texts.teachers_title ?? 'المدرسين')}</h2>
+                <p className="mt-2 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">{String(texts.teachers_subtitle ?? 'اختر المدرس المناسب حسب التخصص والخبرة، وابدأ التعلم من منصته التعليمية.')}</p>
               </div>
-              <Link to="/teachers" className="hidden sm:flex items-center gap-2 text-blue-600 font-medium hover:gap-3 transition-all">
-                عرض الكل <ArrowLeft className="w-4 h-4" />
-              </Link>
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">{isLoading ? '...' : `${teachers.length} مدرس متاح`}</span>
+                <Link to="/teachers" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md">
+                  عرض كل المدرسين <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-6">
               {isLoading ? Array.from({ length: 4 }).map((_, index) => <TeacherCardSkeleton key={index} />) : teachers.map((teacher) => (
                 <Link
                   key={teacher.id}
                   to={`/teacher/${teacher.id}`}
                   className="group bg-white dark:bg-slate-800 rounded-2xl shadow-md shadow-slate-200/50 dark:shadow-black/40 border border-slate-100 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
                 >
-                  <div className="aspect-square bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center overflow-hidden">
-                    {teacher.avatar_url ? (
-                      <LazyImage src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-3xl font-bold">
-                        {teacher.full_name.charAt(0)}
+                  <div className="relative aspect-[1.15] overflow-hidden bg-gradient-to-br from-blue-700 via-cyan-600 to-slate-900">
+                    {(teacher.cover_url ?? teacher.avatar_url) ? <div className="absolute inset-0 scale-110 bg-cover bg-center opacity-70 blur-xl transition-transform duration-500 group-hover:scale-125" style={{ backgroundImage: `url(${(teacher.cover_url ?? teacher.avatar_url)})` }} /> : <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,.35) 0 2px, transparent 3px), linear-gradient(135deg, transparent 25%, rgba(255,255,255,.12) 25% 50%, transparent 50% 75%, rgba(255,255,255,.12) 75%)', backgroundSize: '28px 28px, 80px 80px' }} />}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/20 to-blue-900/10" />
+                    <div className="relative flex h-full items-end justify-between p-5">
+                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-white/80 bg-gradient-to-br from-blue-500 to-cyan-400 text-3xl font-bold text-white shadow-xl transition-transform duration-300 group-hover:scale-105">
+                        {teacher.avatar_url ? <LazyImage src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" /> : teacher.full_name.charAt(0)}
                       </div>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{teacher.full_name}</h3>
-                    <p className="text-sm text-blue-600 mb-2">{teacher.specialization ?? 'مدرس'}</p>
-                    <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>جديد</span>
-                      {teacher.years_experience > 0 && (
-                        <span className="mr-auto">{teacher.years_experience} سنوات خبرة</span>
+                      {isTrustedTeacher(teacher).trusted && (
+                        <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">مدرس موثوق</span>
                       )}
+                    </div>
+                  </div>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="truncate font-extrabold text-slate-800 dark:text-slate-100">{teacher.full_name}</h3><p className="mt-1 truncate text-sm font-semibold text-blue-600">{teacher.specialization ?? 'مدرس'}</p></div><ArrowLeft className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:-translate-x-1 group-hover:text-blue-500" /></div>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      {teacher.years_experience > 0 ? <span className="font-bold text-slate-500 dark:text-slate-400">{teacher.years_experience} سنوات خبرة موثقة</span> : <span>ملف نشط</span>}
                     </div>
                   </div>
                 </Link>
@@ -427,11 +480,63 @@ export default function LandingPage() {
         </section>
       )}
 
+      {/* Rising Teachers */}
+      {sections.teachers && (isLoading || risingTeachers.length > 0) && (
+        <section className="bg-white py-14 dark:bg-slate-800 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+                  <Sparkles className="h-4 w-4" />
+                  {String(texts.rising_badge ?? 'مواهب جديدة')}
+                </div>
+                <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 sm:text-4xl">{String(texts.rising_title ?? 'مدرسون واعدون')}</h2>
+                <p className="mt-2 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">وجوه جديدة انضمت إلينا حديثاً — اكتشف مواهبهم قبل الجميع ومنحهم فرصة الظهور التي يستحقونها.</p>
+              </div>
+              <Link to="/teachers" className="hidden items-center gap-2 text-sm font-bold text-blue-600 transition hover:text-blue-700 sm:inline-flex">
+                عرض الكل <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+              {isLoading ? Array.from({ length: 4 }).map((_, index) => <TeacherCardSkeleton key={index} />) : risingTeachers.map((teacher) => (
+                <Link
+                  key={teacher.id}
+                  to={`/teacher/${teacher.id}`}
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-md shadow-slate-200/50 dark:shadow-black/40 border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
+                >
+                  <div className="relative aspect-[1.15] overflow-hidden bg-gradient-to-br from-emerald-700 via-teal-600 to-slate-900">
+                    {(teacher.cover_url ?? teacher.avatar_url) ? <div className="absolute inset-0 scale-110 bg-cover bg-center opacity-70 blur-xl transition-transform duration-500 group-hover:scale-125" style={{ backgroundImage: `url(${(teacher.cover_url ?? teacher.avatar_url)})` }} /> : <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,.35) 0 2px, transparent 3px), linear-gradient(135deg, transparent 25%, rgba(255,255,255,.12) 25% 50%, transparent 50% 75%, rgba(255,255,255,.12) 75%)', backgroundSize: '28px 28px, 80px 80px' }} />}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/20 to-emerald-900/10" />
+                    <div className="relative flex h-full items-end justify-between p-5">
+                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-white/80 bg-gradient-to-br from-emerald-500 to-teal-400 text-3xl font-bold text-white shadow-xl transition-transform duration-300 group-hover:scale-105">
+                        {teacher.avatar_url ? <LazyImage src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" /> : teacher.full_name.charAt(0)}
+                      </div>
+                      <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">انضم حديثاً</span>
+                    </div>
+                  </div>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="truncate font-extrabold text-slate-800 dark:text-slate-100">{teacher.full_name}</h3><p className="mt-1 truncate text-sm font-semibold text-blue-600">{teacher.specialization ?? 'مدرس'}</p></div><ArrowLeft className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:-translate-x-1 group-hover:text-blue-500" /></div>
+                    {teacher.years_experience > 0 && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                        <Award className="w-4 h-4 text-emerald-500" />
+                        <span>{teacher.years_experience} سنوات خبرة</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {!isLoading && risingTeachers.length === 0 && <p className="text-center text-sm text-slate-500">سيكون هناك مدرسون واعدون قريباً.</p>}
+          </div>
+        </section>
+      )}
+
       {/* Featured Courses */}
-      {(isLoading || courses.length > 0) && (
-        <section className="py-20 bg-white dark:bg-slate-800">
+      {sections.courses && (isLoading || courses.length > 0) && (
+        <section className="bg-white py-10 dark:bg-slate-800 sm:py-16 lg:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10">
+            <div className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <BookOpen className="w-4 h-4" />
@@ -454,13 +559,11 @@ export default function LandingPage() {
                     ) : (
                       <BookOpen className="w-12 h-12 text-blue-300" />
                     )}
-                    <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      course.level === 'beginner' ? 'bg-green-100 text-green-700' :
-                      course.level === 'intermediate' ? 'bg-amber-100 text-amber-700' :
-                      'bg-rose-100 text-rose-700'
-                    }`}>
-                      {course.level === 'beginner' ? 'مبتدئ' : course.level === 'intermediate' ? 'متوسط' : 'متقدم'}
-                    </span>
+                    {course.education_stage && (
+                      <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        {getEducationStageLabel(course.education_stage)}
+                      </span>
+                    )}
                   </div>
                   <div className="p-5">
                     <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-600 transition-colors line-clamp-1">{course.title}</h3>
@@ -485,10 +588,10 @@ export default function LandingPage() {
       )}
 
       {/* Popular Videos */}
-      {(isLoading || videos.length > 0) && (
-        <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-blue-900/10">
+      {sections.videos && (isLoading || videos.length > 0) && (
+        <section className="bg-gradient-to-br from-slate-50 to-blue-50/30 py-10 dark:from-slate-900 dark:to-blue-900/10 sm:py-16 lg:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10">
+            <div className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <Play className="w-4 h-4" />
@@ -536,8 +639,8 @@ export default function LandingPage() {
         </section>
       )}
 
-      {champions.length > 0 && (
-        <section className="relative overflow-hidden bg-slate-950 py-20 text-white">
+      {sections.champions && champions.length > 0 && (
+        <section className="relative overflow-hidden bg-slate-950 py-10 text-white sm:py-16 lg:py-20">
           <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-end">
@@ -623,14 +726,14 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-white dark:bg-slate-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative bg-gradient-to-br from-blue-600 to-cyan-500 dark:from-blue-900/80 dark:to-cyan-900/70 rounded-3xl p-12 text-center overflow-hidden">
+      <section className="bg-white py-10 dark:bg-slate-800 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-500 p-6 text-center dark:from-blue-900/80 dark:to-cyan-900/70 sm:p-10 lg:p-12">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
             <div className="relative">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">جاهز لبدء رحلتك التعليمية؟</h2>
-              <p className="text-blue-50 text-lg mb-8 max-w-2xl mx-auto">
+              <h2 className="mb-3 text-2xl font-bold text-white sm:mb-4 sm:text-3xl lg:text-4xl">جاهز لبدء رحلتك التعليمية؟</h2>
+              <p className="mx-auto mb-6 max-w-2xl text-sm text-blue-50 sm:mb-8 sm:text-lg">
                 انضم إلى آلاف الطلاب والمدرسين على منصة العلم اليوم
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -639,12 +742,6 @@ export default function LandingPage() {
                   className="px-8 py-3.5 bg-white text-blue-600 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   إنشاء حساب مجاني
-                </Link>
-                <Link
-                  to="/pricing"
-                  className="px-8 py-3.5 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-xl border border-white/20 hover:bg-white/20 transition-all"
-                >
-                  عرض الباقات
                 </Link>
               </div>
             </div>

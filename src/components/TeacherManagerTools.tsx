@@ -18,9 +18,9 @@ const DEFAULT_SETTINGS: TeacherPageSettings = {
   accent_color: '#f59e0b', show_competitions: true, show_leaderboard: true, updated_at: new Date().toISOString(),
 };
 
-export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
+export function TeacherPageSettings({ teacherId, premium = true }: { teacherId: string; premium?: boolean }) {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<TeacherPageSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<TeacherPageSettings>({ ...DEFAULT_SETTINGS, is_published: premium });
   const [plans, setPlans] = useState<TeacherPlan[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -34,16 +34,16 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
       supabase.from('teacher_page_settings').select('*').eq('teacher_id', teacherId).maybeSingle(),
       supabase.from('teacher_plans').select('*').eq('teacher_id', teacherId).order('created_at', { ascending: false }),
     ]);
-    if (s) setSettings({ ...DEFAULT_SETTINGS, ...(s as TeacherPageSettings) });
+    if (s) setSettings({ ...DEFAULT_SETTINGS, ...(s as TeacherPageSettings), is_published: premium ? (s as TeacherPageSettings).is_published : false });
     setPlans((p ?? []) as TeacherPlan[]);
     setLoading(false);
-  }, [teacherId]);
+  }, [teacherId, premium]);
   useEffect(() => { void load(); }, [load]);
 
   const saveSettings = async () => {
     setSaving(true);
     const slug = settings.slug.trim() || `teacher-${teacherId.slice(0, 8)}`;
-    const { error } = await supabase.from('teacher_page_settings').upsert({ ...settings, slug, teacher_id: teacherId, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from('teacher_page_settings').upsert({ ...settings, slug, teacher_id: teacherId, is_published: premium ? settings.is_published : false, updated_at: new Date().toISOString() });
     setSaving(false);
     toast(error ? 'تعذر الحفظ' : 'تم حفظ إعدادات الصفحة 🎨', error ? 'error' : 'success');
     if (!error) await load();
@@ -92,7 +92,7 @@ export function TeacherPageSettings({ teacherId }: { teacherId: string }) {
               <select value={settings.access_mode} onChange={(e) => setSettings((s) => ({ ...s, access_mode: e.target.value as TeacherPageSettings['access_mode'] }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal dark:border-slate-700 dark:bg-slate-900"><option value="public">عامة</option><option value="private">خاصة للطلاب</option><option value="invite">بالدعوات فقط</option></select>
             </label>
             <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium dark:border-slate-700"><input type="checkbox" checked={settings.require_approval} onChange={(e) => setSettings((s) => ({ ...s, require_approval: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> مراجعة طلبات الانضمام</label>
-            <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium dark:border-slate-700"><input type="checkbox" checked={settings.is_published} onChange={(e) => setSettings((s) => ({ ...s, is_published: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> نشر المنصة في الموقع</label>
+            <label className={`flex items-center gap-2 self-end rounded-xl border px-3 py-3 text-sm font-medium ${premium ? 'border-slate-200 dark:border-slate-700' : 'border-amber-300/60 bg-amber-50/40 dark:border-amber-500/30 dark:bg-amber-900/10'}`}><input type="checkbox" checked={settings.is_published} disabled={!premium} onChange={(e) => setSettings((s) => ({ ...s, is_published: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> {premium ? 'نشر المنصة في الموقع' : 'نشر المنصة في الموقع (ميزة بريميوم)'}{!premium && <Crown className="h-4 w-4 text-amber-500" />}</label>
           </div>
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200"><input type="checkbox" checked={settings.allow_free_preview} onChange={(e) => setSettings((s) => ({ ...s, allow_free_preview: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> السماح بمعاينة المحتوى المجاني للزوار</label>
           <div>

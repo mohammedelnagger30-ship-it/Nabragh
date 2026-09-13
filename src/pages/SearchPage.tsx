@@ -5,6 +5,7 @@ import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/su
 import { INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
 import type { Profile, Video, Course } from '@/types';
+import { getEducationStageLabel } from '@/lib/education';
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -45,6 +46,8 @@ export default function SearchPage() {
     const { data: courseData, error: courseError } = await supabase
       .from('courses')
       .select(`*, category:categories(*), teacher:profiles!courses_teacher_id_fkey(${PROFILE_PUBLIC_COLUMNS})`)
+      .eq('is_published', true)
+      .eq('is_visible', true)
       .or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`)
       .limit(10);
     setCourses(courseData as Course[] ?? []);
@@ -67,7 +70,7 @@ export default function SearchPage() {
   return (
     <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <MetaTags title="البحث | منصة العلم" description="ابحث في المدرسين والدروس والدورات على منصة العلم" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <h1 className="mb-2 text-2xl font-extrabold text-slate-900 sm:text-3xl dark:text-white">البحث</h1>
         <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">ابحث في المدرسين والدروس والدورات من مكان واحد.</p>
 
@@ -198,12 +201,11 @@ export default function SearchPage() {
                       <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors mb-2 dark:text-white dark:group-hover:text-blue-400">{c.title}</h3>
                       {c.description && <p className="text-sm text-slate-500 line-clamp-2 mb-3 dark:text-slate-400">{c.description}</p>}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 text-xs rounded-md ${
-                          c.level === 'beginner' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
-                          c.level === 'intermediate' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
-                        }`}>
-                          {c.level === 'beginner' ? 'مبتدئ' : c.level === 'intermediate' ? 'متوسط' : 'متقدم'}
-                        </span>
+                        {c.education_stage && (
+                          <span className="px-2 py-0.5 text-xs rounded-md bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                            {getEducationStageLabel(c.education_stage)}
+                          </span>
+                        )}
                         {c.category && <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-md dark:bg-slate-700 dark:text-slate-300">{c.category.name_ar}</span>}
                       </div>
                     </Link>

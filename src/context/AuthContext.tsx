@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { translateAuthError } from '@/lib/authErrors';
+import { homePath } from '@/lib/roles';
 import type { Profile } from '@/types';
 
 interface AuthContextType {
@@ -9,8 +10,8 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
-  signUp: (email: string, password: string, fullName: string, isTeacher: boolean, educationStage?: string, curriculum?: string) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, isTeacher: boolean, phone: string, guardianPhone?: string, educationStage?: string, curriculum?: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; home?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -26,7 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.rpc('get_my_profile');
     const rows = (data ?? []) as Profile[];
-    setProfile(rows.find((p) => p.id === userId) ?? null);
+    const current = rows.find((p) => p.id === userId) ?? null;
+    setProfile(current);
+    return current;
   };
 
   const fetchAdminStatus = async (userId: string) => {
@@ -36,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', userId)
       .maybeSingle();
     setIsAdmin(!!data);
+    return !!data;
   };
 
   useEffect(() => {
@@ -46,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('AuthContext: Loading timeout - forcing loading to false');
         setLoading(false);
       }
-    }, 3000); // Reduced to 3 seconds timeout
+    }, 10000); // Increased to 10 seconds timeout
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('AuthContext: Session retrieved', session ? 'User logged in' : 'No user');
@@ -70,13 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auth state change listener
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log('AuthContext: Auth state changed', _event, session ? 'User logged in' : 'No user');
       setUser(session?.user ?? null);
       if (session?.user) {
-        (async () => {
-          await Promise.all([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]);
-        })();
+        const [profileData, adminData] = await Promise.all([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]);
+        console.log('AuthContext: Profile loaded', profileData);
+        console.log('AuthContext: Admin status loaded', adminData);
       } else {
         setProfile(null);
         setIsAdmin(false);
@@ -86,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, isTeacher: boolean, educationStage?: string, curriculum?: string) => {
+  const signUp = async (email: string, password: string, fullName: string, isTeacher: boolean, phone: string, guardianPhone?: string, educationStage?: string, curriculum?: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: translateAuthError(error.message) };
 
@@ -95,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: data.user.id,
         full_name: fullName,
         email,
+        phone: phone || null,
+        guardian_phone: guardianPhone || null,
         is_teacher: isTeacher,
         is_approved: !isTeacher,
         education_stage: isTeacher ? null : educationStage || null,
@@ -109,8 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: translateAuthError(error.message) };
+    if (data.user) {
+      const [profileRow, admin] = await Promise.all([fetchProfile(data.user.id), fetchAdminStatus(data.user.id)]);
+      return { error: null, home: homePath(profileRow, admin) };
+    }
     return { error: null };
   };
 

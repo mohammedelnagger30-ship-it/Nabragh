@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
@@ -16,7 +16,6 @@ import VideoPlayerPage from '@/pages/VideoPlayerPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import CoursesPage from '@/pages/CoursesPage';
 import CategoriesPage from '@/pages/CategoriesPage';
-import PricingPage from '@/pages/PricingPage';
 import DashboardPage from '@/pages/DashboardPage';
 import SearchPage from '@/pages/SearchPage';
 import SignInPage from '@/pages/SignInPage';
@@ -24,20 +23,44 @@ import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import InfoPage from '@/pages/InfoPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import SettingsPage from '@/pages/SettingsPage';
 import CompetitionsPage from '@/pages/CompetitionsPage';
 import CertificatePage from '@/pages/CertificatePage';
 import AdminPortalShell from '@/components/AdminPortalShell';
 import AdminEntryPage from '@/pages/AdminEntryPage';
 import TeacherAdminPage from '@/pages/TeacherAdminPage';
+import { homePath } from '@/lib/roles';
+import { useAuth } from '@/context/AuthContext';
+
+function SettingsRedirect() {
+  const { profile, isAdmin, loading } = useAuth();
+  if (loading) return null;
+  return <Navigate to={isAdmin ? '/admin' : `${homePath(profile, isAdmin)}?tab=account`} replace />;
+}
+
+function RootLandingRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) {
+    return <SignUpPage />;
+  }
+  return <LandingPage />;
+}
+
+function AuthGuard({ children }: { children: JSX.Element }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/" replace />;
+  return children;
+}
 
 function AppRoutes() {
   const location = useLocation();
-  const isAdminPortal = location.pathname.startsWith('/admin');
-  if (isAdminPortal) {
-    return <AdminPortalShell mode={location.pathname.startsWith('/admin/teacher') ? 'teacher' : 'site'}><Routes><Route path="/admin" element={<AdminEntryPage />} /><Route path="/admin/teacher" element={<TeacherAdminPage />} /></Routes></AdminPortalShell>;
+  if (location.pathname.startsWith('/admin')) {
+    if (location.pathname.startsWith('/admin/teacher')) {
+      return <AdminPortalShell mode="teacher"><Routes><Route path="/admin/teacher" element={<TeacherAdminPage />} /></Routes></AdminPortalShell>;
+    }
+    return <Routes><Route path="/admin" element={<AdminEntryPage />} /></Routes>;
   }
-  // إزالة الإعادة التوجيه التلقائية - السماح للمستخدم بتصفح الموقع العام
   return <PublicApp />;
 }
 
@@ -48,9 +71,9 @@ function PublicApp() {
       <ErrorBoundary>
         <div dir="rtl" className="min-h-screen bg-white dark:bg-slate-900 font-sans transition-colors duration-200">
           <Navbar />
-          <main>
+          <main className="overflow-x-clip pb-[4.5rem] md:pb-0">
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<RootLandingRoute />} />
               <Route path="/teachers" element={<TeachersPage />} />
               <Route path="/teacher/:id" element={<TeacherProfilePage />} />
               <Route path="/academy/:slug" element={<AcademyPage />} />
@@ -60,11 +83,10 @@ function PublicApp() {
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/competitions" element={<CompetitionsPage />} />
               <Route path="/search" element={<SearchPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/signin" element={<SignInPage />} />
-              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/settings" element={<SettingsRedirect />} />
+              <Route path="/signin" element={<AuthGuard><SignInPage /></AuthGuard>} />
+              <Route path="/signup" element={<AuthGuard><SignUpPage /></AuthGuard>} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/about" element={<InfoPage />} />
               <Route path="/privacy" element={<InfoPage />} />

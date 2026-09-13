@@ -6,8 +6,8 @@
 
 :root {
   font-family: 'Cairo', system-ui, -apple-system, sans-serif;
-  color: #172033;
-  background: #f7f9fc;
+  color: #0f172a;
+  background-color: #f8fafc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,7 +16,7 @@
 
 .dark {
   color: #f1f5f9;
-  background: #0f172a;
+  background-color: #0f172a;
 }
 
 * {
@@ -27,8 +27,9 @@ body {
   font-family: 'Cairo', system-ui, -apple-system, sans-serif;
   min-width: 320px;
   margin: 0;
-  background: #f7f9fc;
-  color: #172033;
+  overflow-x: clip;
+  background-color: #f8fafc;
+  color: #0f172a;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -36,14 +37,15 @@ body {
 
 html.dark,
 html.dark body {
-  background: #0f172a;
+  background-color: #0f172a;
   color: #e2e8f0;
 }
 
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
-  background: #f7f9fc;
+  background-color: #f8fafc;
+  overflow-x: clip;
 }
 
 button,
@@ -91,16 +93,8 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-h1 {
-  font-size: clamp(2rem, 5vw, 4.25rem);
-}
-
-h2 {
-  font-size: clamp(1.5rem, 3vw, 2.5rem);
-}
-
-h3 {
-  font-size: clamp(1.25rem, 2vw, 1.75rem);
+h1, h2, h3 {
+  overflow-wrap: anywhere;
 }
 
 p {

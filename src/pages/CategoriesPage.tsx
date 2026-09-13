@@ -40,22 +40,22 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+    <div className="pt-[4.5rem] min-h-screen bg-slate-50/70 dark:bg-slate-900">
       <MetaTags title="التخصصات الدراسية | منصة العلم" description="تصفح جميع التخصصات الدراسية وابدأ التعلم مع أفضل المدرسين" />
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-8 text-center sm:mb-12">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4 dark:bg-blue-900/30 dark:text-blue-300">
-            <BookOpen className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 bg-blue-100/70 text-blue-800 border border-blue-200/50 px-4 py-2 rounded-full text-sm font-bold mb-4 shadow-sm dark:bg-blue-900/30 dark:text-blue-300 dark:border-transparent">
+            <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             التخصصات الدراسية
           </div>
           <h1 className="mb-2 text-2xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">جميع التخصصات</h1>
-          <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400 sm:text-base">اختر التخصص الذي يناسبك وابدأ التعلم مع أفضل المدرسين</p>
+          <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base">اختر التخصص الذي يناسبك وابدأ التعلم مع أفضل المدرسين</p>
         </div>
 
         {loading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
             {[...Array(9)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 animate-pulse">
+              <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 p-8 animate-pulse">
                 <div className="w-14 h-14 rounded-xl bg-slate-200 dark:bg-slate-700 mb-4" />
                 <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded mb-2" />
                 <div className="h-4 bg-slate-100 dark:bg-slate-600 rounded w-2/3" />
@@ -71,7 +71,7 @@ export default function CategoriesPage() {
                 <Link
                   key={cat.id}
                   to={`/teachers?category=${cat.id}`}
-                  className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl sm:p-7 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500/50 dark:shadow-black/30"
+                  className="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm shadow-blue-500/5 transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 sm:p-7 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500/50 dark:shadow-black/30"
                 >
                   <div className={`w-14 h-14 rounded-xl ${colors.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${colors.text}`}>
                     <BookOpen className={`w-7 h-7 ${colors.text}`} />
