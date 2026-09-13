@@ -58,6 +58,13 @@ function AuthGuard({ children }: { children: JSX.Element }) {
   return children;
 }
 
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/signin" replace />;
+  return children;
+}
+
 function AppRoutes() {
   const location = useLocation();
   if (location.pathname.startsWith('/admin')) {
@@ -79,14 +86,14 @@ function PublicApp() {
           <main className="overflow-x-clip pb-[4.5rem] md:pb-0">
             <Routes>
               <Route path="/" element={<RootLandingRoute />} />
-              <Route path="/teachers" element={<TeachersPage />} />
-              <Route path="/teacher/:id" element={<TeacherProfilePage />} />
+              <Route path="/teachers" element={<RequireAuth><TeachersPage /></RequireAuth>} />
+              <Route path="/teacher/:id" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
               <Route path="/academy/:slug" element={<AcademyPage />} />
               <Route path="/video/:id" element={<VideoPlayerPage />} />
-              <Route path="/course/:id" element={<CourseDetailPage />} />
-              <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/course/:id" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
+              <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
               <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/competitions" element={<CompetitionsPage />} />
+              <Route path="/competitions" element={<RequireAuth><CompetitionsPage /></RequireAuth>} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/settings" element={<SettingsRedirect />} />
