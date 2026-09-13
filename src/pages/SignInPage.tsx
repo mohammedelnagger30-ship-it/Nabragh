@@ -52,7 +52,7 @@ export default function SignInPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 px-4 pb-8 pt-[4.5rem] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 sm:pb-10 sm:pt-24">
-      <MetaTags title="تسجيل الدخول | منصة العلم" description="سجّل دخولك إلى منصة العلم" />
+      <MetaTags title="تسجيل الدخول | Noona" description="سجّل دخولك إلى Noona" />
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none sm:p-5 sm:p-8">
           <div className="mb-6 flex flex-col items-center sm:mb-8">
@@ -60,7 +60,7 @@ export default function SignInPage() {
               <GraduationCap className="h-7 w-7 text-white sm:h-8 sm:w-8" />
             </div>
             <h1 className="text-xl font-bold text-slate-800 dark:text-white sm:text-2xl">تسجيل الدخول</h1>
-            <p className="mt-1 text-xs text-slate-500 sm:text-sm">مرحباً بعودتك إلى منصة العلم</p>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">مرحباً بعودتك إلى Noona</p>
             {user && profile && (
               <span className="mt-2 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 sm:px-3 sm:py-1 sm:text-xs">
                 سيتم توجيهك إلى مساحة {roleLabel(profile, isAdmin)}

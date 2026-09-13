@@ -38,14 +38,14 @@ export default function SignUpPage() {
       setPendingTeacher(true);
       toast('تم إنشاء حسابك بنجاح! بانتظار مراجعة الإدارة.', 'success');
     } else {
-      toast('تم إنشاء حسابك بنجاح! مرحباً بك في منصة العلم', 'success');
+      toast('تم إنشاء حسابك بنجاح! مرحباً بك في Noona', 'success');
       navigate('/dashboard');
     }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 px-4 pb-8 pt-[4.5rem] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 sm:pb-10 sm:pt-20">
-      <MetaTags title="إنشاء حساب | منصة العلم" description="انضم إلى منصة العلم كطالب أو مدرس" />
+      <MetaTags title="إنشاء حساب | Noona" description="انضم إلى Noona كطالب أو مدرس" />
       <div className="w-full max-w-md">
         {pendingTeacher ? (
           <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none sm:p-8">
@@ -63,7 +63,7 @@ export default function SignUpPage() {
                   للتأكد من حسابك أو الاستفسار، تواصل معنا عبر الواتساب.
                 </p>
                 <a
-                  href={whatsappLink('مرحباً، لقد قمت بإنشاء حساب كمدرس في منصة العلم. أريد التأكيد وتفعيل الحساب.') }
+                  href={whatsappLink('مرحباً، لقد قمت بإنشاء حساب كمدرس في Noona. أريد التأكيد وتفعيل الحساب.') }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 sm:mt-3 sm:px-4 sm:py-2.5 sm:text-sm"
@@ -87,7 +87,7 @@ export default function SignUpPage() {
               <GraduationCap className="w-7 h-7 text-white sm:w-8 sm:h-8" />
             </div>
             <h1 className="text-xl font-bold text-slate-800 dark:text-white sm:text-2xl">إنشاء حساب جديد</h1>
-            <p className="text-xs text-slate-500 mt-1 sm:text-sm">انضم إلى منصة العلم اليوم</p>
+            <p className="text-xs text-slate-500 mt-1 sm:text-sm">انضم إلى Noona اليوم</p>
           </div>
 
           {error && (

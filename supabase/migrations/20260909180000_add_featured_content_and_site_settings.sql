@@ -24,7 +24,7 @@ CREATE POLICY site_settings_admin ON site_settings FOR ALL TO authenticated USIN
 
 -- Seed default settings
 INSERT INTO site_settings (key, value) VALUES
-  ('site_name', '"منصة العلم"'::jsonb),
+  ('site_name', '"Noona"'::jsonb),
   ('site_description', '"منصة تعليمية متكاملة"'::jsonb),
   ('homepage_sections', '{"teachers": true, "courses": true, "videos": true, "categories": true, "champions": true}'::jsonb),
   ('default_teacher_limit', '12'::jsonb),

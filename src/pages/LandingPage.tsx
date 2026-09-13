@@ -216,7 +216,7 @@ export default function LandingPage() {
   return (
     <>
       <MetaTags
-        title="منصة العلم - تعلّم من أفضل المدرسين"
+        title="Noona - تعلّم من أفضل المدرسين"
         description="منصة تعليمية متكاملة تتيح للمدرسين رفع فيديوهاتهم وللطلاب الوصول لمحتوى تعليمي متميز في جميع التخصصات"
       />
       <div className="pt-[4.5rem]">
@@ -700,7 +700,7 @@ export default function LandingPage() {
           <div className="mb-8 text-center sm:mb-10 lg:mb-12">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-blue-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
               <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              لماذا منصة العلم؟
+              لماذا Noona؟
             </div>
             <h2 className="mb-3 text-2xl font-bold text-white sm:text-4xl">مميزات تجعلنا الأفضل</h2>
             <p className="mx-auto max-w-2xl text-xs leading-6 text-slate-400 sm:text-sm">نوفّر تجربة تعليمية متكاملة بأعلى معايير الجودة والحماية العالمية</p>
@@ -734,7 +734,7 @@ export default function LandingPage() {
             <div className="relative">
               <h2 className="mb-3 text-2xl font-bold text-white sm:mb-4 sm:text-3xl lg:text-4xl">جاهز لبدء رحلتك التعليمية؟</h2>
               <p className="mx-auto mb-6 max-w-2xl text-sm text-blue-50 sm:mb-8 sm:text-lg">
-                انضم إلى آلاف الطلاب والمدرسين على منصة العلم اليوم
+                انضم إلى آلاف الطلاب والمدرسين على Noona اليوم
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link

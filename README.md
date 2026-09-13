@@ -1,4 +1,4 @@
-# منصة العلم - Nabragh Educational Platform
+# Noona - Educational Platform
 
 الإصدار 1.0.0
 
@@ -128,7 +128,7 @@ supabase/
 
 ## الترخيص
 
-هذا المشروع خاص ومملوك لمنصة العلم.
+هذا المشروع خاص ومملوك لـ Noona.
 
 ## الدعم
 

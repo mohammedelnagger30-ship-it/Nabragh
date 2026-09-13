@@ -183,7 +183,7 @@ export default function TeacherProfilePage() {
   const shareProfile = async () => {
     const url = window.location.href;
     if (navigator.share) {
-      await navigator.share({ title: teacher.full_name, text: `تعرف على ${teacher.full_name} في منصة العلم`, url });
+      await navigator.share({ title: teacher.full_name, text: `تعرف على ${teacher.full_name} في Noona`, url });
       return;
     }
     await navigator.clipboard?.writeText(url);
@@ -273,7 +273,7 @@ export default function TeacherProfilePage() {
 
   return (
     <div data-teacher-root="1" className="min-h-screen bg-slate-50 pt-[4.5rem] dark:bg-slate-950">
-      <MetaTags title={`${teacher.full_name} | منصة العلم`} description={teacher.bio ?? `تعرف على ${teacher.full_name}`} />
+      <MetaTags title={`${teacher.full_name} | Noona`} description={teacher.bio ?? `تعرف على ${teacher.full_name}`} />
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
         <Link to="/teachers" className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 sm:mb-6 sm:text-sm"><ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" /> كل المدرسين</Link>
 
