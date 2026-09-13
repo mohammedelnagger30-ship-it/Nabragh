@@ -40,8 +40,13 @@ function SettingsRedirect() {
 function RootLandingRoute() {
   const { user, loading } = useAuth();
   if (loading) return null;
+  
+  // Check if running in Capacitor (mobile app)
+  const isMobile = (window as any).Capacitor?.isNativePlatform?.();
+  
   if (!user) {
-    return <SignUpPage />;
+    // On mobile, require sign in. On web, show landing page.
+    return isMobile ? <SignInPage /> : <LandingPage />;
   }
   return <LandingPage />;
 }
