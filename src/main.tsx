@@ -4,6 +4,8 @@ import App from './App.tsx';
 import './index.css';
 
 console.log('main.tsx: Starting to load app...');
+console.log('main.tsx: Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Missing');
+console.log('main.tsx: Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Missing');
 
 const rootElement = document.getElementById('root');
 console.log('main.tsx: Root element found:', !!rootElement);
