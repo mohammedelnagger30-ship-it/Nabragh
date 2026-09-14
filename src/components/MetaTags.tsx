@@ -1,43 +1,57 @@
 import { Helmet } from 'react-helmet-async';
 
 interface MetaTagsProps {
-  title?: string;
-  description?: string;
-  image?: string;
-  url?: string;
-  type?: 'website' | 'article' | 'video';
+  title: string;
+  description: string;
   noIndex?: boolean;
+  image?: string;
+  type?: 'website' | 'article' | 'video' | 'profile';
+  publishedTime?: string;
+  modifiedTime?: string;
+  author?: string;
 }
 
-export default function MetaTags({
-  title = 'منصة العلم - تعلّم من أفضل المدرسين',
-  description = 'منصة تعليمية متكاملة تتيح للمدرسين رفع فيديوهاتهم وللطلاب الوصول لمحتوى تعليمي متميز في جميع التخصصات',
-  image = 'https://bolt.new/static/og_default.png',
-  url = window.location.href,
-  type = 'website',
+export default function MetaTags({ 
+  title, 
+  description, 
   noIndex = false,
+  image = '/icon.svg',
+  type = 'website',
+  publishedTime,
+  modifiedTime,
+  author
 }: MetaTagsProps) {
+  const siteName = 'Noona';
+  const fullTitle = `${title} | ${siteName}`;
+  const url = window.location.href;
+
   return (
     <Helmet>
-      <title>{title}</title>
+      <title>{fullTitle}</title>
       <meta name="description" content={description} />
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
       
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
       <meta property="og:url" content={url} />
-      <meta property="og:title" content={title} />
+      <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
-      <meta property="og:locale" content="ar_SA" />
+      <meta property="og:site_name" content={siteName} />
       
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:url" content={url} />
-      <meta name="twitter:title" content={title} />
+      <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
       
-      {/* Additional SEO */}
+      {/* Article specific */}
+      {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+      {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+      {author && <meta property="article:author" content={author} />}
+      
+      {/* Canonical URL */}
       <link rel="canonical" href={url} />
       {noIndex && <meta name="robots" content="noindex, nofollow" />}
       

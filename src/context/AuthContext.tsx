@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { translateAuthError } from '@/lib/authErrors';
 import { homePath } from '@/lib/roles';
+import { useToast } from '@/context/ToastContext';
 import type { Profile } from '@/types';
 
 interface AuthContextType {
@@ -19,6 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (loading) {
         console.log('AuthContext: Loading timeout - forcing loading to false');
         setLoading(false);
+        toast('استغرق تحميل الجلسة وقتاً طويلاً. يرجى تحديث الصفحة.', 'info');
       }
     }, 10000); // Increased to 10 seconds timeout
 
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch((error) => {
       console.error('AuthContext: Error getting session', error);
       setLoading(false);
+      toast('حدث خطأ أثناء تحميل الجلسة. يرجى المحاولة مرة أخرى.', 'error');
     });
 
     return () => clearTimeout(timeout);

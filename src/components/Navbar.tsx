@@ -218,8 +218,8 @@ export default function Navbar() {
           </div>
         )}
       </div>
-      <div className="fixed inset-x-4 bottom-3 z-50 max-w-md mx-auto rounded-full border border-slate-200/80 bg-white/95 px-3 py-1.5 shadow-2xl backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/95 md:hidden">
-        <div className="grid grid-cols-5 gap-1 items-center">
+      <div className="fixed inset-x-4 bottom-3 z-50 max-w-md mx-auto rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-2 shadow-2xl backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/95 md:hidden">
+        <div className="grid grid-cols-5 gap-2 items-center">
           {[
             { to: '/', label: 'الرئيسية', icon: Home },
             { to: '/teachers', label: 'المدرسون', icon: GraduationCap },
@@ -234,11 +234,22 @@ export default function Navbar() {
                 key={item.to}
                 to={item.to}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-extrabold transition-all duration-200 ${active ? 'text-blue-600 dark:text-blue-400 font-extrabold scale-105' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 px-1 transition-all duration-200 ${
+                  active 
+                    ? 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 scale-105 shadow-sm' 
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
               >
-                <Icon className={`h-4 w-4 transition-transform ${active ? 'scale-110' : ''}`} aria-hidden="true" />
-                <span>{item.label}</span>
-                {active && <span className="h-1 w-1 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse"></span>}
+                <div className={`relative ${active ? 'scale-110' : ''}`}>
+                  <Icon className={`h-5 w-5 transition-transform ${active ? 'text-blue-600 dark:text-blue-400' : ''}`} aria-hidden="true" />
+                  {active && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold">{item.label}</span>
               </Link>
             );
           })}

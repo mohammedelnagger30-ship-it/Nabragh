@@ -8,22 +8,30 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
-import LandingPage from '@/pages/LandingPage';
-import TeachersPage from '@/pages/TeachersPage';
-import TeacherProfilePage from '@/pages/TeacherProfilePage';
-import AcademyPage from '@/pages/AcademyPage';
-import VideoPlayerPage from '@/pages/VideoPlayerPage';
-import CourseDetailPage from '@/pages/CourseDetailPage';
-import CoursesPage from '@/pages/CoursesPage';
+import { lazy, Suspense } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
+
+// Lazy load large pages
+const LandingPage = lazy(() => import('@/pages/LandingPage'));
+const TeachersPage = lazy(() => import('@/pages/TeachersPage'));
+const TeacherProfilePage = lazy(() => import('@/pages/TeacherProfilePage'));
+const AcademyPage = lazy(() => import('@/pages/AcademyPage'));
+const VideoPlayerPage = lazy(() => import('@/pages/VideoPlayerPage'));
+const CourseDetailPage = lazy(() => import('@/pages/CourseDetailPage'));
+const CoursesPage = lazy(() => import('@/pages/CoursesPage'));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const SearchPage = lazy(() => import('@/pages/SearchPage'));
+const CompetitionsPage = lazy(() => import('@/pages/CompetitionsPage'));
+const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+
+// Load smaller pages normally
 import CategoriesPage from '@/pages/CategoriesPage';
-import DashboardPage from '@/pages/DashboardPage';
-import SearchPage from '@/pages/SearchPage';
 import SignInPage from '@/pages/SignInPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import InfoPage from '@/pages/InfoPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import CompetitionsPage from '@/pages/CompetitionsPage';
 import CertificatePage from '@/pages/CertificatePage';
 import AdminPortalShell from '@/components/AdminPortalShell';
 import AdminEntryPage from '@/pages/AdminEntryPage';
@@ -84,28 +92,30 @@ function PublicApp() {
         <div dir="rtl" className="min-h-screen bg-white dark:bg-slate-900 font-sans transition-colors duration-200">
           <Navbar />
           <main className="overflow-x-clip pb-[4.5rem] md:pb-0">
-            <Routes>
-              <Route path="/" element={<RootLandingRoute />} />
-              <Route path="/teachers" element={<RequireAuth><TeachersPage /></RequireAuth>} />
-              <Route path="/teacher/:id" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
-              <Route path="/academy/:slug" element={<AcademyPage />} />
-              <Route path="/video/:id" element={<VideoPlayerPage />} />
-              <Route path="/course/:id" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
-              <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
-              <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/competitions" element={<RequireAuth><CompetitionsPage /></RequireAuth>} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/settings" element={<SettingsRedirect />} />
-              <Route path="/signin" element={<AuthGuard><SignInPage /></AuthGuard>} />
-              <Route path="/signup" element={<AuthGuard><SignUpPage /></AuthGuard>} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/about" element={<InfoPage />} />
-              <Route path="/privacy" element={<InfoPage />} />
-              <Route path="/terms" element={<InfoPage />} />
-              <Route path="/certificate/:id" element={<CertificatePage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                <Route path="/" element={<RootLandingRoute />} />
+                <Route path="/teachers" element={<RequireAuth><TeachersPage /></RequireAuth>} />
+                <Route path="/teacher/:id" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
+                <Route path="/academy/:slug" element={<AcademyPage />} />
+                <Route path="/video/:id" element={<VideoPlayerPage />} />
+                <Route path="/course/:id" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
+                <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
+                <Route path="/categories" element={<CategoriesPage />} />
+                <Route path="/competitions" element={<RequireAuth><CompetitionsPage /></RequireAuth>} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/settings" element={<SettingsRedirect />} />
+                <Route path="/signin" element={<AuthGuard><SignInPage /></AuthGuard>} />
+                <Route path="/signup" element={<AuthGuard><SignUpPage /></AuthGuard>} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/about" element={<InfoPage />} />
+                <Route path="/privacy" element={<InfoPage />} />
+                <Route path="/terms" element={<InfoPage />} />
+                <Route path="/certificate/:id" element={<CertificatePage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
           </main>
           <Footer />
           <PwaInstallPrompt />
