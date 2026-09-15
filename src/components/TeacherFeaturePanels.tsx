@@ -1,4 +1,4 @@
-﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   MessageSquare, Plus, Loader2, Trash2, RefreshCw, Send, CheckCircle2,
   CalendarDays, Video as VideoIcon, Star, Package as PackageIcon, Award,
