@@ -1,9 +1,9 @@
 export const CONTACT = {
   email: 'info@manhatalilm.com',
-  phoneDisplay: '+966 50 123 4567',
-  phoneTel: '+966501234567',
-  whatsapp: '966501234567',
-  city: 'الرياض، المملكة العربية السعودية',
+  phoneDisplay: '+20 10 0000 0000',
+  phoneTel: '+201000000000',
+  whatsapp: '201000000000',
+  city: 'القاهرة، جمهورية مصر العربية',
   facebook: 'https://www.facebook.com',
   youtube: 'https://www.youtube.com',
   instagram: 'https://www.instagram.com',

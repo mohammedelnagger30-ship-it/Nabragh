@@ -8,7 +8,6 @@ import type { CourseReview } from '@/types';
 interface CourseReviewsProps {
   courseId: string;
 }
-
 export default function CourseReviews({ courseId }: CourseReviewsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -65,7 +64,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
           .eq('id', userReview.id);
         
         if (error) throw error;
-        toast('تم تحديث تقييمك بنجاح', 'success');
+        toast('???� ???�?�???� ???�?????�?� ?�?�?�?�?�', 'success');
       } else {
         // Create new review
         const { error } = await supabase
@@ -78,7 +77,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
           });
         
         if (error) throw error;
-        toast('تم إضافة تقييمك بنجاح', 'success');
+        toast('???� ?�?�?�???� ???�?????�?� ?�?�?�?�?�', 'success');
       }
 
       setShowForm(false);
@@ -87,7 +86,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
       void loadReviews();
     } catch (error) {
       console.error('Error submitting review:', error);
-      toast('حدث خطأ أثناء إرسال التقييم', 'error');
+      toast('?�?�?� ?�?�?� ?�?�?�?�?? ?�?�?�?�?� ?�?�???�?????�', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -129,7 +128,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
               ))}
             </div>
             <div className="text-sm text-slate-500 dark:text-slate-400">
-              {reviews.length} تقييم
+              {reviews.length} ???�?????�
             </div>
           </div>
 
@@ -162,7 +161,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
           className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           <Star className="w-5 h-5" />
-          أضف تقييمك لهذه الدورة
+          ?�?�?? ???�?????�?� ?�?�?�?� ?�?�?�?�?�?�
         </button>
       )}
 
@@ -170,12 +169,12 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
       {showForm && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-            {userReview ? 'تعديل تقييمك' : 'أضف تقييمك'}
+            {userReview ? '???�?�???� ???�?????�?�' : '?�?�?? ???�?????�?�'}
           </h3>
           <form onSubmit={handleSubmitReview} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                التقييم
+                ?�?�???�?????�
               </label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map(star => (
@@ -195,14 +194,14 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                تعليقك (اختياري)
+                ???�?�???�?� (?�?�?????�?�??)
               </label>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={4}
                 className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="شارك تجربتك مع هذه الدورة..."
+                placeholder="?�?�?�?� ???�?�?�???� ?�?� ?�?�?� ?�?�?�?�?�?�..."
               />
             </div>
 
@@ -215,12 +214,12 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    جاري الإرسال...
+                    ?�?�?�?? ?�?�?�?�?�?�?�...
                   </>
                 ) : (
                   <>
                     <Star className="w-5 h-5" />
-                    {userReview ? 'تحديث التقييم' : 'إرسال التقييم'}
+                    {userReview ? '???�?�???� ?�?�???�?????�' : '?�?�?�?�?� ?�?�???�?????�'}
                   </>
                 )}
               </button>
@@ -229,7 +228,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
                 onClick={() => { setShowForm(false); setRating(userReview?.rating ?? 0); setComment(userReview?.comment ?? ''); }}
                 className="px-6 py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                إلغاء
+                ?�?�???�??
               </button>
             </div>
           </form>
@@ -238,13 +237,13 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
 
       {/* Reviews List */}
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">التقييمات الأخيرة</h3>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white">?�?�???�?????�?�?? ?�?�?�?�???�?�</h3>
         
         {reviews.length === 0 ? (
           <div className="text-center py-8 text-slate-500 dark:text-slate-400">
             <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-            <p>لا توجد تقييمات بعد</p>
-            <p className="text-sm mt-1">كن أول من يقيّم هذه الدورة!</p>
+            <p>?�?� ???�?�?� ???�?????�?�?? ?�?�?�</p>
+            <p className="text-sm mt-1">?�?� ?�?�?� ?�?� ???�???�?� ?�?�?� ?�?�?�?�?�?�!</p>
           </div>
         ) : (
           reviews.map((review) => (
@@ -268,7 +267,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-slate-900 dark:text-white">
-                      {review.student?.full_name || 'مستخدم'}
+                      {review.student?.full_name || '?�?�???�?�?�'}
                     </span>
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map(star => (
@@ -287,7 +286,7 @@ export default function CourseReviews({ courseId }: CourseReviewsProps) {
                   )}
                   
                   <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                    {new Date(review.created_at).toLocaleDateString('ar-SA', {
+                    {new Date(review.created_at).toLocaleDateString('ar-EG', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',

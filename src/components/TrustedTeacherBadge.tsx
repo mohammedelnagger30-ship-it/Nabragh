@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import type { Profile } from '@/types';
 import { isTrustedTeacher } from '@/lib/teachers';
 
-export default function TrustedTeacherBadge({ teacher, avgRating = 0, reviewCount = 0, className = '' }: { teacher: Profile; avgRating?: number; reviewCount?: number; className?: string }) {
+export default memo(function TrustedTeacherBadge({ teacher, avgRating = 0, reviewCount = 0, className = '' }: { teacher: Profile; avgRating?: number; reviewCount?: number; className?: string }) {
   const { trusted, reasons } = isTrustedTeacher(teacher, avgRating, reviewCount);
   if (!trusted) return null;
   return (
@@ -14,4 +15,4 @@ export default function TrustedTeacherBadge({ teacher, avgRating = 0, reviewCoun
       مدرس موثوق
     </span>
   );
-}
+});

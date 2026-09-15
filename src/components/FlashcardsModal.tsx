@@ -77,7 +77,7 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
         </button>
 
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-md shadow-blue-500/20 text-white">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-md shadow-blue-500/20 text-white">
             <Brain className="h-6 w-6" />
           </div>
           <div>
@@ -208,7 +208,7 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
 
               <button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md hover:shadow-lg"
+                className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-md hover:shadow-lg"
               >
                 حفظ المجموعة
               </button>
@@ -234,7 +234,7 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
               <div className="space-y-4">
                 <div
                   onClick={() => setIsFlipped(!isFlipped)}
-                  className="perspective cursor-pointer min-h-[220px] rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 via-white to-indigo-50/40 p-8 shadow-xl text-center flex flex-col items-center justify-center transition-all hover:scale-[1.01] dark:border-slate-800 dark:from-slate-850 dark:via-slate-900 dark:to-slate-900"
+                  className="perspective cursor-pointer min-h-[220px] rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 via-white to-blue-50/40 p-8 shadow-xl text-center flex flex-col items-center justify-center transition-all hover:scale-[1.01] dark:border-slate-800 dark:from-slate-850 dark:via-slate-900 dark:to-slate-900"
                 >
                   <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-blue-100/80 px-3 py-1 text-xs font-bold text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                     <Sparkles className="h-3.5 w-3.5 text-blue-600" />

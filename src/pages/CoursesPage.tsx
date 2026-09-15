@@ -160,7 +160,7 @@ export default function CoursesPage() {
                 >
                   <div className="aspect-video bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center relative dark:from-slate-700 dark:to-slate-700">
                     {course.thumbnail_url ? (
-                      <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
+                      <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <BookOpen className="w-12 h-12 text-blue-300 dark:text-blue-400" />
                     )}
@@ -192,7 +192,7 @@ export default function CoursesPage() {
                         )}
                       </div>
                       <span className="text-sm font-bold text-blue-600">
-                        {course.price === 0 ? 'مجاني' : `${course.price} ر.س`}
+                        {course.price === 0 ? 'مجاني' : `${course.price} جنيه`}
                       </span>
                     </div>
                   </div>

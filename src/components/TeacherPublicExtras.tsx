@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Crown, Gamepad2, Loader2, Medal, Play, Trophy, Users, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -227,7 +227,7 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
             {plans.map((plan) => (
               <div key={plan.id} className="rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm" style={{ borderTop: `4px solid ${primary}` }}>
                 <div className="font-extrabold text-slate-800 dark:text-slate-100">{plan.name_ar}</div>
-                <div className="mt-2 text-2xl font-extrabold" style={{ color: primary }}>{plan.price === 0 ? 'مجاناً' : `${plan.price} ر.س`}</div>
+                <div className="mt-2 text-2xl font-extrabold" style={{ color: primary }}>{plan.price === 0 ? 'مجاناً' : `${plan.price} جنيه`}</div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">/ {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}</div>
                 <ul className="mt-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
                   {plan.features.filter((f): f is string => typeof f === 'string').map((f, i) => (

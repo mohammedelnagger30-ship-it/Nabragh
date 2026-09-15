@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Palette, Plus, Trash2, Save, Loader2, Medal, Users as UsersIcon,
@@ -8,19 +8,19 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/context/ToastContext';
 import type {
-  Profile, TeacherPageSettings, TeacherPlan, TeacherHonor,
+  Profile, TeacherPageSettings as TeacherPageSettingsType, TeacherPlan, TeacherHonor,
   Competition, CompetitionLeaderboardRow,
 } from '@/types';
 
-const DEFAULT_SETTINGS: TeacherPageSettings = {
+const DEFAULT_SETTINGS: TeacherPageSettingsType = {
   teacher_id: '', academy_name: 'منصتي التعليمية', slug: '', access_mode: 'public', require_approval: false, allow_free_preview: true, is_published: true,
   primary_color: '#2563eb', secondary_color: '#06b6d4',
   accent_color: '#f59e0b', show_competitions: true, show_leaderboard: true, updated_at: new Date().toISOString(),
 };
 
-export function TeacherPageSettings({ teacherId, premium = true }: { teacherId: string; premium?: boolean }) {
+export const TeacherPageSettings = memo(function TeacherPageSettings({ teacherId, premium = true }: { teacherId: string; premium?: boolean }) {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<TeacherPageSettings>({ ...DEFAULT_SETTINGS, is_published: premium });
+  const [settings, setSettings] = useState<TeacherPageSettingsType>({ ...DEFAULT_SETTINGS, is_published: premium });
   const [plans, setPlans] = useState<TeacherPlan[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,7 @@ export function TeacherPageSettings({ teacherId, premium = true }: { teacherId: 
       supabase.from('teacher_page_settings').select('*').eq('teacher_id', teacherId).maybeSingle(),
       supabase.from('teacher_plans').select('*').eq('teacher_id', teacherId).order('created_at', { ascending: false }),
     ]);
-    if (s) setSettings({ ...DEFAULT_SETTINGS, ...(s as TeacherPageSettings), is_published: premium ? (s as TeacherPageSettings).is_published : false });
+    if (s) setSettings({ ...DEFAULT_SETTINGS, ...(s as TeacherPageSettingsType), is_published: premium ? (s as TeacherPageSettingsType).is_published : false });
     setPlans((p ?? []) as TeacherPlan[]);
     setLoading(false);
   }, [teacherId, premium]);
@@ -89,7 +89,7 @@ export function TeacherPageSettings({ teacherId, premium = true }: { teacherId: 
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">خصوصية المنصة
-              <select value={settings.access_mode} onChange={(e) => setSettings((s) => ({ ...s, access_mode: e.target.value as TeacherPageSettings['access_mode'] }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal dark:border-slate-700 dark:bg-slate-900"><option value="public">عامة</option><option value="private">خاصة للطلاب</option><option value="invite">بالدعوات فقط</option></select>
+              <select value={settings.access_mode} onChange={(e) => setSettings((s) => ({ ...s, access_mode: e.target.value as TeacherPageSettingsType['access_mode'] }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal dark:border-slate-700 dark:bg-slate-900"><option value="public">عامة</option><option value="private">خاصة للطلاب</option><option value="invite">بالدعوات فقط</option></select>
             </label>
             <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium dark:border-slate-700"><input type="checkbox" checked={settings.require_approval} onChange={(e) => setSettings((s) => ({ ...s, require_approval: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> مراجعة طلبات الانضمام</label>
             <label className={`flex items-center gap-2 self-end rounded-xl border px-3 py-3 text-sm font-medium ${premium ? 'border-slate-200 dark:border-slate-700' : 'border-amber-300/60 bg-amber-50/40 dark:border-amber-500/30 dark:bg-amber-900/10'}`}><input type="checkbox" checked={settings.is_published} disabled={!premium} onChange={(e) => setSettings((s) => ({ ...s, is_published: e.target.checked }))} className="h-4 w-4 accent-blue-600" /> {premium ? 'نشر المنصة في الموقع' : 'نشر المنصة في الموقع (ميزة بريميوم)'}{!premium && <Crown className="h-4 w-4 text-amber-500" />}</label>
@@ -151,7 +151,7 @@ export function TeacherPageSettings({ teacherId, premium = true }: { teacherId: 
                 <div>
                   <div className="font-bold text-slate-800 dark:text-slate-100">{plan.name_ar}</div>
                   <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {plan.price === 0 ? 'مجاناً' : `${plan.price} ر.س`} / {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}
+                    {plan.price === 0 ? 'مجاناً' : `${plan.price} جنيه`} / {plan.duration_months} {plan.duration_months > 1 ? 'أشهر' : 'شهر'}
                   </div>
                   {plan.features.length > 0 && (
                     <ul className="mt-2 space-y-1 text-xs text-slate-500 dark:text-slate-400">
@@ -179,7 +179,7 @@ export function TeacherPageSettings({ teacherId, premium = true }: { teacherId: 
       </div>
     </div>
   );
-}
+});
 
 interface StudentInfo {
   profile: Profile;
@@ -194,7 +194,7 @@ interface StudentInfo {
   videosCount: number;
 }
 
-export function TeacherStudents({ teacherId }: { teacherId: string }) {
+export const TeacherStudents = memo(function TeacherStudents({ teacherId }: { teacherId: string }) {
   const [rows, setRows] = useState<StudentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -331,9 +331,9 @@ export function TeacherStudents({ teacherId }: { teacherId: string }) {
       )}
     </div>
   );
-}
+});
 
-export function TeacherAssistants() {
+export const TeacherAssistants = memo(function TeacherAssistants() {
   const { toast } = useToast();
   const [staff, setStaff] = useState<Array<{ id: string; staff_id: string; full_name: string; email: string; can_manage_students: boolean; can_manage_assessments: boolean; can_manage_pricing: boolean; status: string }>>([]);
   const [email, setEmail] = useState('');
@@ -371,7 +371,7 @@ export function TeacherAssistants() {
     <div className="space-y-3">{staff.map((member) => <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><UsersIcon className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className="font-bold text-slate-800 dark:text-slate-100">{member.full_name}</p><p className="text-xs text-slate-500 dark:text-slate-400" dir="ltr">{member.email}</p></div><span className="text-xs font-bold text-emerald-600">{member.status === 'active' ? 'نشط' : 'ملغى'}</span>{member.status === 'active' && <button type="button" onClick={() => void revoke(member.staff_id)} aria-label="إلغاء صلاحيات المساعد" className="rounded-lg p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"><UserX className="h-4 w-4" /></button>}</div>)}</div>
     {staff.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">لم تتم إضافة مساعدين بعد.</div>}
   </div>;
-}
+});
 
 function MiniInfo({ label, value, icon }: { label: string; value: number | string; icon: ReactNode }) {
   return (
@@ -382,7 +382,7 @@ function MiniInfo({ label, value, icon }: { label: string; value: number | strin
   );
 }
 
-export function TeacherHonors({ teacherId }: { teacherId: string }) {
+export const TeacherHonors = memo(function TeacherHonors({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [honors, setHonors] = useState<TeacherHonor[]>([]);
   const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
@@ -462,9 +462,9 @@ export function TeacherHonors({ teacherId }: { teacherId: string }) {
       {honors.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-10 text-center text-sm text-slate-400 dark:text-slate-500">لا توجد تكريمات بعد — كرّم طلابك المتفوقين</div>}
     </div>
   );
-}
+});
 
-export function TeacherLeaderboards({ teacherId }: { teacherId: string }) {
+export const TeacherLeaderboards = memo(function TeacherLeaderboards({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [boards, setBoards] = useState<Record<string, CompetitionLeaderboardRow[]>>({});
@@ -536,4 +536,4 @@ export function TeacherLeaderboards({ teacherId }: { teacherId: string }) {
       <div className="mt-4 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500"><FolderX className="h-4 w-4" /> التكريمات تظهر في صفحتك العامة في خانة «التكريم».</div>
     </div>
   );
-}
+});

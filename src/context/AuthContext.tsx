@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useCallback, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { translateAuthError } from '@/lib/authErrors';
@@ -6,12 +6,15 @@ import { homePath } from '@/lib/roles';
 import { useToast } from '@/context/ToastContext';
 import type { Profile } from '@/types';
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
-  signUp: (email: string, password: string, fullName: string, isTeacher: boolean, phone: string, guardianPhone?: string, educationStage?: string, curriculum?: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, isTeacher: boolean, phone: string, guardianPhone?: string, educationStage?: string, curriculum?: string, isGuardian?: boolean) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null; home?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -26,75 +29,110 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.rpc('get_my_profile');
-    const rows = (data ?? []) as Profile[];
-    const current = rows.find((p) => p.id === userId) ?? null;
-    setProfile(current);
-    return current;
-  };
+  const profileInFlightRef = useRef<{ userId: string; promise: Promise<Profile | null> } | null>(null);
+  const adminInFlightRef = useRef<{ userId: string; promise: Promise<boolean> } | null>(null);
 
-  const fetchAdminStatus = async (userId: string) => {
-    const { data } = await supabase
-      .from('admin_users')
-      .select('user_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-    setIsAdmin(!!data);
-    return !!data;
-  };
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+    const inFlight = profileInFlightRef.current;
+    if (inFlight && inFlight.userId === userId) return inFlight.promise;
 
-  useEffect(() => {
-    console.log('AuthContext: Starting session check...');
-    // Add timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.log('AuthContext: Loading timeout - forcing loading to false');
-        setLoading(false);
-        toast('استغرق تحميل الجلسة وقتاً طويلاً. يرجى تحديث الصفحة.', 'info');
-      }
-    }, 10000); // Increased to 10 seconds timeout
+    const promise = (async () => {
+      const { data } = await supabase.rpc('get_my_profile');
+      const rows = (data ?? []) as Profile[];
+      return rows.find((p) => p.id === userId) ?? null;
+    })();
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('AuthContext: Session retrieved', session ? 'User logged in' : 'No user');
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        Promise.allSettled([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]).finally(() => {
-          console.log('AuthContext: Profile and admin status loaded');
-          setLoading(false);
-        });
-      } else {
-        console.log('AuthContext: No session, setting loading to false');
-        setLoading(false);
-      }
-    }).catch((error) => {
-      console.error('AuthContext: Error getting session', error);
-      setLoading(false);
-      toast('حدث خطأ أثناء تحميل الجلسة. يرجى المحاولة مرة أخرى.', 'error');
-    });
-
-    return () => clearTimeout(timeout);
+    profileInFlightRef.current = { userId, promise };
+    try {
+      const result = await promise;
+      setProfile(result);
+      return result;
+    } finally {
+      if (profileInFlightRef.current?.userId === userId) profileInFlightRef.current = null;
+    }
   }, []);
 
-  // Auth state change listener
+  const fetchAdminStatus = useCallback(async (userId: string): Promise<boolean> => {
+    const inFlight = adminInFlightRef.current;
+    if (inFlight && inFlight.userId === userId) return inFlight.promise;
+
+    const promise = (async () => {
+      const { data } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      return !!data;
+    })();
+
+    adminInFlightRef.current = { userId, promise };
+    try {
+      const result = await promise;
+      setIsAdmin(result);
+      return result;
+    } finally {
+      if (adminInFlightRef.current?.userId === userId) adminInFlightRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('AuthContext: Auth state changed', _event, session ? 'User logged in' : 'No user');
+    let cancelled = false;
+    let finished = false;
+    const finish = () => {
+      if (!cancelled && !finished) {
+        finished = true;
+        setLoading(false);
+      }
+    };
+
+    // Fallback to prevent an infinite loading state (30s timeout)
+    const timeout = setTimeout(() => {
+      finish();
+      if (!supabaseUrl || !supabaseAnonKey) {
+        toast('المتغيرات البيئية غير معينة. يرجى التحقق من الإعدادات.', 'error');
+      }
+    }, 30000);
+
+    // Drive session state from a single listener (always fires INITIAL_SESSION on subscribe)
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        const [profileData, adminData] = await Promise.all([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]);
-        console.log('AuthContext: Profile loaded', profileData);
-        console.log('AuthContext: Admin status loaded', adminData);
+        void Promise.all([fetchProfile(session.user.id), fetchAdminStatus(session.user.id)]).finally(finish);
       } else {
         setProfile(null);
         setIsAdmin(false);
+        finish();
       }
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      listener.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, isTeacher: boolean, phone: string, guardianPhone?: string, educationStage?: string, curriculum?: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: translateAuthError(error.message) };
+    if (data.user) {
+      const [profileRow, admin] = await Promise.all([fetchProfile(data.user.id), fetchAdminStatus(data.user.id)]);
+      return { error: null, home: homePath(profileRow, admin) };
+    }
+    return { error: null };
+  }, [fetchProfile, fetchAdminStatus]);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setProfile(null);
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (user) await fetchProfile(user.id);
+  }, [user, fetchProfile]);
+
+  const signUp = useCallback(async (email: string, password: string, fullName: string, isTeacher: boolean, phone: string, guardianPhone?: string, educationStage?: string, curriculum?: string, isGuardian = false) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: translateAuthError(error.message) };
 
@@ -106,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: phone || null,
         guardian_phone: guardianPhone || null,
         is_teacher: isTeacher,
+        is_guardian: isGuardian,
         is_approved: !isTeacher,
         education_stage: isTeacher ? null : educationStage || null,
         curriculum: isTeacher ? null : curriculum || null,
@@ -116,29 +155,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return { error: null };
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: translateAuthError(error.message) };
-    if (data.user) {
-      const [profileRow, admin] = await Promise.all([fetchProfile(data.user.id), fetchAdminStatus(data.user.id)]);
-      return { error: null, home: homePath(profileRow, admin) };
-    }
-    return { error: null };
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
-  };
-
-  const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
-  };
+  const value = useMemo(
+    () => ({ user, profile, loading, isAdmin, signUp, signIn, signOut, refreshProfile }),
+    [user, profile, loading, isAdmin, signUp, signIn, signOut, refreshProfile],
+  );
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

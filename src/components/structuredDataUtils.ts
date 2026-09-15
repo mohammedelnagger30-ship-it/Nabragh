@@ -16,7 +16,7 @@ export function generateCourseStructuredData(course: any) {
       priceCurrency: 'SAR',
       availability: 'https://schema.org/InStock',
     },
-    inLanguage: 'ar-SA',
+    inLanguage: 'ar-EG',
   };
 }
 
@@ -33,7 +33,7 @@ export function generateVideoStructuredData(video: any) {
       '@type': 'Person',
       name: video.teacher?.full_name,
     },
-    inLanguage: 'ar-SA',
+    inLanguage: 'ar-EG',
   };
 }
 
@@ -41,7 +41,7 @@ export function generateOrganizationStructuredData() {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'منصة العلم',
+    name: 'Noona',
     url: 'https://manhatalilm.com',
     logo: 'https://manhatalilm.com/logo.png',
     description: 'منصة تعليمية متكاملة تتيح للمدرسين رفع فيديوهاتهم وللطلاب الوصول لمحتوى تعليمي متميز',

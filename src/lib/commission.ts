@@ -31,7 +31,7 @@ export function calculateCommissionBreakdown(
 }
 
 export function formatCurrency(value: number): string {
-  return `${Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })} ر.س`;
+  return `${Number(value).toLocaleString('ar-EG', { maximumFractionDigits: 2 })} جنيه`;
 }
 
 export function canCreatePayout(teacherPayout: number, minimumPayout = 0): boolean {

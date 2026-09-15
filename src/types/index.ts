@@ -13,12 +13,13 @@ export interface Profile {
   years_experience: number;
   cv_url: string | null;
   is_teacher: boolean;
+  is_guardian?: boolean;
   is_approved: boolean;
   is_manager: boolean;
   is_verified: boolean;
   is_featured?: boolean;
   featured_order?: number;
-  teacher_tier?: 'free' | 'premium' | string;
+  teacher_tier?: 'free' | 'premium' | 'premium_plus' | string;
   education_stage: string | null;
   curriculum: string | null;
   teaching_stages: string[] | null;
@@ -444,7 +445,7 @@ export interface TeacherTopStudent {
 }
 
 export interface TeacherUsageStats {
-  tier: 'free' | 'premium';
+  tier: 'free' | 'premium' | 'premium_plus';
   videos_used: number;
   courses_used: number;
   videos_limit: number;

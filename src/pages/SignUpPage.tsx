@@ -18,6 +18,7 @@ export default function SignUpPage() {
   const [phone, setPhone] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
   const [isTeacher, setIsTeacher] = useState(false);
+  const [isGuardian, setIsGuardian] = useState(false);
   const [educationStage, setEducationStage] = useState('');
   const [curriculum, setCurriculum] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function SignUpPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await signUp(email, password, fullName, isTeacher, phone, guardianPhone, educationStage, curriculum);
+    const { error } = await signUp(email, password, fullName, isTeacher, phone, guardianPhone, educationStage, curriculum, isGuardian);
     setLoading(false);
     if (error) {
       setError(error);
@@ -114,7 +115,7 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {(
+            {!isGuardian && (
               <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-200 sm:text-sm">
                   {isTeacher ? 'نوع المدرسة أو المعهد' : 'نوع المدرسة أو المعهد'}
@@ -145,12 +146,12 @@ export default function SignUpPage() {
                   required
                   dir="ltr"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:py-2.5 sm:pr-11 sm:text-sm"
-                  placeholder="+966..."
+                  placeholder="+20..."
                 />
               </div>
             </div>
 
-            {!isTeacher && (
+            {!isTeacher && !isGuardian && (
               <div>
                 <label htmlFor="signup-guardian-phone" className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-200 sm:mb-1.5 sm:text-sm">رقم ولي الأمر</label>
                 <div className="relative">
@@ -163,7 +164,7 @@ export default function SignUpPage() {
                     required
                     dir="ltr"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:py-2.5 sm:pr-11 sm:text-sm"
-                    placeholder="+966..."
+                    placeholder="+20..."
                   />
                 </div>
               </div>
@@ -194,12 +195,12 @@ export default function SignUpPage() {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-2 dark:text-slate-200 sm:text-sm">نوع الحساب</label>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsTeacher(false)}
+                  onClick={() => { setIsTeacher(false); setIsGuardian(false); }}
                   className={`px-3 py-2.5 rounded-xl border-2 text-xs font-medium transition-all sm:px-4 sm:py-3 sm:text-sm ${
-                    !isTeacher
+                    !isTeacher && !isGuardian
                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
@@ -208,14 +209,25 @@ export default function SignUpPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsTeacher(true)}
+                  onClick={() => { setIsTeacher(true); setIsGuardian(false); }}
                   className={`px-3 py-2.5 rounded-xl border-2 text-xs font-medium transition-all sm:px-4 sm:py-3 sm:text-sm ${
-                    isTeacher
+                    isTeacher && !isGuardian
                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
                   مدرس
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsTeacher(false); setIsGuardian(true); }}
+                  className={`px-3 py-2.5 rounded-xl border-2 text-xs font-medium transition-all sm:px-4 sm:py-3 sm:text-sm ${
+                    isGuardian
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
+                  }`}
+                >
+                  ولي أمر
                 </button>
               </div>
             </div>

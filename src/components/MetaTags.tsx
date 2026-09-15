@@ -64,7 +64,7 @@ export default function MetaTags({
           description,
           url,
           image,
-          inLanguage: 'ar-SA',
+          inLanguage: 'ar-EG',
         })}
       </script>
     </Helmet>

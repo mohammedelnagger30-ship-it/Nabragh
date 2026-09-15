@@ -99,7 +99,7 @@ export default function CourseDetailPage() {
       toast('تعذر إرسال الطلب', 'error');
       return;
     }
-    await supabase.from('payments').insert({
+    const { data: paymentRow, error: paymentError } = await supabase.from('payments').insert({
       subscription_id: (subRow as Subscription).id,
       student_id: user.id,
       teacher_id: teacherId,
@@ -107,10 +107,23 @@ export default function CourseDetailPage() {
       method: 'manual',
       status: 'pending',
       notes: `طلب وصول لدورة: ${course.title}`,
+    }).select('id').single();
+    if (paymentError || !paymentRow) {
+      setRequesting(null);
+      toast('تم إنشاء الطلب لكن تعذر تجهيز رابط الدفع', 'error');
+      return;
+    }
+
+    const { data: paymentLink, error: linkError } = await supabase.functions.invoke('create-paymob-payment-link', {
+      body: { paymentId: paymentRow.id },
     });
     setRequesting(null);
     setCourseSub(subRow as Subscription);
-    toast('تم إرسال طلب الاشتراك. ينتظر اعتماد الإدارة أو المدرس.', 'success');
+    if (linkError || !paymentLink?.paymentUrl) {
+      toast('تم إنشاء الطلب لكن تعذر تجهيز رابط الدفع. تواصل مع الإدارة.', 'error');
+      return;
+    }
+    window.location.assign(paymentLink.paymentUrl as string);
   };
 
   if (loading) {
@@ -134,7 +147,9 @@ export default function CourseDetailPage() {
 
   const levelLabels: Record<string, string> = { beginner: 'مبتدئ', intermediate: 'متوسط', advanced: 'متقدم' };
   const levelColors: Record<string, string> = {
-    beginner: 'bg-green-50 text-green-600', intermediate: 'bg-amber-50 text-amber-600', advanced: 'bg-rose-50 text-rose-600',
+    beginner: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    intermediate: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+    advanced: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
   };
 
   return (
@@ -238,14 +253,14 @@ export default function CourseDetailPage() {
                     <button onClick={() => requestAccess('subscription')} disabled={requesting !== null || !user}
                       className="mb-3 w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 font-semibold text-white hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2">
                       {requesting === 'subscription' ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
-                      اشترك شهريًا — {course.subscription_price} ر.س
+                      اشترك شهريًا — {course.subscription_price} جنيه
                     </button>
                   )}
                   {course.price > 0 && (
                     <button onClick={() => requestAccess('purchase')} disabled={requesting !== null || !user}
                       className="mb-3 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 font-semibold text-white hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2">
                       {requesting === 'purchase' ? <Loader2 className="w-5 h-5 animate-spin" /> : <BadgeCheck className="w-5 h-5" />}
-                      شراء الدورة نهائيًا — {course.price} ر.س
+                      شراء الدورة نهائيًا — {course.price} جنيه
                     </button>
                   )}
                   {!user ? (
@@ -344,7 +359,7 @@ export default function CourseDetailPage() {
                   <span className="font-bold text-slate-800 dark:text-slate-100">
                     {isFreeCourse
                       ? 'مجانية'
-                      : [course.subscription_price > 0 && `${course.subscription_price} ر.س/شهر`, course.price > 0 && `${course.price} ر.س`].filter(Boolean).join(' • ')}
+                      : [course.subscription_price > 0 && `${course.subscription_price} جنيه/شهر`, course.price > 0 && `${course.price} جنيه`].filter(Boolean).join(' • ')}
                   </span>
                 </div>
               </div>

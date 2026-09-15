@@ -203,7 +203,7 @@ export default function SettingsPage() {
               <div className="relative">
                 <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg dark:border-slate-800">
                   {avatar ? (
-                    <img src={avatar} alt={profile.full_name} className="h-full w-full object-cover" />
+                    <img src={avatar} alt={profile.full_name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
                       {profile.full_name.charAt(0)}
@@ -320,17 +320,17 @@ export default function SettingsPage() {
                   )}
                   <div>
                     <label className={labelCls}><Phone className="mr-1 inline h-3.5 w-3.5" /> رقم الهاتف</label>
-                    <input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="+966..." className={inputCls} />
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="+20..." className={inputCls} />
                   </div>
                   {!profile.is_teacher && (
                     <div>
                       <label className={labelCls}>رقم ولي الأمر</label>
-                      <input value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} dir="ltr" placeholder="+966..." className={inputCls} />
+                      <input value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} dir="ltr" placeholder="+20..." className={inputCls} />
                     </div>
                   )}
                   <div>
                     <label className={labelCls}><MapPin className="mr-1 inline h-3.5 w-3.5" /> الموقع</label>
-                    <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)} placeholder="الرياض، السعودية" className={inputCls} />
+                    <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)} placeholder="القاهرة، مصر" className={inputCls} />
                   </div>
                   {profile.is_teacher && (
                     <div>

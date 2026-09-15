@@ -37,7 +37,7 @@ export default function PwaInstallPrompt() {
         <Download className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">ثبّت منصة العلم على جهازك</p>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">ثبّت Noona على جهازك</p>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">وصول أسرع وتجربة أقرب للتطبيق</p>
       </div>
       <button type="button" onClick={install} className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">

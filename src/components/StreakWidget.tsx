@@ -12,7 +12,7 @@ export default function StreakWidget() {
   if (!streakData) return null;
 
   return (
-    <div className="rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 p-6 shadow-xl shadow-blue-500/5 dark:border-slate-800 dark:from-slate-850 dark:via-slate-900 dark:to-slate-900">
+    <div className="rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/40 to-blue-50/30 p-6 shadow-xl shadow-blue-500/5 dark:border-slate-800 dark:from-slate-850 dark:via-slate-900 dark:to-slate-900">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 shadow-lg shadow-orange-500/25">
@@ -47,7 +47,7 @@ export default function StreakWidget() {
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400">
+            <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
               <Award className="h-4 w-4" />
               <span className="text-base font-extrabold text-slate-900 dark:text-white">
                 {streakData.badges.filter((b) => b.unlocked).length}/{streakData.badges.length}

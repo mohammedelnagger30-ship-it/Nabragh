@@ -2,6 +2,7 @@ import type { Profile, TeacherUsageStats } from '@/types';
 
 export interface TeacherLimits {
   premium: boolean;
+  premiumPlus: boolean;
   maxVideos: number;
   maxCourses: number;
   canPublishAcademy: boolean;
@@ -10,12 +11,14 @@ export interface TeacherLimits {
 
 export function getTeacherLimits(tier?: Profile['teacher_tier']): TeacherLimits {
   const premium = tier === 'premium';
+  const premiumPlus = tier === 'premium_plus';
   return {
-    premium,
-    maxVideos: premium ? Infinity : 5,
-    maxCourses: premium ? Infinity : 2,
-    canPublishAcademy: premium,
-    planLabel: premium ? 'بريميوم' : 'مجانية',
+    premium: premium || premiumPlus,
+    premiumPlus,
+    maxVideos: premium || premiumPlus ? Infinity : 5,
+    maxCourses: premium || premiumPlus ? Infinity : 2,
+    canPublishAcademy: premium || premiumPlus,
+    planLabel: premiumPlus ? 'بريميوم بلاس' : premium ? 'بريميوم' : 'مجانية',
   };
 }
 
@@ -39,7 +42,7 @@ export function isFreeAtLimit(used: number, limit: number): boolean {
 export function emptyUsage(tier: Profile['teacher_tier']): TeacherUsageStats {
   const limits = getTeacherLimits(tier);
   return {
-    tier: limits.premium ? 'premium' : 'free',
+    tier: limits.premiumPlus ? 'premium_plus' : limits.premium ? 'premium' : 'free',
     videos_used: 0,
     courses_used: 0,
     videos_limit: limits.maxVideos === Infinity ? -1 : limits.maxVideos,

@@ -45,7 +45,7 @@ import {
   Swords,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { SITE_SETTINGS_DEFAULTS } from '@/lib/siteSettings';
+import { SITE_SETTINGS_DEFAULTS, invalidateSiteSettingsCache } from '@/lib/siteSettings';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -362,7 +362,7 @@ function AdminPortalShell({ children, onNavigate, onSignOut, activeTab, onRefres
                 key={id}
                 type="button"
                 onClick={() => { onNavigate(id); setSidebarOpen(false); }}
-                className={`mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs transition sm:gap-3 sm:px-3 sm:py-2.5 sm:text-sm ${isActive ? 'bg-blue-50 font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'}`}
+                className={`mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs transition sm:gap-3 sm:px-3 sm:py-2.5 sm:text-sm ${isActive ? 'bg-blue-50 font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'}`}
               >
                 <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span>{label}</span>
@@ -375,7 +375,7 @@ function AdminPortalShell({ children, onNavigate, onSignOut, activeTab, onRefres
           <button
             type="button"
             onClick={() => { onRefresh(); }}
-            className="mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:gap-3 sm:py-2.5 sm:text-sm"
+            className="mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:gap-3 sm:py-2.5 sm:text-sm"
           >
             <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>تحديث البيانات</span>
@@ -392,7 +392,7 @@ function AdminPortalShell({ children, onNavigate, onSignOut, activeTab, onRefres
           <button
             type="button"
             onClick={toggleTheme}
-            className="mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:gap-3 sm:py-2.5 sm:text-sm"
+            className="mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white sm:gap-3 sm:py-2.5 sm:text-sm"
           >
             <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>{darkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>
@@ -400,7 +400,7 @@ function AdminPortalShell({ children, onNavigate, onSignOut, activeTab, onRefres
           <button
             type="button"
             onClick={onSignOut}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-xs text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-900/20 sm:gap-3 sm:py-2.5 sm:text-sm"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-xs text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-900/20 sm:gap-3 sm:py-2.5 sm:text-sm"
           >
             <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>تسجيل الخروج</span>
@@ -473,7 +473,7 @@ function OverviewPanel() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <InsightCard icon={DollarSign} label="إجمالي الإيرادات" value={`${Number(c.revenue).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+        <InsightCard icon={DollarSign} label="إجمالي الإيرادات" value={`${Number(c.revenue).toLocaleString('ar-EG')} جنيه`} tone="emerald" />
         <InsightCard icon={CreditCard} label="مدفوعات معلقة" value={c.pending_payments} tone="amber" />
         <InsightCard icon={UserCheck} label="اشتراكات نشطة" value={c.active_subscriptions} tone="cyan" />
         <InsightCard icon={Eye} label="إجمالي المشاهدات" value={Number(c.total_views).toLocaleString('ar-EG')} tone="violet" />
@@ -523,7 +523,7 @@ function OverviewPanel() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{p.student_name}</div>
-                    <div className="text-xs text-slate-500">{Number(p.amount).toLocaleString('ar-EG')} ر.س</div>
+                    <div className="text-xs text-slate-500">{Number(p.amount).toLocaleString('ar-EG')} جنيه</div>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${p.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                     {p.status === 'paid' ? 'مدفوع' : 'معلق'}
@@ -552,7 +552,7 @@ function OverviewPanel() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{crs.title}</div>
-                    <div className="text-xs text-slate-500">{crs.enrollments} طالب • إيراد {Number(crs.revenue).toLocaleString('ar-EG')} ر.س</div>
+                    <div className="text-xs text-slate-500">{crs.enrollments} طالب • إيراد {Number(crs.revenue).toLocaleString('ar-EG')} جنيه</div>
                   </div>
                 </div>
               ))}
@@ -576,7 +576,7 @@ function OverviewPanel() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{t.name}</div>
-                    <div className="text-xs text-slate-500">{t.courses} دورات • {t.students} طالب • {Number(t.revenue).toLocaleString('ar-EG')} ر.س</div>
+                    <div className="text-xs text-slate-500">{t.courses} دورات • {t.students} طالب • {Number(t.revenue).toLocaleString('ar-EG')} جنيه</div>
                   </div>
                 </div>
               ))}
@@ -640,7 +640,7 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ابحث عن مدرس بالاسم أو البريد..."
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white ps-10 pe-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           />
         </div>
         <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
@@ -686,8 +686,8 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
             <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">التخصص</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">التخصص</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الدورات</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الطلاب</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الإيراد</th>
@@ -712,7 +712,7 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{t.specialization ?? 'غير محدد'}</td>
                     <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{t.course_count}</td>
                     <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{t.student_count}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(t.revenue).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(t.revenue).toLocaleString('ar-EG')} جنيه</td>
                     <td className="px-6 py-4 text-center">
                       <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{t.is_verified ? 'موثق' : 'معتمد'}</span>
                     </td>
@@ -781,7 +781,7 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
       <div className="grid gap-4 sm:grid-cols-3">
         <InsightCard icon={Users} label="إجمالي الطلاب" value={rows.length} tone="cyan" />
         <InsightCard icon={BookOpen} label="إجمالي الاشتراكات" value={totalEnrollments} tone="violet" />
-        <InsightCard icon={DollarSign} label="إجمالي المدفوعات" value={`${Number(totalSpent).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+        <InsightCard icon={DollarSign} label="إجمالي المدفوعات" value={`${Number(totalSpent).toLocaleString('ar-EG')} جنيه`} tone="emerald" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -791,7 +791,7 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ابحث عن طالب بالاسم أو البريد..."
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white ps-10 pe-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           />
         </div>
         <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
@@ -807,7 +807,7 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
             <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الطالب</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">الطالب</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الاشتراكات</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">المدفوعات</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">تاريخ التسجيل</th>
@@ -829,7 +829,7 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{s.enrollment_count}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(s.total_spent).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(s.total_spent).toLocaleString('ar-EG')} جنيه</td>
                     <td className="px-6 py-4 text-center text-xs text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('ar-EG') : '-'}</td>
                     <td className="px-6 py-4 text-center">
                       <button type="button" onClick={() => void handleBlock(s)} disabled={busy || actionId === s.id} className="rounded-lg bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300" title="حظر وإزالة من القائمة">
@@ -930,7 +930,7 @@ function CoursesPanel() {
         <InsightCard icon={BookOpen} label="إجمالي الدورات" value={rows.length} tone="violet" />
         <InsightCard icon={Globe} label="الدورات المنشورة" value={publishedCount} tone="emerald" />
         <InsightCard icon={Star} label="الدورات المميزة" value={featuredCount} tone="amber" />
-        <InsightCard icon={DollarSign} label="إجمالي الإيرادات" value={`${Number(totalRevenue).toLocaleString('ar-EG')} ر.س`} tone="blue" />
+        <InsightCard icon={DollarSign} label="إجمالي الإيرادات" value={`${Number(totalRevenue).toLocaleString('ar-EG')} جنيه`} tone="blue" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -940,7 +940,7 @@ function CoursesPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ابحث عن دورة بالاسم أو المدرس..."
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white ps-10 pe-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           />
         </div>
         <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
@@ -956,9 +956,9 @@ function CoursesPanel() {
             <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الترتيب</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">الدورة</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">الترتيب</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">الدورة</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">السعر</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">المشاهدات</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الاشتراكات</th>
@@ -988,10 +988,10 @@ function CoursesPanel() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{c.teacher_name ?? '-'}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{c.price === 0 ? 'مجانية' : `${Number(c.price).toLocaleString('ar-EG')} ر.س`}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{c.price === 0 ? 'مجانية' : `${Number(c.price).toLocaleString('ar-EG')} جنيه`}</td>
                     <td className="px-6 py-4 text-center text-sm font-bold text-blue-600 dark:text-blue-400">{Number(c.views_count).toLocaleString('ar-EG')}</td>
                     <td className="px-6 py-4 text-center text-sm font-bold text-violet-600 dark:text-violet-400">{c.enrollment_count}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(c.revenue).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(c.revenue).toLocaleString('ar-EG')} جنيه</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex flex-col items-center gap-1">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${c.is_published ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
@@ -1063,7 +1063,7 @@ function HomepageManager() {
       supabase.from('videos').select('id,title,is_free,featured_order').eq('is_featured', true).order('featured_order', { ascending: true }).limit(50),
     ]);
     setPools({
-      courses: (courses.data ?? []).map((c) => ({ id: c.id, title: c.title, subtitle: `${c.price === 0 ? 'مجانية' : `${c.price} ر.س`} • ${(c.teacher as { full_name?: string } | null)?.full_name ?? ''}`, featured_order: c.featured_order ?? 0 })),
+      courses: (courses.data ?? []).map((c) => ({ id: c.id, title: c.title, subtitle: `${c.price === 0 ? 'مجانية' : `${c.price} جنيه`} • ${(c.teacher as { full_name?: string } | null)?.full_name ?? ''}`, featured_order: c.featured_order ?? 0 })),
       profiles: (profiles.data ?? []).map((p) => ({ id: p.id, title: p.full_name ?? '', subtitle: p.specialization ?? 'مدرس', featured_order: p.featured_order ?? 0 })),
       videos: (videos.data ?? []).map((v) => ({ id: v.id, title: v.title, subtitle: v.is_free ? 'مجاني' : 'مدفوع', featured_order: v.featured_order ?? 0 })),
     });
@@ -1080,7 +1080,7 @@ function HomepageManager() {
     let data: FeaturedItem[] = [];
     if (pool === 'courses') {
       const { data: rows } = await supabase.from('courses').select('id,title,price,featured_order,teacher:profiles!courses_teacher_id_fkey(full_name)').eq('is_published', true).eq('is_visible', true).eq('is_featured', false).ilike('title', `%${q}%`).limit(8);
-      data = (rows ?? []).map((c) => ({ id: c.id, title: c.title, subtitle: `${c.price === 0 ? 'مجانية' : `${c.price} ر.س`} • ${(c.teacher as { full_name?: string } | null)?.full_name ?? ''}`, featured_order: 0 }));
+      data = (rows ?? []).map((c) => ({ id: c.id, title: c.title, subtitle: `${c.price === 0 ? 'مجانية' : `${c.price} جنيه`} • ${(c.teacher as { full_name?: string } | null)?.full_name ?? ''}`, featured_order: 0 }));
     } else if (pool === 'profiles') {
       const { data: rows } = await supabase.from('profiles').select('id,full_name,specialization,featured_order').eq('is_teacher', true).eq('is_approved', true).eq('is_featured', false).ilike('full_name', `%${q}%`).limit(8);
       data = (rows ?? []).map((p) => ({ id: p.id, title: p.full_name ?? '', subtitle: p.specialization ?? 'مدرس', featured_order: 0 }));
@@ -1134,7 +1134,7 @@ function HomepageManager() {
 
   return (
     <div className="space-y-8">
-      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-8 text-white shadow-2xl">
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 p-8 text-white shadow-2xl">
         <div className="flex items-start justify-between">
           <div>
             <div className="mb-3 flex items-center gap-2"><span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold backdrop-blur-sm"><Star className="ml-1 inline h-3 w-3" /> مركز تنسيق الصفحة الرئيسية</span></div>
@@ -1160,7 +1160,7 @@ function HomepageManager() {
                 value={queries[pool]}
                 onChange={(e) => void search(pool, e.target.value)}
                 placeholder={`ابحث عن ${pool === 'courses' ? 'دورة' : pool === 'profiles' ? 'مدرس' : 'فيديو'} وأضفه للمميزين...`}
-                className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pr-10 pl-4 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 ps-10 pe-4 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
               {searching === pool && <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-violet-500" />}
             </div>
@@ -1168,7 +1168,7 @@ function HomepageManager() {
             {results[pool].length > 0 && (
               <div className="mb-4 rounded-2xl border border-violet-100 bg-violet-50 p-3 dark:border-violet-900/40 dark:bg-violet-900/20">
                 {results[pool].map((r) => (
-                  <button key={r.id} onClick={() => void add(pool, r)} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-right transition hover:bg-white dark:hover:bg-slate-800">
+                  <button key={r.id} onClick={() => void add(pool, r)} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-start transition hover:bg-white dark:hover:bg-slate-800">
                     <span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">{r.title}</span><span className="block text-xs text-slate-500">{r.subtitle}</span></span>
                     <span className="flex shrink-0 items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white"><Plus className="h-3 w-3" /> أضف</span>
                   </button>
@@ -1295,6 +1295,7 @@ function SiteSettingsPanel() {
       for (const key of keys) {
         await supabase.rpc('admin_update_site_setting', { p_key: key, p_value: draft[key] });
       }
+      invalidateSiteSettingsCache();
       setSavedToast(`تم حفظ ${label}`);
       setTimeout(() => setSavedToast(null), 3000);
     } finally {
@@ -1382,7 +1383,7 @@ function SiteSettingsPanel() {
               type="button"
               onClick={() => toggleSection(key)(!sections[key])}
               disabled={isSaving(['homepage_sections'])}
-              className={`flex items-center justify-between rounded-2xl border p-4 text-right transition disabled:opacity-60 ${sections[key] ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
+              className={`flex items-center justify-between rounded-2xl border p-4 text-start transition disabled:opacity-60 ${sections[key] ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
             >
               <span className="font-bold text-slate-800 dark:text-slate-100">{label}</span>
               <span className={`text-xs font-bold ${sections[key] ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400'}`}>{sections[key] ? 'ظاهر' : 'مخفي'}</span>
@@ -1424,7 +1425,7 @@ function SubscriptionsPanel({
       <div className="grid gap-4 sm:grid-cols-3">
         <InsightCard icon={CreditCard} label="إجمالي الطلبات" value={subscriptions.length} tone="cyan" />
         <InsightCard icon={AlertTriangle} label="طلبات معلقة" value={pending.length} tone="amber" />
-        <InsightCard icon={DollarSign} label="إيراد الاشتراكات النشطة" value={`${Number(totalConfirmed).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+        <InsightCard icon={DollarSign} label="إيراد الاشتراكات النشطة" value={`${Number(totalConfirmed).toLocaleString('ar-EG')} جنيه`} tone="emerald" />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
         <div><p className="font-bold text-amber-800 dark:text-amber-200">{pending.length} طلبات تحتاج مراجعة</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-300">تفعيل الطلب يفتح المحتوى المدفوع للطالب.</p></div>
@@ -1438,7 +1439,7 @@ function SubscriptionsPanel({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white">{subscription.student_name ?? 'طالب'}</h3>
-                <p className="mt-1 text-sm text-slate-500">{subscription.course_title ? `دورة: ${subscription.course_title}` : (subscription.plan_name ?? 'اشتراك عام')} • {Number(subscription.price ?? 0).toLocaleString('ar-EG')} ر.س • {accessLabel}</p>
+                <p className="mt-1 text-sm text-slate-500">{subscription.course_title ? `دورة: ${subscription.course_title}` : (subscription.plan_name ?? 'اشتراك عام')} • {Number(subscription.price ?? 0).toLocaleString('ar-EG')} جنيه • {accessLabel}</p>
               </div>
               <span className={`rounded-full px-3 py-1 text-xs font-bold ${isPending ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : subscription.status === 'active' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
                 {isPending ? 'معلق' : subscription.status === 'active' ? 'نشط' : subscription.status}
@@ -1502,7 +1503,7 @@ function AnalyticsPanel() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <InsightCard icon={Users} label="مستخدم جديد (30 يوم)" value={totalSignups.toLocaleString('ar-EG')} tone="cyan" />
             <InsightCard icon={CreditCard} label="اشتراكات (30 يوم)" value={totalSubs.toLocaleString('ar-EG')} tone="emerald" />
-            <InsightCard icon={DollarSign} label="إيرادات (30 يوم)" value={`${Number(totalRevenue).toLocaleString('ar-EG')} ر.س`} tone="amber" />
+            <InsightCard icon={DollarSign} label="إيرادات (30 يوم)" value={`${Number(totalRevenue).toLocaleString('ar-EG')} جنيه`} tone="amber" />
             <InsightCard icon={BookOpen} label="دورات" value={snapshot?.counts?.courses ?? 0} tone="violet" />
           </div>
           <div className="grid gap-3 md:grid-cols-3">
@@ -1515,7 +1516,7 @@ function AnalyticsPanel() {
               <ChartSeries points={daily} barClass="bg-emerald-400" format={(p) => p.subscriptions} />
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">الإيرادات اليومية (ر.س)</h4>
+              <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">الإيرادات اليومية (جنيه)</h4>
               <ChartSeries points={daily} barClass="bg-amber-400" format={(p) => Number(p.revenue)} />
             </div>
           </div>
@@ -1532,7 +1533,7 @@ function AnalyticsPanel() {
               <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">أعلى الدورات إيراداً</h4>
               <div className="space-y-2">
                 {snapshot?.top_courses?.map((c, idx) => (
-                  <div key={c.id ?? c.title ?? idx} className="flex items-center justify-between text-sm"><span className="font-semibold text-slate-700 dark:text-slate-200">{c.course_title ?? c.title ?? 'دورة'}</span><span className="text-slate-500 dark:text-slate-400">{Number(c.revenue ?? 0).toLocaleString('ar-EG')} ر.س</span></div>
+                  <div key={c.id ?? c.title ?? idx} className="flex items-center justify-between text-sm"><span className="font-semibold text-slate-700 dark:text-slate-200">{c.course_title ?? c.title ?? 'دورة'}</span><span className="text-slate-500 dark:text-slate-400">{Number(c.revenue ?? 0).toLocaleString('ar-EG')} جنيه</span></div>
                 ))}
               </div>
             </div>
@@ -1586,7 +1587,7 @@ function VideosPanel() {
       <PanelHeading icon={Film} title="الفيديوهات" description="إدارة فيديوهات المدرسين: التحكم في الوصول المجاني أو حذف فيديوهات مخالفة." />
       {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : rows.length === 0 ? <EmptyAdminState title="لا توجد فيديوهات" /> : (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500">
+          <table className="w-full text-start text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500">
             <th className="px-4 py-3">الفيديو</th><th className="px-4 py-3">المدرس</th><th className="px-4 py-3">المشاهدات</th><th className="px-4 py-3">المدة</th><th className="px-4 py-3">الوصول</th><th className="px-4 py-3">الإجراءات</th>
           </tr></thead><tbody>
             {rows.map((v) => (
@@ -1663,7 +1664,7 @@ function ModerationPanel() {
       </div>
       {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500">
+          <table className="w-full text-start text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500">
             <th className="px-4 py-3">المستخدم</th><th className="px-4 py-3">المحتوى</th><th className="px-4 py-3">على</th><th className="px-4 py-3">التاريخ</th><th className="px-4 py-3">حذف</th>
           </tr></thead><tbody>
             {section === 'comments' && comments.map((c) => (
@@ -1829,7 +1830,7 @@ function AdminUsersPanel() {
           {notice && <p className="mt-3 text-sm font-bold text-slate-500 dark:text-slate-400">{notice}</p>}
         </div>
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-3">الإداري</th><th className="px-4 py-3">الإجراءات</th></tr></thead><tbody>
+          <table className="w-full text-start text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-3">الإداري</th><th className="px-4 py-3">الإجراءات</th></tr></thead><tbody>
             {loading ? <Loader2 className="mx-auto mt-8 h-8 w-8 animate-spin text-blue-600" /> : rows.map((r) => (
               <tr key={r.user_id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
                 <td className="px-4 py-3"><div className="font-bold text-slate-900 dark:text-white">{r.full_name ?? 'إداري'}</div>{r.email && <div className="text-xs text-slate-400">{r.email}</div>}{r.user_id === selfId && <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">أنت</span>}</td>
@@ -1876,6 +1877,11 @@ function ReportsPanel() {
   const [payoutPeriodEnd, setPayoutPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [payoutGenerationLoading, setPayoutGenerationLoading] = useState(false);
   const [payoutGenerationNotice, setPayoutGenerationNotice] = useState<string | null>(null);
+  const [serviceTeachers, setServiceTeachers] = useState<Array<{ id: string; full_name: string | null; email: string | null; teacher_tier: string | null }>>([]);
+  const [serviceTeacherId, setServiceTeacherId] = useState('');
+  const [serviceKey, setServiceKey] = useState<'managed_video_uploads' | 'consultations'>('managed_video_uploads');
+  const [serviceRecording, setServiceRecording] = useState(false);
+  const [serviceNotice, setServiceNotice] = useState<string | null>(null);
 
   const loadPayouts = useCallback(async () => {
     setPayoutLoading(true);
@@ -1885,6 +1891,33 @@ function ReportsPanel() {
   }, []);
 
   useEffect(() => { void loadPayouts(); }, [loadPayouts]);
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id,full_name,email,teacher_tier')
+        .eq('is_teacher', true)
+        .order('full_name');
+      setServiceTeachers((data ?? []) as Array<{ id: string; full_name: string | null; email: string | null; teacher_tier: string | null }>);
+    })();
+  }, []);
+
+  const recordServiceUsage = async () => {
+    if (!serviceTeacherId) {
+      setServiceNotice('اختر مدرسًا أولًا.');
+      return;
+    }
+    setServiceRecording(true);
+    setServiceNotice(null);
+    const { error } = await supabase.rpc('admin_record_teacher_service_usage', {
+      target_teacher: serviceTeacherId,
+      target_service: serviceKey,
+      increment_by: 1,
+    });
+    setServiceRecording(false);
+    setServiceNotice(error ? (error.message.includes('service_limit') ? 'تم الوصول إلى الحد الشهري لهذه الخدمة.' : 'تعذر تسجيل الخدمة.') : 'تم تسجيل الخدمة بنجاح.');
+  };
 
   const generatePayouts = async () => {
     if (!payoutPeriodStart || !payoutPeriodEnd || payoutPeriodStart >= payoutPeriodEnd) {
@@ -1939,6 +1972,31 @@ function ReportsPanel() {
     <section id="reports-panel" className="space-y-6">
       <PanelHeading icon={FileDown} title="التقارير" description="تصدير تقارير المنصة بصيغة CSV ومتابعة مستحقات المدرسين." />
 
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-900/10">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h3 className="font-black text-amber-900 dark:text-amber-200">تسجيل خدمات Premium Plus</h3>
+            <p className="mt-1 text-sm text-amber-800/80 dark:text-amber-300/80">سجّل رفع فيديو أو جلسة استشارة، وسيُخصم الاستخدام من حد المدرس الشهري.</p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-sm font-bold text-slate-600 dark:text-slate-300">المدرس
+              <select value={serviceTeacherId} onChange={(event) => setServiceTeacherId(event.target.value)} className="mt-1 block min-w-56 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-amber-500/30 dark:bg-slate-900 dark:text-white">
+                <option value="">اختر المدرس</option>
+                {serviceTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.full_name ?? teacher.email ?? teacher.id} {teacher.teacher_tier === 'premium_plus' ? '(Plus)' : ''}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-bold text-slate-600 dark:text-slate-300">الخدمة
+              <select value={serviceKey} onChange={(event) => setServiceKey(event.target.value as typeof serviceKey)} className="mt-1 block rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-amber-500/30 dark:bg-slate-900 dark:text-white">
+                <option value="managed_video_uploads">رفع فيديو بواسطة الفريق</option>
+                <option value="consultations">جلسة استشارة</option>
+              </select>
+            </label>
+            <button type="button" onClick={() => { void recordServiceUsage(); }} disabled={serviceRecording} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50">{serviceRecording ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} تسجيل الاستخدام</button>
+          </div>
+        </div>
+        {serviceNotice && <p className="mt-3 text-sm font-bold text-slate-600 dark:text-slate-300">{serviceNotice}</p>}
+      </div>
+
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -1961,9 +2019,9 @@ function ReportsPanel() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <InsightCard icon={DollarSign} label="إجمالي الإيراد" value={`${Number(payoutTotalGross).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
-        <InsightCard icon={CreditCard} label="رسوم المنصة" value={`${Number(payoutTotalPlatform).toLocaleString('ar-EG')} ر.س`} tone="amber" />
-        <InsightCard icon={TrendingUp} label="مستحقات المدرسين" value={`${Number(payoutTotalTeacher).toLocaleString('ar-EG')} ر.س`} tone="cyan" />
+        <InsightCard icon={DollarSign} label="إجمالي الإيراد" value={`${Number(payoutTotalGross).toLocaleString('ar-EG')} جنيه`} tone="emerald" />
+        <InsightCard icon={CreditCard} label="رسوم المنصة" value={`${Number(payoutTotalPlatform).toLocaleString('ar-EG')} جنيه`} tone="amber" />
+        <InsightCard icon={TrendingUp} label="مستحقات المدرسين" value={`${Number(payoutTotalTeacher).toLocaleString('ar-EG')} جنيه`} tone="cyan" />
         <InsightCard icon={AlertTriangle} label="دفعات معلقة" value={pendingPayouts.toLocaleString('ar-EG')} tone="violet" />
       </div>
 
@@ -1988,7 +2046,7 @@ function ReportsPanel() {
           <div className="p-5"><EmptyAdminState title="لا توجد دفعات مدرسين حتى الآن" /></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-right text-sm">
+            <table className="min-w-full text-start text-sm">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
                   <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
@@ -2007,9 +2065,9 @@ function ReportsPanel() {
                       <div className="text-xs text-slate-500">{row.email ?? '—'}</div>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">{argDate(row.period_start)} - {argDate(row.period_end)}</td>
-                    <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">{Number(row.total_gross).toLocaleString('ar-EG')} ر.س</td>
-                    <td className="px-4 py-3 font-bold text-amber-700 dark:text-amber-300">{Number(row.total_platform_fee).toLocaleString('ar-EG')} ر.س</td>
-                    <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">{Number(row.total_teacher_payout).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">{Number(row.total_gross).toLocaleString('ar-EG')} جنيه</td>
+                    <td className="px-4 py-3 font-bold text-amber-700 dark:text-amber-300">{Number(row.total_platform_fee).toLocaleString('ar-EG')} جنيه</td>
+                    <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">{Number(row.total_teacher_payout).toLocaleString('ar-EG')} جنيه</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${row.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : row.status === 'pending' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
                         {row.status === 'pending' ? 'قيد الانتظار' : row.status === 'paid' ? 'مدفوع' : row.status === 'approved' ? 'موافق عليه' : row.status === 'processing' ? 'قيد التنفيذ' : row.status}
@@ -2087,7 +2145,7 @@ function ExamsPanel() {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <h4 className="border-b border-slate-200 px-4 py-3 text-sm font-black text-slate-900 dark:border-slate-700 dark:text-white">الامتحانات <span className="text-xs font-bold text-slate-400">({quizzes.length})</span></h4>
-            <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-2">الامتحان</th><th className="px-4 py-2">الحد الأدنى</th><th className="px-4 py-2">حذف</th></tr></thead><tbody>
+            <table className="w-full text-start text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-2">الامتحان</th><th className="px-4 py-2">الحد الأدنى</th><th className="px-4 py-2">حذف</th></tr></thead><tbody>
               {quizzes.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400">لا توجد امتحانات</td></tr>}
               {quizzes.map((z) => (
                 <tr key={z.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
@@ -2100,7 +2158,7 @@ function ExamsPanel() {
           </div>
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <h4 className="border-b border-slate-200 px-4 py-3 text-sm font-black text-slate-900 dark:border-slate-700 dark:text-white">المنافسات <span className="text-xs font-bold text-slate-400">({competitions.length})</span></h4>
-            <table className="w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-2">المنافسة</th><th className="px-4 py-2">الحالة</th><th className="px-4 py-2">نشر/حذف</th></tr></thead><tbody>
+            <table className="w-full text-start text-sm"><thead><tr className="border-b border-slate-200 text-xs font-bold text-slate-400 dark:border-slate-700 dark:text-slate-500"><th className="px-4 py-2">المنافسة</th><th className="px-4 py-2">الحالة</th><th className="px-4 py-2">نشر/حذف</th></tr></thead><tbody>
               {competitions.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-400">لا توجد منافسات</td></tr>}
               {competitions.map((c) => (
                 <tr key={c.id} className="border-b border-slate-100 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">

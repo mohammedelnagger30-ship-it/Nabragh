@@ -91,7 +91,7 @@ function PublicApp() {
       <ErrorBoundary>
         <div dir="rtl" className="min-h-screen bg-white dark:bg-slate-900 font-sans transition-colors duration-200">
           <Navbar />
-          <main className="overflow-x-clip pb-[4.5rem] md:pb-0">
+          <main className="overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
             <Suspense fallback={<LoadingScreen />}>
               <Routes>
                 <Route path="/" element={<RootLandingRoute />} />

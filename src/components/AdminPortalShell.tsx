@@ -10,7 +10,7 @@ export default function AdminPortalShell({ children, mode = 'site' }: { children
   const isTeacher = mode === 'teacher';
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 font-sans text-slate-900 dark:text-slate-100">
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 font-sans text-slate-900 dark:text-slate-100">
       <header className="sticky top-0 z-50 border-b border-white/20 bg-white/80 backdrop-blur-xl dark:bg-slate-900/80">
         <div className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -18,7 +18,7 @@ export default function AdminPortalShell({ children, mode = 'site' }: { children
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg transition-all group-hover:scale-105 ${
                 isTeacher
                   ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30'
-                  : 'bg-gradient-to-br from-blue-600 to-indigo-600 shadow-blue-500/30'
+                  : 'bg-gradient-to-br from-blue-600 to-cyan-500 shadow-blue-500/30'
               }`}>
                 {isTeacher ? <GraduationCap className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
               </div>

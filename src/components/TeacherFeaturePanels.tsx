@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   MessageSquare, Plus, Loader2, Trash2, RefreshCw, Send, CheckCircle2,
   CalendarDays, Video as VideoIcon, Star, Package as PackageIcon, Award,
@@ -69,7 +69,7 @@ const errCls = 'my-2 rounded-xl bg-rose-50 px-4 py-2 text-sm font-bold text-rose
 // ====================================================================
 // Q&A Panel
 // ====================================================================
-export function TeacherQA({ teacherId }: { teacherId: string }) {
+export const TeacherQA = memo(function TeacherQA({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<QuestionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,12 +160,12 @@ export function TeacherQA({ teacherId }: { teacherId: string }) {
       )}
     </div>
   );
-}
+});
 
 // ====================================================================
 // Live sessions + bookings
 // ====================================================================
-export function TeacherLiveSessions({ teacherId }: { teacherId: string }) {
+export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
@@ -311,7 +311,7 @@ export function TeacherLiveSessions({ teacherId }: { teacherId: string }) {
       )}
     </div>
   );
-}
+});
 
 // ====================================================================
 // Messages inbox
@@ -323,7 +323,7 @@ interface Conversation {
   unread: number;
 }
 
-export function TeacherMessages({ teacherId }: { teacherId: string }) {
+export const TeacherMessages = memo(function TeacherMessages({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [active, setActive] = useState<Conversation | null>(null);
@@ -447,12 +447,12 @@ export function TeacherMessages({ teacherId }: { teacherId: string }) {
       </div>
     </div>
   );
-}
+});
 
 // ====================================================================
 // Packages / offers
 // ====================================================================
-export function TeacherPackages({ teacherId }: { teacherId: string }) {
+export const TeacherPackages = memo(function TeacherPackages({ teacherId }: { teacherId: string }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<PackageRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -513,7 +513,7 @@ export function TeacherPackages({ teacherId }: { teacherId: string }) {
         <div className="grid gap-3 sm:grid-cols-6">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="اسم الباقة" className={`${inputCls} sm:col-span-2`} />
           <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="وصف مختصر" className={`${inputCls} sm:col-span-2`} />
-          <input type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value))} placeholder="السعر (ر.س)" className={inputCls} />
+          <input type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value))} placeholder="السعر (جنيه)" className={inputCls} />
           <div className="flex gap-2">
             <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className={inputCls + ' flex-1'}>
               {[7, 14, 30, 60, 90, 180, 365].map((d) => <option key={d} value={d}>{d} يوم</option>)}
@@ -534,7 +534,7 @@ export function TeacherPackages({ teacherId }: { teacherId: string }) {
                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${p.is_active ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'}`}>{p.is_active ? 'نشطة' : 'متوقفة'}</span>
               </div>
               {p.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{p.description}</p>}
-              <p className="mt-3 text-lg font-black text-blue-600 dark:text-blue-400">{Number(p.price).toLocaleString('ar-EG')} ر.س <span className="text-xs font-bold text-slate-400">/ {p.duration_days} يوم</span></p>
+              <p className="mt-3 text-lg font-black text-blue-600 dark:text-blue-400">{Number(p.price).toLocaleString('ar-EG')} جنيه <span className="text-xs font-bold text-slate-400">/ {p.duration_days} يوم</span></p>
               <div className="mt-4 flex gap-2">
                 <button type="button" onClick={() => void toggle(p)} disabled={busyId === p.id} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300">{p.is_active ? 'إيقاف' : 'تفعيل'}</button>
                 <button type="button" onClick={() => void remove(p)} disabled={busyId === p.id} className={btnDanger}><Trash2 className="h-4 w-4" /></button>
@@ -545,12 +545,12 @@ export function TeacherPackages({ teacherId }: { teacherId: string }) {
       )}
     </div>
   );
-}
+});
 
 // ====================================================================
 // Student certificates for teacher courses
 // ====================================================================
-export function TeacherCertificates({ teacherId }: { teacherId: string }) {
+export const TeacherCertificates = memo(function TeacherCertificates({ teacherId }: { teacherId: string }) {
   const [rows, setRows] = useState<CertRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -601,4 +601,4 @@ export function TeacherCertificates({ teacherId }: { teacherId: string }) {
       )}
     </div>
   );
-}
+});

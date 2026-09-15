@@ -9,5 +9,6 @@ export function homePath(p: Profile | null | undefined, isAdmin: boolean): strin
 export function roleLabel(p: Profile | null | undefined, isAdmin: boolean): string {
   if (isAdmin) return 'مدير الموقع';
   if (p?.is_teacher) return p.is_manager ? 'مدرس / مدير منصة' : 'مدرس';
+  if (p?.is_guardian) return 'ولي أمر';
   return 'طالب';
 }

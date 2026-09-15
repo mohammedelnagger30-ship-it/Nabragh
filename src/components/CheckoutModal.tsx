@@ -58,7 +58,7 @@ export default function CheckoutModal({ plan, onClose, onConfirm }: Props) {
         <div className="mb-5 flex items-end justify-between rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 dark:border-blue-900/40 dark:bg-blue-900/20">
           <div>
             <p className="text-xs font-medium text-blue-600 dark:text-blue-300">إجمالي الطلب</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">{plan.price} <span className="text-base font-semibold text-slate-500 dark:text-slate-400">ر.س</span></p>
+            <p className="mt-1 text-2xl font-extrabold text-slate-800 dark:text-white">{plan.price} <span className="text-base font-semibold text-slate-500 dark:text-slate-400">جنيه</span></p>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">شامل ضريبة القيمة المضافة</p>
         </div>

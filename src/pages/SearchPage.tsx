@@ -169,7 +169,7 @@ export default function SearchPage() {
                       className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-500">
                       <div className="aspect-video bg-slate-100 flex items-center justify-center relative dark:bg-slate-700">
                         {v.thumbnail_url ? (
-                          <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" />
+                          <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                         ) : (
                           <Play className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
                         )}

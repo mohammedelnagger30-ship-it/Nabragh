@@ -255,13 +255,13 @@ export default function VideoPlayerPage() {
                         {video.course.subscription_price > 0 && (
                           <div className="rounded-2xl border border-blue-500/40 bg-blue-600/10 px-5 py-3 text-center">
                             <p className="text-xs text-blue-300">اشتراك شهري</p>
-                            <p className="mt-1 text-2xl font-extrabold text-white">{video.course.subscription_price} <span className="text-sm font-medium text-slate-400">ر.س/شهر</span></p>
+                            <p className="mt-1 text-2xl font-extrabold text-white">{video.course.subscription_price} <span className="text-sm font-medium text-slate-400">جنيه/شهر</span></p>
                           </div>
                         )}
                         {video.course.price > 0 && (
                           <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-3 text-center">
                             <p className="text-xs text-amber-300">دفعة واحدة</p>
-                            <p className="mt-1 text-2xl font-extrabold text-white">{video.course.price} <span className="text-sm font-medium text-slate-400">ر.س</span></p>
+                            <p className="mt-1 text-2xl font-extrabold text-white">{video.course.price} <span className="text-sm font-medium text-slate-400">جنيه</span></p>
                           </div>
                         )}
                       </div>
@@ -369,7 +369,7 @@ export default function VideoPlayerPage() {
                 <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 text-xl font-bold text-blue-600">
                     {teacher.avatar_url ? (
-                      <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" />
+                      <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <span>{teacher.full_name.charAt(0)}</span>
                     )}
@@ -423,7 +423,7 @@ export default function VideoPlayerPage() {
                           className="group flex gap-3 rounded-xl border border-slate-800 bg-slate-900 p-3 transition hover:border-slate-700">
                           <div className="relative flex aspect-video w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800">
                             {rv.thumbnail_url ? (
-                              <img src={rv.thumbnail_url} alt={rv.title} className="h-full w-full object-cover" />
+                              <img src={rv.thumbnail_url} alt={rv.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                             ) : (
                               <Play className="h-6 w-6 text-slate-500 transition group-hover:text-blue-400" />
                             )}
@@ -458,7 +458,7 @@ export default function VideoPlayerPage() {
                       className="group flex gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 transition hover:border-slate-700">
                       <div className="relative flex aspect-video w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-800">
                         {rv.thumbnail_url ? (
-                          <img src={rv.thumbnail_url} alt={rv.title} className="h-full w-full object-cover" />
+                          <img src={rv.thumbnail_url} alt={rv.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                         ) : (
                           <Play className="h-6 w-6 text-slate-500 transition group-hover:text-blue-400" />
                         )}

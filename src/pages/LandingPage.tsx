@@ -216,7 +216,7 @@ export default function LandingPage() {
   return (
     <>
       <MetaTags
-        title="Noona - تعلّم من أفضل المدرسين"
+        title="تعلّم من أفضل المدرسين"
         description="منصة تعليمية متكاملة تتيح للمدرسين رفع فيديوهاتهم وللطلاب الوصول لمحتوى تعليمي متميز في جميع التخصصات"
       />
       <div className="pt-[4.5rem]">
@@ -248,7 +248,7 @@ export default function LandingPage() {
               </div>
               <h1 className="mb-3 px-1 pb-1 text-3xl font-extrabold leading-[1.2] text-slate-900 dark:text-white sm:px-0 sm:text-4xl sm:leading-[1.25] lg:text-[4.25rem]">
                 {String(texts.hero_title_1 ?? 'طريقك الأقصر')}
-                <span className="block bg-gradient-to-l from-indigo-700 via-blue-600 to-cyan-500 bg-clip-text text-transparent">{String(texts.hero_title_2 ?? 'لإتقان أي مادة')}</span>
+                <span className="block bg-gradient-to-l from-brand-700 via-brand-600 to-brand-cyan-500 bg-clip-text text-transparent">{String(texts.hero_title_2 ?? 'لإتقان أي مادة')}</span>
               </h1>
               <p className="mx-auto mb-5 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:mb-6 sm:text-base sm:leading-7 lg:mr-0">
                 {String(texts.hero_subtitle ?? 'محتوى تعليمي منظم، مدرسون موثوقون، وتقدم محفوظ في مكان واحد. ابدأ درسَك التالي بثقة وبدون تشتت.')}
@@ -256,7 +256,7 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center gap-2.5 sm:flex-row sm:gap-3 lg:justify-start">
                 <Link
                   to="/signup"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/30 sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-cyan-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/30 sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
                 >
                   {String(texts.cta_primary ?? 'ابدأ التعلم الآن')}
                   <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -286,7 +286,7 @@ export default function LandingPage() {
                     <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">فيديوهات HD</h3>
                     <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">جودة عالية مع حماية كاملة للمحتوى</p>
                   </div>
-                  <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-700 to-blue-800 p-3 text-white shadow-xl shadow-blue-700/25 sm:p-6 transition-all hover:-translate-y-1">
+                  <div className="rounded-2xl bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 p-3 text-white shadow-xl shadow-blue-700/25 sm:p-6 transition-all hover:-translate-y-1">
                     <div className="mb-2 h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
                       <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
@@ -572,7 +572,7 @@ export default function LandingPage() {
                     )}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-blue-600 font-medium">
-                        {course.price === 0 ? 'مجاني' : `${course.price} ر.س`}
+                        {course.price === 0 ? 'مجاني' : `${course.price} جنيه`}
                       </span>
                       {course.category && (
                         <span className="text-slate-400 dark:text-slate-500 text-xs">{course.category.name_ar}</span>
@@ -651,7 +651,7 @@ export default function LandingPage() {
               {champions.slice(0, 12).map((champion) => (
                 <div key={champion.student_id} className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-5 transition hover:-translate-y-1 hover:bg-white/10">
                   <div className="absolute left-4 top-4 text-amber-300"><Medal className="h-5 w-5" /></div>
-                  <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-orange-500 text-lg font-extrabold text-slate-900 dark:text-white">{champion.avatar_url ? <img src={champion.avatar_url} alt={champion.full_name} className="h-full w-full object-cover" /> : champion.full_name.charAt(0)}</div><div className="min-w-0"><h3 className="truncate font-extrabold text-white">{champion.full_name}</h3><p className="mt-1 text-xs font-bold text-amber-200">{champion.subject_name}</p><p className="mt-1 text-[11px] text-cyan-300">{getEducationStageLabel(champion.education_stage)}</p></div></div>
+                  <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-orange-500 text-lg font-extrabold text-slate-900 dark:text-white">{champion.avatar_url ? <img src={champion.avatar_url} alt={champion.full_name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : champion.full_name.charAt(0)}</div><div className="min-w-0"><h3 className="truncate font-extrabold text-white">{champion.full_name}</h3><p className="mt-1 text-xs font-bold text-amber-200">{champion.subject_name}</p><p className="mt-1 text-[11px] text-cyan-300">{getEducationStageLabel(champion.education_stage)}</p></div></div>
                   <div className="mt-5 flex items-end justify-between border-t border-white/10 pt-4"><div><div className="text-xl font-extrabold text-amber-300">{champion.points}</div><div className="text-[11px] text-slate-400 dark:text-slate-500">نقطة إنجاز</div></div><div className="text-left text-xs text-slate-400 dark:text-slate-500">{champion.competitions_played} منافسات</div></div>
                 </div>
               ))}

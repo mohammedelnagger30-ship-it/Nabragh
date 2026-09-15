@@ -148,7 +148,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
                     >
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-sm font-bold">
                         {teacher.avatar_url ? (
-                          <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full rounded-full object-cover" />
+                          <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full rounded-full object-cover" loading="lazy" decoding="async" />
                         ) : (
                           teacher.full_name.charAt(0)
                         )}
@@ -211,7 +211,7 @@ export default function SearchSuggestions({ onClose }: SearchSuggestionsProps) {
                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{course.teacher?.full_name}</p>
                       </div>
                       <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                        {course.price === 0 ? 'مجاني' : `${course.price} ر.س`}
+                        {course.price === 0 ? 'مجاني' : `${course.price} جنيه`}
                       </span>
                     </Link>
                   ))}

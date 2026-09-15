@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS payments (
   student_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   teacher_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
   amount numeric(10,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
-  currency text NOT NULL DEFAULT 'SAR',
+  currency text NOT NULL DEFAULT 'EGP',
   method text NOT NULL DEFAULT 'manual',
   status text NOT NULL DEFAULT 'pending',
   external_reference text,

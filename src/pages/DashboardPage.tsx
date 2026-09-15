@@ -28,11 +28,12 @@ import { TeacherActivationCodes, TeacherHomeworkManager, GuardianReportModal, Te
 import AcademyMembersPanel from '@/components/AcademyMembersPanel';
 import StreakWidget from '@/components/StreakWidget';
 import FlashcardsModal from '@/components/FlashcardsModal';
+import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
 import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion, TeacherUsageStats } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance';
 
-const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance'];
+const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance'];
 
 type TeacherPayoutRecord = {
   id: string;
@@ -61,6 +62,12 @@ type TeacherPayoutTransactionRecord = {
   reference?: string | null;
   status: 'pending' | 'processing' | 'paid' | 'failed';
   created_at: string;
+};
+
+type TeacherServiceUsage = {
+  service_key: 'managed_video_uploads' | 'consultations';
+  used_count: number;
+  monthly_limit: number;
 };
 
 export default function DashboardPage({ teacherWorkspace = false }: { teacherWorkspace?: boolean }) {
@@ -92,6 +99,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [analytics, setAnalytics] = useState<any>(null);
   const [teacherPayouts, setTeacherPayouts] = useState<TeacherPayoutRecord[]>([]);
   const [teacherPayoutTransactions, setTeacherPayoutTransactions] = useState<TeacherPayoutTransactionRecord[]>([]);
+  const [serviceUsage, setServiceUsage] = useState<TeacherServiceUsage[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [examForm, setExamForm] = useState({ title: '', course_id: '', questions: [] as any[] });
@@ -201,12 +209,15 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     navigate('/');
   };
 
+  const isTeacher = !!profile?.is_teacher;
+  const teacherTier = profile?.teacher_tier;
+
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
     const { data: catData } = await supabase.from('categories').select('*').order('sort_order', { ascending: true });
     setCategories(catData as Category[] ?? []);
 
-    if (profile?.is_teacher) {
+    if (isTeacher) {
       const { data: vidData } = await supabase
         .from('videos')
         .select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), course:courses(*)`)
@@ -228,14 +239,19 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
         .in('course_id', (courseData as Course[]).map(c => c.id));
       setStudents(enrollData ?? []);
 
-      // Load student progress
+      // Load student progress (single query instead of N+1 loop)
       const progressMap: Record<string, any> = {};
-      for (const enrollment of enrollData ?? []) {
+      const studentIds = [...new Set((enrollData as any[] ?? []).map((enrollment) => enrollment.student_id))];
+      if (studentIds.length) {
         const { data: progressData } = await supabase
           .from('video_progress')
           .select('*, video:videos(*)')
-          .eq('student_id', enrollment.student_id);
-        progressMap[enrollment.student_id] = progressData ?? [];
+          .in('student_id', studentIds);
+        const rows = (progressData ?? []) as any[];
+        for (const row of rows) {
+          if (!progressMap[row.student_id]) progressMap[row.student_id] = [];
+          progressMap[row.student_id].push(row);
+        }
       }
       setStudentProgress(progressMap);
 
@@ -282,7 +298,10 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       setSubscriberCount(count ?? 0);
 
       const { data: usageData } = await supabase.rpc('get_teacher_usage_stats', { target_teacher: user.id });
-      setUsage((usageData ?? [])[0] ?? emptyUsage(profile.teacher_tier));
+      setUsage((usageData ?? [])[0] ?? emptyUsage(teacherTier));
+
+      const { data: serviceUsageData } = await supabase.rpc('get_teacher_service_usage', { target_teacher: user.id });
+      setServiceUsage((serviceUsageData ?? []) as TeacherServiceUsage[]);
 
       const { data: payoutData } = await supabase
         .from('teacher_payouts')
@@ -341,7 +360,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       .order('created_at', { ascending: false })
       .limit(30);
     setNotifications(notificationData as Notification[] ?? []);
-  }, [user, profile]);
+  }, [user, isTeacher, teacherTier]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
 
@@ -585,23 +604,31 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'appearance', label: 'المظهر', icon: Sun },
   ];
 
-  const tabs = profile.is_teacher ? teacherTabs : studentTabs;
+  const guardianTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+    { id: 'children', label: 'أبنائي', icon: UsersIcon },
+    { id: 'account', label: 'الحساب', icon: User },
+    { id: 'security', label: 'الأمان', icon: ShieldCheck },
+    { id: 'appearance', label: 'المظهر', icon: Sun },
+  ];
+
+  const tabs = profile.is_teacher ? teacherTabs : profile.is_guardian ? guardianTabs : studentTabs;
 
   const limits = getTeacherLimits(profile?.teacher_tier);
   const videosAtLimit = isFreeAtLimit(usage.videos_used, usage.videos_limit);
   const coursesAtLimit = isFreeAtLimit(usage.courses_used, usage.courses_limit);
-  const upgradeToast = () => toast(limits.premium ? 'أنت بالفعل على الخطة البريميوم' : 'لتفعيل الخطة البريميوم، تواصل مع إدارة المنصة.', 'info');
+  const upgradeToast = () => toast(limits.premiumPlus ? 'أنت بالفعل على خطة Premium Plus' : limits.premium ? 'أنت بالفعل على خطة Premium' : 'خطة Premium اشتراك مدفوع. تواصل مع إدارة المنصة لتفعيلها.', 'info');
+  const planContactToast = (plan: string) => toast(`لتفعيل ${plan} بقيمة الاشتراك المصرية، تواصل مع إدارة المنصة مؤقتًا.`, 'info');
   const totalPayoutAmount = teacherPayouts.reduce((sum, payout) => sum + Number(payout.total_teacher_payout ?? 0), 0);
   const totalPlatformFee = teacherPayouts.reduce((sum, payout) => sum + Number(payout.total_platform_fee ?? 0), 0);
   const pendingPayoutAmount = teacherPayouts.filter((payout) => payout.status === 'pending' || payout.status === 'approved' || payout.status === 'processing').reduce((sum, payout) => sum + Number(payout.total_teacher_payout ?? 0), 0);
 
   return (
     <div className="pt-[4.5rem] min-h-screen bg-slate-50 dark:bg-slate-900">
-      <MetaTags title={profile.is_teacher ? 'مساحة المدرس | منصة العلم' : 'مساحة الطالب | منصة العلم'} noIndex />
+      <MetaTags title={profile.is_teacher ? 'مساحة المدرس | منصة العلم' : profile.is_guardian ? 'مساحة ولي الأمر | منصة العلم' : 'مساحة الطالب | منصة العلم'} noIndex />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className={`text-3xl font-bold ${profile.is_teacher ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-100'}`}>
-            {profile.is_teacher ? 'مساحة المدرس' : 'مساحة الطالب'}
+            {profile.is_teacher ? 'مساحة المدرس' : profile.is_guardian ? 'مساحة ولي الأمر' : 'مساحة الطالب'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
             مرحباً، {profile.full_name} — {roleLabel(profile, isAdmin)}
@@ -618,7 +645,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                 <div>
                   <p className="font-bold text-slate-800 dark:text-white">خطتك: {limits.planLabel}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {limits.premium ? 'كل المميزات مفتوحة بلا حدود' : `الحد المجاني: ${usage.videos_limit} فيديو • ${usage.courses_limit} دورات • نشر المنصة غير متاح`}
+                    {limits.premium ? 'اشتراك Premium مدفوع — كل المميزات مفتوحة بلا حدود' : `الخطة المجانية: ${usage.videos_limit} فيديو • ${usage.courses_limit} دورات • الترقية إلى Premium مدفوعة`}
                   </p>
                 </div>
               </div>
@@ -634,6 +661,31 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                 <QuotaBar label="الدورات" used={usage.courses_used} limit={usage.courses_limit} />
               </div>
             )}
+            {limits.premiumPlus && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <ServiceQuotaBar label="رفع فيديوهات بواسطة الفريق" used={serviceUsage.find((item) => item.service_key === 'managed_video_uploads')?.used_count ?? 0} limit={10} />
+                <ServiceQuotaBar label="جلسات الاستشارة" used={serviceUsage.find((item) => item.service_key === 'consultations')?.used_count ?? 0} limit={1} />
+              </div>
+            )}
+            {!limits.premium && (
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <TeacherPlanCard
+                  name="Premium"
+                  price="150 جنيه"
+                  description="للمدرس الذي يريد نشر محتوى أكثر بدون حدود."
+                  features="فيديوهات ودورات بدون حدود • نشر الأكاديمية • تحليلات أساسية • دعم عادي"
+                  onSelect={() => planContactToast('Premium')}
+                />
+                <TeacherPlanCard
+                  name="Premium Plus"
+                  price="299 جنيه"
+                  description="للمدرس الذي يحتاج متابعة أسرع ودعمًا ذا أولوية."
+                  features="كل مميزات Premium • دعم خلال 24 ساعة • رفع 10 فيديوهات شهريًا بواسطة الفريق • جلسة استشارة شهرية"
+                  featured
+                  onSelect={() => planContactToast('Premium Plus')}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -644,9 +696,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
         }`}>
           <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
-              <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm">{profile.is_teacher ? 'مساحة عمل المدرس' : 'رحلتك التعليمية'}</span>
-              <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">{profile.is_teacher ? 'خلّي محتواك يوصل للطلاب بشكل أفضل' : 'تابع تعلمك وخلّك قريب من أهدافك'}</h2>
-              <p className="mt-2 text-sm leading-7 text-white/80">{profile.is_teacher ? 'تابع أداء المحتوى، نظم دوراتك، وابقَ على تواصل مع طلابك من مكان واحد.' : 'راجع دوراتك واشتراكاتك وحضورك، وواصل التقدم في كل مادة بسهولة.'}</p>
+              <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm">{profile.is_teacher ? 'مساحة عمل المدرس' : profile.is_guardian ? 'متابعة الأبناء' : 'رحلتك التعليمية'}</span>
+                <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">{profile.is_teacher ? 'خلّي محتواك يوصل للطلاب بشكل أفضل' : profile.is_guardian ? 'اطمّن على رحلة أبنائك التعليمية' : 'تابع تعلمك وخلّك قريب من أهدافك'}</h2>
+                <p className="mt-2 text-sm leading-7 text-white/80">{profile.is_teacher ? 'تابع أداء المحتوى، نظم دوراتك، وابقَ على تواصل مع طلابك من مكان واحد.' : profile.is_guardian ? 'راجع تقدم أبنائك ونتائج امتحاناتهم وشهاداتهم من مكان واحد.' : 'راجع دوراتك واشتراكاتك وحضورك، وواصل التقدم في كل مادة بسهولة.'}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {profile.is_teacher ? (
@@ -655,6 +707,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   <button type="button" onClick={() => (coursesAtLimit ? upgradeToast() : setActiveTab('courses'))} className={`inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/30 transition hover:bg-white/25 ${coursesAtLimit ? 'opacity-70' : ''}`}>{coursesAtLimit ? <LockKeyhole className="h-4 w-4" /> : <FolderPlus className="h-4 w-4" />} {coursesAtLimit ? 'وصلت للحد' : 'إنشاء دورة'}</button>
                   <Link to={`/teacher/${user!.id}`} className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/30 transition hover:bg-white/25"><ExternalLink className="h-4 w-4" /> صفحتي العامة</Link>
                 </>
+              ) : profile.is_guardian ? (
+                <button type="button" onClick={() => setActiveTab('children')} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><UsersIcon className="h-4 w-4" /> متابعة الأبناء</button>
               ) : (
                 <>
                   <button type="button" onClick={() => setShowFlashcards(true)} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50">
@@ -703,7 +757,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               <div className="flex items-center gap-3 mb-6 p-2">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white text-lg font-bold overflow-hidden">
                   {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+                    <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" decoding="async" />
                   ) : (
                     profile.full_name.charAt(0)
                   )}
@@ -736,8 +790,11 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'overview' && (
+            {activeTab === 'children' && profile.is_guardian && <GuardianWorkspace />}
+
+            {activeTab === 'overview' && !profile.is_guardian && (
               <div className="space-y-6">
+                {!profile.is_teacher && <GuardianRequestsPanel />}
                 {!profile.is_teacher && <StreakWidget />}
 
                 <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
@@ -878,7 +935,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-4 border-white/30 bg-white/15 text-4xl font-extrabold shadow-lg">
-                        {avatarUrl ? <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" /> : fullName.charAt(0) || <User className="h-9 w-9" />}
+                        {avatarUrl ? <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : fullName.charAt(0) || <User className="h-9 w-9" />}
                       </div>
                       <div>
                         <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{profile.is_teacher ? 'حساب مدرس' : 'حساب طالب'}</span>
@@ -925,9 +982,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   {profile.is_teacher && <Field label="التخصص" value={specialization} onChange={setSpecialization} placeholder="مثال: مدرس رياضيات" />}
                   <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{profile.is_teacher ? 'الصف الذي تدرّسه' : 'الصف الدراسي'}</label><select value={profileStage} onChange={(e) => setProfileStage(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
                   <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{profile.is_teacher ? 'المنهج الذي تدرّسه' : 'نوع المنهج'}</label><select value={profileCurriculum} onChange={(e) => setProfileCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
-                  <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="+966..." dir="ltr" />
-                  {!profile.is_teacher && <Field label="رقم ولي الأمر" value={guardianPhone} onChange={setGuardianPhone} placeholder="+966..." dir="ltr" />}
-                  <Field label="الموقع" value={location} onChange={setLocation} placeholder="الرياض، السعودية" />
+                  <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="+20..." dir="ltr" />
+                  {!profile.is_teacher && <Field label="رقم ولي الأمر" value={guardianPhone} onChange={setGuardianPhone} placeholder="+20..." dir="ltr" />}
+                  <Field label="الموقع" value={location} onChange={setLocation} placeholder="القاهرة، مصر" />
                   {profile.is_teacher && <Field label="الموقع الإلكتروني" value={website} onChange={setWebsite} placeholder="https://..." dir="ltr" />}
                   {profile.is_teacher && <Field label="سنوات الخبرة" value={String(yearsExp)} onChange={(v) => setYearsExp(parseInt(v) || 0)} type="number" />}
                 </div>
@@ -937,7 +994,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">صورة الغلاف</label>
                   <div className="flex items-center gap-4">
                     <div className="relative h-20 w-32 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center overflow-hidden">
-                      {coverUrl ? <img src={coverUrl} alt="cover" className="w-full h-full object-cover" /> : <ImageIcon className="w-6 h-6 text-white/70" />}
+                      {coverUrl ? <img src={coverUrl} alt="cover" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : <ImageIcon className="w-6 h-6 text-white/70" />}
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer flex items-center gap-2">
@@ -959,7 +1016,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">الصورة الشخصية</label>
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 flex items-center justify-center overflow-hidden">
-                      {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" /> : <User className="w-6 h-6 text-blue-400" />}
+                      {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : <User className="w-6 h-6 text-blue-400" />}
                     </div>
                     <label className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer flex items-center gap-2">
                       <Upload className="w-4 h-4" /> رفع صورة
@@ -1098,7 +1155,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                       return (
                       <div key={v.id} className={`bg-white dark:bg-slate-800 rounded-2xl border p-4 flex items-center gap-4 ${isPinnedVideo ? 'border-violet-400 ring-1 ring-violet-300 dark:border-violet-500 dark:ring-violet-500/40' : 'border-slate-200 dark:border-slate-700'}`}>
                         <div className="w-20 aspect-video rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-                          {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover rounded-lg" /> : <Play className="w-6 h-6 text-slate-400 dark:text-slate-500" />}
+                          {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover rounded-lg" loading="lazy" decoding="async" /> : <Play className="w-6 h-6 text-slate-400 dark:text-slate-500" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -1171,6 +1228,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                       <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المرحلة الدراسية</label><select value={courseStage} onChange={(e) => setCourseStage(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المراحل</option>{educationStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></div>
                       <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">المنهج</label><select value={courseCurriculum} onChange={(e) => setCourseCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                     </div>
+                    <CommissionPreview purchasePrice={coursePrice} subscriptionPrice={courseSubPrice} />
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">وصف الدورة</label>
                       <textarea value={courseDesc} onChange={(e) => setCourseDesc(e.target.value)} rows={3} placeholder="وصف محتوى الدورة..."
@@ -1222,8 +1280,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                             : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                             {c.price === 0 && c.subscription_price === 0 ? 'مجانية' : 'مدفوعة — مقفولة'}
                           </span>
-                          {c.subscription_price > 0 && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-md">اشتراك: {c.subscription_price} ر.س/{c.subscription_duration_months} شهر</span>}
-                          {c.price > 0 && <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-md">شراء: {c.price} ر.س</span>}
+                          {c.subscription_price > 0 && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-md">اشتراك: {c.subscription_price} جنيه/{c.subscription_duration_months} شهر</span>}
+                          {c.price > 0 && <span className="px-2 py-0.5 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-md">شراء: {c.price} جنيه</span>}
                         </div>
                         {editingPricingCourse === c.id && (
                           <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-900/10 p-4">
@@ -1239,6 +1297,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                                 <input type="number" min="1" value={String(editSubMonths)} onChange={(e) => setEditSubMonths(parseInt(e.target.value, 10) || 1)} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-normal" />
                               </label>
                             </div>
+                            <CommissionPreview purchasePrice={editBuyPrice} subscriptionPrice={editSubPrice} compact />
                             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">بمجرد تعيين أي سعر، تُقفل الفيديوهات المدفوعة في الدورة ولا تُشاهد إلا بعد دفع الاشتراك واعتماده.</p>
                             <div className="mt-3 flex gap-2">
                               <button onClick={() => void saveCoursePricing(c.id)} className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold rounded-lg shadow hover:shadow-lg transition-all flex items-center gap-1.5"><Save className="w-4 h-4" /> حفظ الأسعار</button>
@@ -1570,15 +1629,15 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                     <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي مستحقاتك</p>
-                    <p className="mt-3 text-2xl font-black text-emerald-600 dark:text-emerald-300">{Number(totalPayoutAmount).toLocaleString('ar-EG')} ر.س</p>
+                    <p className="mt-3 text-2xl font-black text-emerald-600 dark:text-emerald-300">{Number(totalPayoutAmount).toLocaleString('ar-EG')} جنيه</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                     <p className="text-sm text-slate-500 dark:text-slate-400">رسوم المنصة</p>
-                    <p className="mt-3 text-2xl font-black text-amber-600 dark:text-amber-300">{Number(totalPlatformFee).toLocaleString('ar-EG')} ر.س</p>
+                    <p className="mt-3 text-2xl font-black text-amber-600 dark:text-amber-300">{Number(totalPlatformFee).toLocaleString('ar-EG')} جنيه</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                     <p className="text-sm text-slate-500 dark:text-slate-400">مستحقات معلقة</p>
-                    <p className="mt-3 text-2xl font-black text-blue-600 dark:text-blue-300">{Number(pendingPayoutAmount).toLocaleString('ar-EG')} ر.س</p>
+                    <p className="mt-3 text-2xl font-black text-blue-600 dark:text-blue-300">{Number(pendingPayoutAmount).toLocaleString('ar-EG')} جنيه</p>
                   </div>
                 </div>
 
@@ -1608,9 +1667,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                                 <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
                                   {new Date(payout.period_start).toLocaleDateString('ar-EG')} - {new Date(payout.period_end).toLocaleDateString('ar-EG')}
                                 </td>
-                                <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">{Number(payout.total_gross).toLocaleString('ar-EG')} ر.س</td>
-                                <td className="px-4 py-3 font-bold text-amber-700 dark:text-amber-300">{Number(payout.total_platform_fee).toLocaleString('ar-EG')} ر.س</td>
-                                <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">{Number(payout.total_teacher_payout).toLocaleString('ar-EG')} ر.س</td>
+                                <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">{Number(payout.total_gross).toLocaleString('ar-EG')} جنيه</td>
+                                <td className="px-4 py-3 font-bold text-amber-700 dark:text-amber-300">{Number(payout.total_platform_fee).toLocaleString('ar-EG')} جنيه</td>
+                                <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">{Number(payout.total_teacher_payout).toLocaleString('ar-EG')} جنيه</td>
                                 <td className="px-4 py-3">
                                   <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${payout.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : payout.status === 'pending' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
                                     {payout.status === 'pending' ? 'قيد الانتظار' : payout.status === 'paid' ? 'مدفوع' : payout.status === 'approved' ? 'موافق عليه' : payout.status === 'processing' ? 'قيد التنفيذ' : 'فشل'}
@@ -1636,7 +1695,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                         {teacherPayoutTransactions.slice(0, 8).map((transaction) => (
                           <div key={transaction.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{Number(transaction.amount).toLocaleString('ar-EG')} ر.س</span>
+                              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{Number(transaction.amount).toLocaleString('ar-EG')} جنيه</span>
                               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${transaction.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
                                 {transaction.status === 'paid' ? 'تم' : transaction.status === 'processing' ? 'قيد التنفيذ' : transaction.status === 'pending' ? 'قيد الانتظار' : 'فشل'}
                               </span>
@@ -2026,6 +2085,122 @@ function QuickProfileLink({ icon: Icon, label, onClick, href }: { icon: typeof E
   return <button type="button" onClick={onClick} className={className}><Icon className="h-4 w-4" /> {label}</button>;
 }
 
+type GuardianChildSummary = {
+  link_id: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  avatar_url: string | null;
+  education_stage: string | null;
+  link_status: string;
+  courses_count: number;
+  completed_courses: number;
+  average_progress: number;
+  exams_count: number;
+  average_score: number;
+  passed_exams: number;
+  certificates_count: number;
+};
+
+function GuardianWorkspace() {
+  const { toast } = useToast();
+  const [children, setChildren] = useState<GuardianChildSummary[]>([]);
+  const [studentEmail, setStudentEmail] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.rpc('guardian_children_summary');
+    if (error) toast('تعذر تحميل بيانات الأبناء', 'error');
+    setChildren((data ?? []) as GuardianChildSummary[]);
+    setLoading(false);
+  }, [toast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const requestStudent = async () => {
+    if (!studentEmail.trim()) return;
+    setRequesting(true);
+    const { error } = await supabase.rpc('guardian_request_student', { p_student_email: studentEmail.trim() });
+    setRequesting(false);
+    if (error) {
+      toast(error.message.includes('student not found') ? 'لم يتم العثور على حساب طالب بهذا البريد' : 'تعذر إرسال طلب الربط', 'error');
+      return;
+    }
+    setStudentEmail('');
+    toast('تم إرسال طلب الربط. يجب أن يوافق الطالب أولًا.', 'success');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><UsersIcon className="h-5 w-5 text-emerald-500" /> أبنائي</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">تابع التقدم والامتحانات والشهادات بعد موافقة الطالب على الربط.</p>
+        </div>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{children.length} أبناء مرتبطون</span>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 dark:border-emerald-500/30 dark:bg-emerald-900/10">
+        <h4 className="font-bold text-emerald-900 dark:text-emerald-200">إضافة ابن أو ابنة</h4>
+        <p className="mt-1 text-xs leading-5 text-emerald-800/80 dark:text-emerald-300/80">اكتب البريد الإلكتروني لحساب الطالب. لن تظهر البيانات إلا بعد موافقته.</p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input value={studentEmail} onChange={(event) => setStudentEmail(event.target.value)} type="email" dir="ltr" placeholder="student@example.com" className="flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-emerald-500 dark:border-emerald-500/30 dark:bg-slate-900 dark:text-white" />
+          <button type="button" onClick={() => { void requestStudent(); }} disabled={requesting || !studentEmail.trim()} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{requesting ? 'جارٍ الإرسال...' : 'إرسال طلب الربط'}</button>
+        </div>
+      </div>
+
+      {loading ? <Loader2 className="mx-auto mt-10 h-8 w-8 animate-spin text-emerald-600" /> : children.length === 0 ? <EmptyState icon={UsersIcon} text="لا توجد حسابات أبناء مرتبطة حتى الآن" /> : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {children.map((child) => (
+            <div key={child.link_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 text-lg font-bold text-white">{child.avatar_url ? <img src={child.avatar_url} alt={child.student_name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : child.student_name.charAt(0)}</div>
+                <div className="min-w-0"><h4 className="font-bold text-slate-800 dark:text-white">{child.student_name}</h4><p className="truncate text-xs text-slate-500 dark:text-slate-400">{child.student_email} {child.education_stage ? `• ${child.education_stage}` : ''}</p></div>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <GuardianMetric label="متوسط التقدم" value={`${Number(child.average_progress ?? 0).toLocaleString('ar-EG')}%`} />
+                <GuardianMetric label="دورات مكتملة" value={child.completed_courses} />
+                <GuardianMetric label="متوسط الامتحانات" value={`${Number(child.average_score ?? 0).toLocaleString('ar-EG')}%`} />
+                <GuardianMetric label="الشهادات" value={child.certificates_count} />
+              </div>
+              <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-xs dark:bg-slate-900/60"><span className="text-slate-500 dark:text-slate-400">{child.exams_count} محاولات امتحان • {child.passed_exams} ناجحة</span><span className="font-bold text-emerald-600 dark:text-emerald-300">الحساب مرتبط</span></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuardianMetric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60"><p className="text-lg font-black text-slate-800 dark:text-white">{value}</p><p className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{label}</p></div>;
+}
+
+function GuardianRequestsPanel() {
+  const { toast } = useToast();
+  const [requests, setRequests] = useState<Array<{ id: string; guardian_name: string; guardian_email: string; requested_at: string }>>([]);
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase.rpc('student_guardian_requests');
+      setRequests((data ?? []) as Array<{ id: string; guardian_name: string; guardian_email: string; requested_at: string }>);
+    })();
+  }, []);
+
+  if (requests.length === 0) return null;
+
+  const respond = async (id: string, approve: boolean) => {
+    const { error } = await supabase.rpc('student_respond_guardian_request', { p_link_id: id, p_approve: approve });
+    if (error) { toast('تعذر تحديث طلب ولي الأمر', 'error'); return; }
+    setRequests((current) => current.filter((request) => request.id !== id));
+    toast(approve ? 'تمت الموافقة على ربط ولي الأمر' : 'تم رفض طلب الربط', approve ? 'success' : 'info');
+  };
+
+  return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/30 dark:bg-amber-900/10"><h3 className="font-bold text-amber-900 dark:text-amber-200">طلبات أولياء الأمور</h3><p className="mt-1 text-xs text-amber-800/80 dark:text-amber-300/80">وافق فقط على الأشخاص الذين تعرفهم حتى يتمكنوا من متابعة تقدمك.</p><div className="mt-3 space-y-2">{requests.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 dark:bg-slate-800"><div><p className="text-sm font-bold text-slate-800 dark:text-white">{request.guardian_name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{request.guardian_email}</p></div><div className="flex gap-2"><button type="button" onClick={() => { void respond(request.id, true); }} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">موافقة</button><button type="button" onClick={() => { void respond(request.id, false); }} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-200">رفض</button></div></div>)}</div></div>;
+}
+
 function EmptyState({ icon: Icon, text, action }: { icon: typeof Eye; text: string; action?: React.ReactNode }) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center">
@@ -2044,6 +2219,53 @@ function Field({ label, value, onChange, placeholder, type = 'text', dir }: {
       <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} dir={dir}
         className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors" />
+    </div>
+  );
+}
+
+function CommissionPreview({ purchasePrice, subscriptionPrice, compact = false }: { purchasePrice: number; subscriptionPrice: number; compact?: boolean }) {
+  const purchase = calculateCommissionBreakdown(Math.max(0, purchasePrice));
+  const subscription = calculateCommissionBreakdown(Math.max(0, subscriptionPrice));
+  const hasPrice = purchase.grossAmount > 0 || subscription.grossAmount > 0;
+
+  if (!hasPrice) return null;
+
+  const line = (label: string, breakdown: ReturnType<typeof calculateCommissionBreakdown>) => (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+      <span className="font-semibold text-slate-600 dark:text-slate-300">{label}: {formatCurrency(breakdown.grossAmount)}</span>
+      <span className="text-slate-500 dark:text-slate-400">عمولة المنصة {breakdown.commissionRate}% = {formatCurrency(breakdown.platformFee)}</span>
+      <span className="font-bold text-emerald-700 dark:text-emerald-300">صافي المدرس: {formatCurrency(breakdown.teacherPayout)}</span>
+    </div>
+  );
+
+  return (
+    <div className={`${compact ? 'mt-3' : 'mt-4'} rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-500/30 dark:bg-emerald-900/10`}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">توزيع الإيراد</p>
+        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">النسبة الحالية للمنصة: 20%</span>
+      </div>
+      <div className="space-y-2">
+        {purchase.grossAmount > 0 && line('شراء كامل', purchase)}
+        {subscription.grossAmount > 0 && line('اشتراك شهري', subscription)}
+      </div>
+      <p className="mt-3 text-[11px] leading-5 text-slate-500 dark:text-slate-400">هذه معاينة محاسبية قبل أي خصم أو استرجاع. الطالب يدفع السعر الظاهر، والمنصة تحتفظ بنسبة 20%، والباقي مستحق لك.</p>
+    </div>
+  );
+}
+
+function TeacherPlanCard({ name, price, description, features, featured = false, onSelect }: { name: string; price: string; description: string; features: string; featured?: boolean; onSelect: () => void }) {
+  return (
+    <div className={`rounded-xl border p-4 ${featured ? 'border-amber-300 bg-amber-50/70 dark:border-amber-500/40 dark:bg-amber-900/10' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-black text-slate-800 dark:text-slate-100">{name}</p>
+          <p className="mt-1 text-xl font-black text-emerald-700 dark:text-emerald-300">{price}<span className="text-xs font-semibold text-slate-500 dark:text-slate-400"> / شهريًا</span></p>
+        </div>
+        {featured && <span className="rounded-full bg-amber-200 px-2 py-1 text-[10px] font-black text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">الأكثر قيمة</span>}
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</p>
+      <p className="mt-2 text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300">{features}</p>
+      <button type="button" onClick={onSelect} className={`mt-3 w-full rounded-lg px-3 py-2 text-xs font-bold transition ${featured ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>تواصل للتفعيل</button>
     </div>
   );
 }
@@ -2068,6 +2290,17 @@ function QuotaBar({ label, used, limit }: { label: string; used: number; limit: 
   );
 }
 
+
+function ServiceQuotaBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const percentage = Math.min(100, Math.round((used / limit) * 100));
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-500/30 dark:bg-amber-900/10">
+      <div className="mb-1.5 flex items-center justify-between gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><span>{label}</span><span>{used} / {limit}</span></div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/80 dark:bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${percentage}%` }} /></div>
+      <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">يتجدد الاستخدام مع بداية كل شهر.</p>
+    </div>
+  );
+}
 function TeacherQuickStats({ teacherId, onOpen }: { teacherId: string; onOpen: (t: Tab) => void }) {
   const [stats, setStats] = useState<{ followers: number; questions: number; bookings: number; unread: number } | null>(null);
 
@@ -2091,7 +2324,7 @@ function TeacherQuickStats({ teacherId, onOpen }: { teacherId: string; onOpen: (
   const items: Array<{ id: number; label: string; icon: typeof UsersIcon; value: number | string; color: string; go: Tab }> = [
     { id: 1, label: 'متابع للمدرس', icon: UsersIcon, value: stats?.followers ?? '—', color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300', go: 'members' },
     { id: 2, label: 'أسئلة بانتظار إجابة', icon: HelpCircle, value: stats?.questions ?? '—', color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300', go: 'qa' },
-    { id: 3, label: 'حجوزات حصص قادمة', icon: CalendarDays, value: stats?.bookings ?? '—', color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300', go: 'sessions' },
+    { id: 3, label: 'حجوزات حصص قادمة', icon: CalendarDays, value: stats?.bookings ?? '—', color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300', go: 'sessions' },
     { id: 4, label: 'رسائل غير مقروءة', icon: Mail, value: stats?.unread ?? '—', color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300', go: 'messages' },
   ];
 

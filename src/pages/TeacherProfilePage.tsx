@@ -279,13 +279,13 @@ export default function TeacherProfilePage() {
 
         {/* ===== Header / Cover ===== */}
         <section className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-l from-blue-600 via-indigo-600 to-purple-600 px-4 py-6 text-white sm:px-6 sm:py-10 dark:border-slate-800 dark:from-slate-950 dark:via-blue-950 dark:to-slate-900">
+          <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-l from-blue-700 via-blue-600 to-cyan-500 px-4 py-6 text-white sm:px-6 sm:py-10 dark:border-slate-800 dark:from-slate-950 dark:via-blue-950 dark:to-slate-900">
             {teacher.cover_url ? <div className="absolute inset-0 scale-110 bg-cover bg-center" style={{ backgroundImage: `url(${teacher.cover_url})` }} /> : teacher.avatar_url ? <div className="absolute inset-0 scale-110 bg-cover bg-center opacity-20 blur-xl dark:opacity-30" style={{ backgroundImage: `url(${teacher.avatar_url})` }} /> : null}
             <div className="absolute inset-0 bg-gradient-to-l from-blue-950/70 via-blue-900/40 to-purple-900/40 dark:from-slate-950/60 dark:via-blue-950/40 dark:to-slate-950/60" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/20 dark:bg-white/5" />
             <div className="relative flex flex-col items-center gap-4 text-center sm:flex-row sm:gap-5 sm:text-right">
               <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white/70 bg-white/20 text-3xl font-bold shadow-lg dark:border-slate-700 dark:bg-slate-800/60 sm:h-28 sm:w-28 sm:text-4xl">
-                {teacher.avatar_url ? <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" /> : teacher.full_name.charAt(0)}
+                {teacher.avatar_url ? <img src={teacher.avatar_url} alt={teacher.full_name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : teacher.full_name.charAt(0)}
                 {trust.trusted && (
                   <span className="absolute -bottom-1 -left-1 rounded-full bg-emerald-500 p-1 ring-2 ring-white/70">
                     <BadgeCheck className="h-4 w-4 text-white sm:h-5 sm:w-5" />
@@ -338,7 +338,7 @@ export default function TeacherProfilePage() {
                       <video src={featuredPlaybackUrl} controls controlsList="nodownload" className="h-full w-full" />
                     ) : featuredLocked && !featuredVideo.is_free ? (
                       <div className="relative h-full w-full">
-                        {featuredVideo.thumbnail_url && <img src={featuredVideo.thumbnail_url} alt={featuredVideo.title} className="h-full w-full object-cover opacity-60" />}
+                        {featuredVideo.thumbnail_url && <img src={featuredVideo.thumbnail_url} alt={featuredVideo.title} className="h-full w-full object-cover opacity-60" loading="lazy" decoding="async" />}
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/70 px-6">
                           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
                             <Lock className="h-8 w-8 text-amber-400" />
@@ -353,8 +353,8 @@ export default function TeacherProfilePage() {
                           </div>
                           {featuredVideo.course && (
                             <div className="flex flex-wrap items-center justify-center gap-2">
-                              {featuredVideo.course.subscription_price > 0 && <span className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-white">اشتراك شهري: {featuredVideo.course.subscription_price} ر.س</span>}
-                              {featuredVideo.course.price > 0 && <span className="rounded-full bg-amber-400/90 px-4 py-1.5 text-sm font-bold text-slate-900">الدفع الكامل: {featuredVideo.course.price} ر.س</span>}
+                              {featuredVideo.course.subscription_price > 0 && <span className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-white">اشتراك شهري: {featuredVideo.course.subscription_price} جنيه</span>}
+                              {featuredVideo.course.price > 0 && <span className="rounded-full bg-amber-400/90 px-4 py-1.5 text-sm font-bold text-slate-900">الدفع الكامل: {featuredVideo.course.price} جنيه</span>}
                             </div>
                           )}
                           <Link
@@ -367,7 +367,7 @@ export default function TeacherProfilePage() {
                       </div>
                     ) : (
                       <Link to={`/video/${featuredVideo.id}`} className="relative block h-full w-full">
-                        {featuredVideo.thumbnail_url ? <img src={featuredVideo.thumbnail_url} alt={featuredVideo.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-700/40 to-purple-700/40" />}
+                        {featuredVideo.thumbnail_url ? <img src={featuredVideo.thumbnail_url} alt={featuredVideo.title} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-700/40 to-purple-700/40" />}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition hover:bg-black/20">
                           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/90 shadow-xl transition group-hover:scale-105">
                             <Play className="h-10 w-10 fill-blue-600 text-blue-600" />
@@ -407,7 +407,7 @@ export default function TeacherProfilePage() {
               {teacherCompetitions.length > 0 && (
                 <>
                   <div className="mb-6 mt-12 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 text-white shadow-md">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-blue-600 to-cyan-500 text-white shadow-md">
                       <Swords className="h-5 w-5" />
                     </div>
                     <div>
@@ -500,10 +500,10 @@ export default function TeacherProfilePage() {
                           {course.price === 0 ? (
                             <span className="font-bold text-emerald-600 dark:text-emerald-400">مجانية</span>
                           ) : (
-                            <span className="rounded-full bg-amber-500/10 px-3 py-1 text-sm font-bold text-amber-600 dark:text-amber-400">{course.price} ر.س</span>
+                            <span className="rounded-full bg-amber-500/10 px-3 py-1 text-sm font-bold text-amber-600 dark:text-amber-400">{course.price} جنيه</span>
                           )}
                           {course.subscription_price > 0 && (
-                            <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400">{course.subscription_price} ر.س/شهر</span>
+                            <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400">{course.subscription_price} جنيه/شهر</span>
                           )}
                         </div>
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400"><Eye className="h-3.5 w-3.5" /> {formatViews(course.views_count ?? 0)}</span>
@@ -523,7 +523,7 @@ export default function TeacherProfilePage() {
                   {videos.slice(0, 6).map((video) => (
                     <Link key={video.id} to={`/video/${video.id}`} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900">
                       <div className="relative aspect-video bg-slate-100 dark:bg-slate-800">
-                        {video.thumbnail_url ? <img src={video.thumbnail_url} alt={video.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Play className="h-10 w-10 text-emerald-600" /></div>}
+                        {video.thumbnail_url ? <img src={video.thumbnail_url} alt={video.title} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full items-center justify-center"><Play className="h-10 w-10 text-emerald-600" /></div>}
                         {video.is_pinned && <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-bold text-white"><VideoIcon className="h-3 w-3" /> المميز</span>}
                         {!video.is_free && <div className="absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-white">مدفوع</div>}
                         <div className="absolute bottom-2 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-bold text-white">{formatDuration(video.duration_seconds)}</div>
@@ -565,7 +565,7 @@ export default function TeacherProfilePage() {
                 if (!future.length) return null;
                 return (
                   <div className="mt-12">
-                    <h2 className="mb-4 flex items-center gap-2 text-xl font-extrabold text-slate-900 dark:text-white"><Calendar className="h-5 w-5 text-indigo-500" /> الحصص المباشرة القادمة</h2>
+                    <h2 className="mb-4 flex items-center gap-2 text-xl font-extrabold text-slate-900 dark:text-white"><Calendar className="h-5 w-5 text-blue-500" /> الحصص المباشرة القادمة</h2>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {future.slice(0, 6).map((s) => {
                         const booked = bookedIds.has(s.id);
@@ -579,7 +579,7 @@ export default function TeacherProfilePage() {
                               type="button"
                               onClick={() => void toggleBooking(s.id)}
                               disabled={bookingBusy === s.id || isOwner}
-                              className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition ${booked ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'} disabled:cursor-not-allowed disabled:opacity-60`}
+                              className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition ${booked ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:cursor-not-allowed disabled:opacity-60`}
                             >
                               {bookingBusy === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : booked ? 'إلغاء الحجز' : <span className="flex items-center gap-1.5"><Ticket className="h-4 w-4" /> احجز</span>}
                             </button>
@@ -795,7 +795,7 @@ export default function TeacherProfilePage() {
                   ) : (
                     <Link
                       to={courses.length ? `/courses` : `/teachers`}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:shadow-blue-500/40"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:shadow-blue-500/40"
                     >
                       <Lock className="h-4 w-4" /> اشترك مع المدرس للدخول
                     </Link>

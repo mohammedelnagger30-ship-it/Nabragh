@@ -79,20 +79,36 @@ export default function TeachersPage() {
           if (categoryResult.error) console.warn('teachers categories:', categoryResult.error.message);
           const loadedTeachers = ((teacherResult.data as Profile[]) ?? []).filter(isPublicTeacher);
           const teacherIds = loadedTeachers.map((teacher) => teacher.id);
-          const reviewResult = teacherIds.length
-            ? await supabase.from('reviews').select('teacher_id, rating').in('teacher_id', teacherIds)
-            : { data: [], error: null };
-          if (reviewResult.error) console.warn('teachers reviews:', reviewResult.error.message);
 
-          const reviewTotals = new Map<string, { total: number; count: number }>();
-          for (const review of reviewResult.data ?? []) {
-            const current = reviewTotals.get(review.teacher_id) ?? { total: 0, count: 0 };
-            reviewTotals.set(review.teacher_id, { total: current.total + review.rating, count: current.count + 1 });
+          // Aggregate ratings server-side when the RPC is available, fall back to a bounded query
+          const { data: ratingsData, error: ratingsError } = teacherIds.length
+            ? ((await supabase.rpc('get_teacher_ratings')) as { data: { teacher_id: string; avg_rating: number; review_count: number }[] | null; error: { message: string } | null })
+            : { data: null, error: null };
+
+          const loadedReviews: Record<string, { avg: number; count: number }> = !ratingsError && ratingsData
+            ? Object.fromEntries(
+                ratingsData.map((row) => [
+                  row.teacher_id,
+                  { avg: Number(row.avg_rating), count: Number(row.review_count) },
+                ]),
+              )
+            : {};
+
+          if (ratingsError || !ratingsData) {
+            const reviewResult = teacherIds.length
+              ? await supabase.from('reviews').select('teacher_id, rating').in('teacher_id', teacherIds).limit(2000)
+              : { data: [], error: null };
+            if (reviewResult.error) console.warn('teachers reviews:', reviewResult.error.message);
+
+            const reviewTotals = new Map<string, { total: number; count: number }>();
+            for (const review of reviewResult.data ?? []) {
+              const current = reviewTotals.get(review.teacher_id) ?? { total: 0, count: 0 };
+              reviewTotals.set(review.teacher_id, { total: current.total + review.rating, count: current.count + 1 });
+            }
+            for (const [teacherId, value] of reviewTotals) {
+              loadedReviews[teacherId] = { avg: value.total / value.count, count: value.count };
+            }
           }
-          const loadedReviews: Record<string, { avg: number; count: number }> = {};
-          reviewTotals.forEach((value, teacherId) => {
-            loadedReviews[teacherId] = { avg: value.total / value.count, count: value.count };
-          });
 
           if (!cancelled) {
             setCategories((categoryResult.data as Category[]) ?? []);
@@ -266,7 +282,7 @@ export default function TeachersPage() {
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 rounded-full animate-pulse" />
                         <div className="relative w-full h-full rounded-full overflow-hidden ring-4 ring-white dark:ring-slate-800 shadow-xl">
                           {teacher.avatar_url ? (
-                            <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" />
+                            <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           ) : (
                             <span className="text-3xl font-bold text-blue-600">{teacher.full_name.charAt(0)}</span>
                           )}
@@ -698,7 +714,7 @@ export default function TeachersPage() {
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 rounded-full animate-pulse" />
                             <div className="relative w-full h-full rounded-full overflow-hidden ring-4 ring-white dark:ring-slate-800 shadow-xl">
                               {teacher.avatar_url ? (
-                                <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" />
+                                <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                               ) : (
                                 <span className="text-4xl font-bold text-blue-600">{teacher.full_name.charAt(0)}</span>
                               )}
@@ -782,7 +798,7 @@ export default function TeachersPage() {
                         <div className="relative w-20 h-20 flex-shrink-0">
                           <div className="w-full h-full rounded-2xl overflow-hidden ring-4 ring-white dark:ring-slate-800 shadow-lg">
                             {teacher.avatar_url ? (
-                              <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" />
+                              <img src={teacher.avatar_url} alt={teacher.full_name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/40 dark:to-cyan-900/40 flex items-center justify-center">
                                 <span className="text-2xl font-bold text-blue-600">{teacher.full_name.charAt(0)}</span>

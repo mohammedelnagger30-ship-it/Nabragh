@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
 export const SITE_SETTINGS_DEFAULTS: Record<string, any> = {
-  site_name: 'منصة العلم',
+  site_name: 'Noona | منصتك التعليمية الشاملة',
   site_tagline: 'منصة تعليمية عربية تجمع الطلاب بالمدرسين في تجربة منظمة وآمنة.',
   site_description: 'منصة تعليمية متكاملة',
   contact: {
     email: 'info@manhatalilm.com',
-    phone_display: '+966 50 123 4567',
-    phone_tel: '+966501234567',
-    whatsapp: '966501234567',
-    city: 'الرياض، المملكة العربية السعودية',
+    phone_display: '+20 10 0000 0000',
+    phone_tel: '+201000000000',
+    whatsapp: '201000000000',
+    city: 'القاهرة، جمهورية مصر العربية',
     facebook: 'https://www.facebook.com',
     youtube: 'https://www.youtube.com',
     instagram: 'https://www.instagram.com',
@@ -51,26 +51,44 @@ export const SITE_SETTINGS_DEFAULTS: Record<string, any> = {
   default_video_limit: 6,
 };
 
+let settingsPromise: Promise<Record<string, any>> | null = null;
+let settingsLoadedAt = 0;
+const SETTINGS_CACHE_TTL = 5 * 60 * 1000;
+
+function loadSiteSettings(): Promise<Record<string, any>> {
+  if (settingsPromise && Date.now() - settingsLoadedAt < SETTINGS_CACHE_TTL) {
+    return settingsPromise;
+  }
+  settingsPromise = (async () => {
+    const merged: Record<string, any> = { ...SITE_SETTINGS_DEFAULTS };
+    try {
+      const { data } = await supabase.from('site_settings').select('key,value');
+      if (data) {
+        for (const row of data) {
+          merged[row.key] = row.value;
+        }
+      }
+    } catch {
+      // Keep defaults if site settings are unavailable
+    }
+    settingsLoadedAt = Date.now();
+    return merged;
+  })();
+  return settingsPromise;
+}
+
+export function invalidateSiteSettingsCache(): void {
+  settingsPromise = null;
+}
+
 export function useSiteSettings(): Record<string, any> {
   const [settings, setSettings] = useState<Record<string, any>>(SITE_SETTINGS_DEFAULTS);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await supabase.from('site_settings').select('key,value');
-        if (cancelled || !data) return;
-        setSettings((prev) => {
-          const next: Record<string, any> = { ...prev };
-          for (const row of data) {
-            next[row.key] = row.value;
-          }
-          return next;
-        });
-      } catch {
-        // Keep defaults if site settings are unavailable
-      }
-    })();
+    void loadSiteSettings().then((res) => {
+      if (!cancelled) setSettings(res);
+    });
     return () => {
       cancelled = true;
     };
