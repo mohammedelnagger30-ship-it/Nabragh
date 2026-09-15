@@ -158,6 +158,24 @@ interface PaymentRow {
   paid_at: string | null;
 }
 
+interface TeacherPayoutRow {
+  id: string;
+  teacher_id: string;
+  teacher_name: string | null;
+  email: string | null;
+  period_start: string;
+  period_end: string;
+  total_gross: number;
+  total_discounts: number;
+  total_refunds: number;
+  total_platform_fee: number;
+  total_teacher_payout: number;
+  status: string;
+  payment_method: string;
+  paid_at: string | null;
+  created_at: string;
+}
+
 interface AdminCourseRow {
   id: string;
   title: string;
@@ -1848,6 +1866,49 @@ function downloadCSV(filename: string, headers: string[], rows: (string | number
 function ReportsPanel() {
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [payoutRows, setPayoutRows] = useState<TeacherPayoutRow[]>([]);
+  const [payoutLoading, setPayoutLoading] = useState(true);
+  const [payoutPeriodStart, setPayoutPeriodStart] = useState(() => {
+    const date = new Date();
+    date.setUTCDate(1);
+    return date.toISOString().slice(0, 10);
+  });
+  const [payoutPeriodEnd, setPayoutPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payoutGenerationLoading, setPayoutGenerationLoading] = useState(false);
+  const [payoutGenerationNotice, setPayoutGenerationNotice] = useState<string | null>(null);
+
+  const loadPayouts = useCallback(async () => {
+    setPayoutLoading(true);
+    const { data } = await supabase.rpc('admin_teacher_payouts_list');
+    setPayoutRows((data ?? []) as TeacherPayoutRow[]);
+    setPayoutLoading(false);
+  }, []);
+
+  useEffect(() => { void loadPayouts(); }, [loadPayouts]);
+
+  const generatePayouts = async () => {
+    if (!payoutPeriodStart || !payoutPeriodEnd || payoutPeriodStart >= payoutPeriodEnd) {
+      setPayoutGenerationNotice('اختر فترة صحيحة بحيث يكون تاريخ البداية قبل النهاية.');
+      return;
+    }
+
+    setPayoutGenerationLoading(true);
+    setPayoutGenerationNotice(null);
+    const { data, error } = await supabase.rpc('admin_generate_teacher_payouts_for_period', {
+      p_period_start: `${payoutPeriodStart}T00:00:00.000Z`,
+      p_period_end: `${payoutPeriodEnd}T23:59:59.999Z`,
+      p_payment_method: 'bank',
+    });
+    setPayoutGenerationLoading(false);
+
+    if (error) {
+      setPayoutGenerationNotice('تعذر توليد دفعات المدرسين. راجع صلاحيات الأدمن وسجل قاعدة البيانات.');
+      return;
+    }
+
+    await loadPayouts();
+    setPayoutGenerationNotice(`تمت معالجة الفترة وإنشاء أو تأكيد ${Array.isArray(data) ? data.length : 0} دفعة.`);
+  };
 
   const run = async (key: string, rpc: string, filename: string, headers: string[], map: (r: Record<string, unknown>) => (string | number | null)[]) => {
     setLoadingKey(key);
@@ -1860,17 +1921,52 @@ function ReportsPanel() {
 
   const argDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('ar-EG') : '');
 
+  const payoutTotalGross = payoutRows.reduce((sum, row) => sum + Number(row.total_gross ?? 0), 0);
+  const payoutTotalPlatform = payoutRows.reduce((sum, row) => sum + Number(row.total_platform_fee ?? 0), 0);
+  const payoutTotalTeacher = payoutRows.reduce((sum, row) => sum + Number(row.total_teacher_payout ?? 0), 0);
+  const pendingPayouts = payoutRows.filter((row) => row.status === 'pending').length;
+
   const buttons: Array<{ key: string; label: string; rpc: string; filename: string; headers: string[]; map: (r: Record<string, unknown>) => (string | number | null)[] }> = [
     { key: 'students', label: 'تصدير الطلاب', rpc: 'admin_student_stats', filename: 'students.csv', headers: ['الاسم', 'البريد', 'تاريخ التسجيل', 'الدورات', 'الإجمالي المنفق'], map: (r) => [r.full_name as string, r.email as string, argDate(r.created_at as string), r.enrollment_count as number, r.total_spent as number] },
     { key: 'teachers', label: 'تصدير المدرسين', rpc: 'admin_teacher_stats', filename: 'teachers.csv', headers: ['الاسم', 'البريد', 'الحالة', 'الدورات', 'الفيديوهات', 'الإيرادات'], map: (r) => [r.full_name as string, r.email as string, r.is_approved ? 'معتمد' : 'غير معتمد', r.course_count as number, r.video_count as number, r.total_earnings as number] },
     { key: 'courses', label: 'تصدير الدورات', rpc: 'admin_course_stats', filename: 'courses.csv', headers: ['الدورة', 'المدرس', 'الطلاب', 'الإيرادات', 'المشاهدات', 'الحالة'], map: (r) => [r.title as string, r.teacher_name as string, r.students_count as number, r.revenue as number, r.views_count as number, r.is_published ? 'منشورة' : 'مسودة'] },
     { key: 'subscriptions', label: 'تصدير الاشتراكات', rpc: 'admin_subscriptions_list', filename: 'subscriptions.csv', headers: ['الطالب', 'المدرس', 'الدورة', 'الحالة', 'السعر', 'تاريخ البداية'], map: (r) => [r.student_name as string, r.teacher_name as string, r.course_title as string, r.status as string, r.price as number, argDate(r.start_date as string)] },
-    { key: 'payments', label: 'تصدير المدفوعات', rpc: 'admin_payments_list', filename: 'payments.csv', headers: ['الطالب', 'المدرس', 'المبلغ', 'العملة', 'الطريقة', 'الحالة', 'التاريخ'], map: (r) => [r.student_name as string, r.teacher_name as string, r.amount as number, r.currency as string, r.method as string, r.status as string, argDate((r.created_at as string) ?? null)] },
+    { key: 'payments', label: 'تصدير المدفوعات', rpc: 'admin_payments_list', filename: 'payments.csv', headers: ['الطالب', 'المدرس', 'المبلغ', 'العمولة', 'رسوم المنصة', 'مستحق المدرس', 'الحالة', 'التاريخ'], map: (r) => [r.student_name as string, r.teacher_name as string, r.gross_amount as number, r.amount as number, r.platform_fee as number, r.teacher_payout as number, r.status as string, argDate((r.created_at as string) ?? null)] },
+    { key: 'payouts', label: 'تصدير دفعات المدرسين', rpc: 'admin_teacher_payouts_list', filename: 'teacher-payouts.csv', headers: ['المدرس', 'البريد', 'الفترة', 'الإيراد الكلي', 'رسوم المنصة', 'مستحق المدرس', 'الحالة'], map: (r) => [r.teacher_name as string, r.email as string, `${argDate(r.period_start as string)} / ${argDate(r.period_end as string)}`, r.total_gross as number, r.total_platform_fee as number, r.total_teacher_payout as number, r.status as string] },
   ];
 
   return (
-    <section id="reports-panel" className="space-y-4">
-      <PanelHeading icon={FileDown} title="التقارير" description="تصدير تقارير المنصة بصيغة CSV لفتحها في إكسل." />
+    <section id="reports-panel" className="space-y-6">
+      <PanelHeading icon={FileDown} title="التقارير" description="تصدير تقارير المنصة بصيغة CSV ومتابعة مستحقات المدرسين." />
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h3 className="font-black text-slate-900 dark:text-white">توليد دفعات فترة</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يتم احتساب المدفوعات المؤهلة مرة واحدة فقط لكل مدرس وفترة.</p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-sm font-bold text-slate-600 dark:text-slate-300">من
+              <input type="date" value={payoutPeriodStart} onChange={(event) => setPayoutPeriodStart(event.target.value)} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white" />
+            </label>
+            <label className="text-sm font-bold text-slate-600 dark:text-slate-300">إلى
+              <input type="date" value={payoutPeriodEnd} onChange={(event) => setPayoutPeriodEnd(event.target.value)} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white" />
+            </label>
+            <button type="button" onClick={() => { void generatePayouts(); }} disabled={payoutGenerationLoading} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+              {payoutGenerationLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} توليد الدفعات
+            </button>
+          </div>
+        </div>
+        {payoutGenerationNotice && <p className="mt-3 text-sm font-bold text-slate-500 dark:text-slate-400">{payoutGenerationNotice}</p>}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <InsightCard icon={DollarSign} label="إجمالي الإيراد" value={`${Number(payoutTotalGross).toLocaleString('ar-EG')} ر.س`} tone="emerald" />
+        <InsightCard icon={CreditCard} label="رسوم المنصة" value={`${Number(payoutTotalPlatform).toLocaleString('ar-EG')} ر.س`} tone="amber" />
+        <InsightCard icon={TrendingUp} label="مستحقات المدرسين" value={`${Number(payoutTotalTeacher).toLocaleString('ar-EG')} ر.س`} tone="cyan" />
+        <InsightCard icon={AlertTriangle} label="دفعات معلقة" value={pendingPayouts.toLocaleString('ar-EG')} tone="violet" />
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {buttons.map((b) => (
           <div key={b.key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -1879,6 +1975,52 @@ function ReportsPanel() {
             <button type="button" onClick={() => { void run(b.key, b.rpc, b.filename, b.headers, b.map); }} disabled={loadingKey !== null} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loadingKey === b.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} تصدير CSV</button>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+          <h3 className="text-lg font-black text-slate-900 dark:text-white">ملخص دفعات المدرسين</h3>
+        </div>
+
+        {payoutLoading ? (
+          <div className="flex min-h-[180px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
+        ) : payoutRows.length === 0 ? (
+          <div className="p-5"><EmptyAdminState title="لا توجد دفعات مدرسين حتى الآن" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-right text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">الفترة</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">الإيراد</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">رسوم المنصة</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">مستحق المدرس</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">الحالة</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {payoutRows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-900 dark:text-white">{row.teacher_name ?? 'مدرس'}</div>
+                      <div className="text-xs text-slate-500">{row.email ?? '—'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">{argDate(row.period_start)} - {argDate(row.period_end)}</td>
+                    <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">{Number(row.total_gross).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-4 py-3 font-bold text-amber-700 dark:text-amber-300">{Number(row.total_platform_fee).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">{Number(row.total_teacher_payout).toLocaleString('ar-EG')} ر.س</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${row.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : row.status === 'pending' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                        {row.status === 'pending' ? 'قيد الانتظار' : row.status === 'paid' ? 'مدفوع' : row.status === 'approved' ? 'موافق عليه' : row.status === 'processing' ? 'قيد التنفيذ' : row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -30,9 +30,38 @@ import StreakWidget from '@/components/StreakWidget';
 import FlashcardsModal from '@/components/FlashcardsModal';
 import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion, TeacherUsageStats } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance';
 
-const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance'];
+const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance'];
+
+type TeacherPayoutRecord = {
+  id: string;
+  teacher_id: string;
+  period_start: string;
+  period_end: string;
+  total_gross: number;
+  total_discounts: number;
+  total_refunds: number;
+  total_platform_fee: number;
+  total_teacher_payout: number;
+  status: 'pending' | 'approved' | 'processing' | 'paid' | 'failed';
+  payment_method: string;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+type TeacherPayoutTransactionRecord = {
+  id: string;
+  payout_id: string;
+  teacher_id: string;
+  payment_id?: string | null;
+  amount: number;
+  method: string;
+  reference?: string | null;
+  status: 'pending' | 'processing' | 'paid' | 'failed';
+  created_at: string;
+};
 
 export default function DashboardPage({ teacherWorkspace = false }: { teacherWorkspace?: boolean }) {
   const { user, profile, isAdmin, loading, refreshProfile } = useAuth();
@@ -61,6 +90,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [exams, setExams] = useState<any[]>([]);
   const [examResults, setExamResults] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [teacherPayouts, setTeacherPayouts] = useState<TeacherPayoutRecord[]>([]);
+  const [teacherPayoutTransactions, setTeacherPayoutTransactions] = useState<TeacherPayoutTransactionRecord[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [examForm, setExamForm] = useState({ title: '', course_id: '', questions: [] as any[] });
@@ -252,6 +283,22 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
       const { data: usageData } = await supabase.rpc('get_teacher_usage_stats', { target_teacher: user.id });
       setUsage((usageData ?? [])[0] ?? emptyUsage(profile.teacher_tier));
+
+      const { data: payoutData } = await supabase
+        .from('teacher_payouts')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .order('period_end', { ascending: false })
+        .limit(12);
+      setTeacherPayouts((payoutData ?? []) as TeacherPayoutRecord[]);
+
+      const { data: payoutTxData } = await supabase
+        .from('teacher_payout_transactions')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setTeacherPayoutTransactions((payoutTxData ?? []) as TeacherPayoutTransactionRecord[]);
     }
 
     // Subscriptions
@@ -509,6 +556,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'members', label: 'طلاب منصتي', icon: UsersIcon },
     { id: 'exams', label: 'الامتحانات', icon: ClipboardCheck },
     { id: 'analytics', label: 'التحليلات', icon: BarChart3 },
+    { id: 'payouts', label: 'المستحقات', icon: Banknote },
     { id: 'competitions', label: 'المنافسات', icon: Gamepad2 },
     { id: 'qa', label: 'أسئلة الطلاب', icon: MessageSquare },
     { id: 'sessions', label: 'الحصص المباشرة', icon: Calendar },
@@ -543,6 +591,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const videosAtLimit = isFreeAtLimit(usage.videos_used, usage.videos_limit);
   const coursesAtLimit = isFreeAtLimit(usage.courses_used, usage.courses_limit);
   const upgradeToast = () => toast(limits.premium ? 'أنت بالفعل على الخطة البريميوم' : 'لتفعيل الخطة البريميوم، تواصل مع إدارة المنصة.', 'info');
+  const totalPayoutAmount = teacherPayouts.reduce((sum, payout) => sum + Number(payout.total_teacher_payout ?? 0), 0);
+  const totalPlatformFee = teacherPayouts.reduce((sum, payout) => sum + Number(payout.total_platform_fee ?? 0), 0);
+  const pendingPayoutAmount = teacherPayouts.filter((payout) => payout.status === 'pending' || payout.status === 'approved' || payout.status === 'processing').reduce((sum, payout) => sum + Number(payout.total_teacher_payout ?? 0), 0);
 
   return (
     <div className="pt-[4.5rem] min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1501,6 +1552,102 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                 ) : (
                   <EmptyState icon={BarChart3} text="جاري تحميل البيانات..." />
                 )}
+              </div>
+            )}
+
+            {activeTab === 'payouts' && profile.is_teacher && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Banknote className="w-5 h-5 text-emerald-500" /> مستحقات المدرس</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">متابعة الإيراد الخاص بك، رسوم المنصة، والفواتير المدفوعة</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    {teacherPayouts.filter((payout) => payout.status === 'paid').length} دفعة مسددة
+                  </span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي مستحقاتك</p>
+                    <p className="mt-3 text-2xl font-black text-emerald-600 dark:text-emerald-300">{Number(totalPayoutAmount).toLocaleString('ar-EG')} ر.س</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">رسوم المنصة</p>
+                    <p className="mt-3 text-2xl font-black text-amber-600 dark:text-amber-300">{Number(totalPlatformFee).toLocaleString('ar-EG')} ر.س</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">مستحقات معلقة</p>
+                    <p className="mt-3 text-2xl font-black text-blue-600 dark:text-blue-300">{Number(pendingPayoutAmount).toLocaleString('ar-EG')} ر.س</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+                  <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-100">سجل الدفعات</h4>
+                    </div>
+
+                    {teacherPayouts.length === 0 ? (
+                      <div className="p-5"><EmptyState icon={Banknote} text="لا توجد دفعات مسجلة حتى الآن" /></div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-right text-sm">
+                          <thead className="bg-slate-50 dark:bg-slate-900">
+                            <tr>
+                              <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">الفترة</th>
+                              <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">الإيراد</th>
+                              <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">المنصة</th>
+                              <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">المستحق</th>
+                              <th className="px-4 py-3 text-xs font-bold text-slate-500 dark:text-slate-400">الحالة</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {teacherPayouts.map((payout) => (
+                              <tr key={payout.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
+                                  {new Date(payout.period_start).toLocaleDateString('ar-EG')} - {new Date(payout.period_end).toLocaleDateString('ar-EG')}
+                                </td>
+                                <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">{Number(payout.total_gross).toLocaleString('ar-EG')} ر.س</td>
+                                <td className="px-4 py-3 font-bold text-amber-700 dark:text-amber-300">{Number(payout.total_platform_fee).toLocaleString('ar-EG')} ر.س</td>
+                                <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">{Number(payout.total_teacher_payout).toLocaleString('ar-EG')} ر.س</td>
+                                <td className="px-4 py-3">
+                                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${payout.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : payout.status === 'pending' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                                    {payout.status === 'pending' ? 'قيد الانتظار' : payout.status === 'paid' ? 'مدفوع' : payout.status === 'approved' ? 'موافق عليه' : payout.status === 'processing' ? 'قيد التنفيذ' : 'فشل'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-100">المعاملات الأخيرة</h4>
+                    </div>
+
+                    {teacherPayoutTransactions.length === 0 ? (
+                      <div className="p-5 text-sm text-slate-500 dark:text-slate-400">لا توجد معاملات حديثة.</div>
+                    ) : (
+                      <div className="space-y-3 p-4">
+                        {teacherPayoutTransactions.slice(0, 8).map((transaction) => (
+                          <div key={transaction.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{Number(transaction.amount).toLocaleString('ar-EG')} ر.س</span>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${transaction.status === 'paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                                {transaction.status === 'paid' ? 'تم' : transaction.status === 'processing' ? 'قيد التنفيذ' : transaction.status === 'pending' ? 'قيد الانتظار' : 'فشل'}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{transaction.method || 'بنك'} • {new Date(transaction.created_at).toLocaleDateString('ar-EG')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

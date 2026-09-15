@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 
 interface MetaTagsProps {
   title: string;
-  description: string;
+  description?: string;
   noIndex?: boolean;
   image?: string;
   type?: 'website' | 'article' | 'video' | 'profile';
@@ -13,7 +13,7 @@ interface MetaTagsProps {
 
 export default function MetaTags({ 
   title, 
-  description, 
+  description = 'منصة تعليمية عربية تساعد الطلاب على التعلم من مدرسين موثوقين.', 
   noIndex = false,
   image = '/icon.svg',
   type = 'website',

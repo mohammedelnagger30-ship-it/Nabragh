@@ -9,7 +9,9 @@ export const CONTACT = {
   instagram: 'https://www.instagram.com',
 };
 
-export function whatsappLink(text?: string) {
-  const encoded = encodeURIComponent(text ?? 'مرحباً، أود الاستفسار عن منصة العلم');
-  return `https://wa.me/${CONTACT.whatsapp}?text=${encoded}`;
+export function whatsappLink(text?: string, phone?: string) {
+  const safePhone = (phone ?? CONTACT.whatsapp).replace(/\D/g, '') || CONTACT.whatsapp;
+  const safeText = text ?? 'مرحباً، أود الاستفسار عن منصة العلم';
+  const encoded = encodeURIComponent(safeText);
+  return `https://wa.me/${safePhone}?text=${encoded}`;
 }

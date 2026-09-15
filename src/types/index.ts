@@ -213,6 +213,51 @@ export interface Subscription {
   course?: Course;
 }
 
+export interface CommissionRule {
+  id: string;
+  teacher_id: string;
+  product_type: 'course' | 'subscription' | 'bundle' | 'custom';
+  product_id?: string | null;
+  commission_rate: number;
+  payout_cycle: 'daily' | 'weekly' | 'monthly' | 'custom';
+  min_payout_amount: number;
+  is_active: boolean;
+  effective_from: string;
+  effective_to?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeacherPayout {
+  id: string;
+  teacher_id: string;
+  period_start: string;
+  period_end: string;
+  total_gross: number;
+  total_discounts: number;
+  total_refunds: number;
+  total_platform_fee: number;
+  total_teacher_payout: number;
+  status: 'pending' | 'approved' | 'processing' | 'paid' | 'failed';
+  payment_method: string;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  teacher?: Profile;
+}
+
+export interface TeacherPayoutTransaction {
+  id: string;
+  payout_id: string;
+  teacher_id: string;
+  payment_id?: string | null;
+  amount: number;
+  method: string;
+  reference?: string | null;
+  status: 'pending' | 'processing' | 'paid' | 'failed';
+  created_at: string;
+}
+
 export interface TeacherStaff {
   id: string;
   teacher_id: string;

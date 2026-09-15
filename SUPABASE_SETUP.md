@@ -57,6 +57,15 @@ supabase functions deploy admin-create-teacher
 supabase db push
 ```
 
+### ترتيب نظام عمولات المدرسين
+
+ملفات نظام العمولات تعتمد على بعضها ويجب تطبيقها من خلال `supabase db push` من مجلد المشروع. لا تشغّل ملف `20260915010000_harden_teacher_payout_generation.sql` وحده من SQL Editor؛ فهو يعتمد على الجداول التي ينشئها الملف `20260915000000_add_commission_and_payout_system.sql`.
+
+إذا كنت تستخدم SQL Editor، شغّل الملفين بهذا الترتيب:
+
+1. `supabase/migrations/20260915000000_add_commission_and_payout_system.sql`
+2. `supabase/migrations/20260915010000_harden_teacher_payout_generation.sql`
+
 ## حل مشاكل شائعة
 
 ### مشكلة: "Access token not provided"

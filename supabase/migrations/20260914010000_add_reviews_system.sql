@@ -26,6 +26,22 @@ CREATE TABLE IF NOT EXISTS review_helpful_votes (
   UNIQUE(review_id, user_id)
 );
 
+-- The base schema already has a teacher/student reviews table. Add the
+-- generalized review fields without replacing the existing columns or data.
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS target_type text;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS target_id uuid;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS helpful_count integer DEFAULT 0;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+UPDATE reviews
+SET user_id = student_id,
+    target_type = COALESCE(target_type, 'teacher'),
+    target_id = COALESCE(target_id, teacher_id)
+WHERE user_id IS NULL OR target_type IS NULL OR target_id IS NULL;
+
 -- 3) Add indexes
 CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
@@ -160,13 +176,23 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS review_count integer DEFAULT 0;
 -- 14) Function to update course ratings
 CREATE OR REPLACE FUNCTION update_course_rating()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  review_target_type text;
+  review_target_id uuid;
 BEGIN
-  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' OR TG_OP = 'DELETE' THEN
+  IF TG_OP = 'DELETE' THEN
+    review_target_type := OLD.target_type;
+    review_target_id := OLD.target_id;
+  ELSE
+    review_target_type := NEW.target_type;
+    review_target_id := NEW.target_id;
+  END IF;
+
+  IF review_target_type = 'course' THEN
     UPDATE courses
-    SET 
-      average_rating = get_average_rating('course', COALESCE(NEW.target_id, OLD.target_id)),
-      review_count = get_review_count('course', COALESCE(NEW.target_id, OLD.target_id))
-    WHERE id = COALESCE(NEW.target_id, OLD.target_id);
+    SET average_rating = get_average_rating('course', review_target_id),
+        review_count = get_review_count('course', review_target_id)
+    WHERE id = review_target_id;
   END IF;
   RETURN COALESCE(NEW, OLD);
 END;
@@ -176,19 +202,28 @@ DROP TRIGGER IF EXISTS course_rating_trigger ON reviews;
 CREATE TRIGGER course_rating_trigger
   AFTER INSERT OR UPDATE OR DELETE ON reviews
   FOR EACH ROW
-  WHEN (NEW.target_type = 'course' OR OLD.target_type = 'course')
   EXECUTE FUNCTION update_course_rating();
 
 -- 15) Function to update teacher ratings
 CREATE OR REPLACE FUNCTION update_teacher_rating()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  review_target_type text;
+  review_target_id uuid;
 BEGIN
-  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' OR TG_OP = 'DELETE' THEN
+  IF TG_OP = 'DELETE' THEN
+    review_target_type := OLD.target_type;
+    review_target_id := OLD.target_id;
+  ELSE
+    review_target_type := NEW.target_type;
+    review_target_id := NEW.target_id;
+  END IF;
+
+  IF review_target_type = 'teacher' THEN
     UPDATE profiles
-    SET 
-      average_rating = get_average_rating('teacher', COALESCE(NEW.target_id, OLD.target_id)),
-      review_count = get_review_count('teacher', COALESCE(NEW.target_id, OLD.target_id))
-    WHERE id = COALESCE(NEW.target_id, OLD.target_id);
+    SET average_rating = get_average_rating('teacher', review_target_id),
+        review_count = get_review_count('teacher', review_target_id)
+    WHERE id = review_target_id;
   END IF;
   RETURN COALESCE(NEW, OLD);
 END;
@@ -198,5 +233,4 @@ DROP TRIGGER IF EXISTS teacher_rating_trigger ON reviews;
 CREATE TRIGGER teacher_rating_trigger
   AFTER INSERT OR UPDATE OR DELETE ON reviews
   FOR EACH ROW
-  WHEN (NEW.target_type = 'teacher' OR OLD.target_type = 'teacher')
   EXECUTE FUNCTION update_teacher_rating();

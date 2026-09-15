@@ -21,31 +21,40 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Avatars: public read, owner write
+DROP POLICY IF EXISTS "Public read access for avatars" ON storage.objects;
 CREATE POLICY "Public read access for avatars"
   ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
 
+DROP POLICY IF EXISTS "Users can upload own avatar" ON storage.objects;
 CREATE POLICY "Users can upload own avatar"
   ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (string_to_array(name, '/'))[1]);
 
+DROP POLICY IF EXISTS "Users can delete own avatar" ON storage.objects;
 CREATE POLICY "Users can delete own avatar"
   ON storage.objects FOR DELETE USING (bucket_id = 'avatars' AND auth.uid()::text = (string_to_array(name, '/'))[1]);
 
 -- Videos: owner read/write only (accessed via signed URLs)
+DROP POLICY IF EXISTS "Owner read access for videos" ON storage.objects;
 CREATE POLICY "Owner read access for videos"
   ON storage.objects FOR SELECT USING (bucket_id = 'videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owner upload videos" ON storage.objects;
 CREATE POLICY "Owner upload videos"
   ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owner delete own videos" ON storage.objects;
 CREATE POLICY "Owner delete own videos"
   ON storage.objects FOR DELETE USING (bucket_id = 'videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- CVs: owner read/write only
+DROP POLICY IF EXISTS "Owner read access for cvs" ON storage.objects;
 CREATE POLICY "Owner read access for cvs"
   ON storage.objects FOR SELECT USING (bucket_id = 'cvs' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owner upload cvs" ON storage.objects;
 CREATE POLICY "Owner upload cvs"
   ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'cvs' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owner delete own cvs" ON storage.objects;
 CREATE POLICY "Owner delete own cvs"
   ON storage.objects FOR DELETE USING (bucket_id = 'cvs' AND (storage.foldername(name))[1] = auth.uid()::text);
