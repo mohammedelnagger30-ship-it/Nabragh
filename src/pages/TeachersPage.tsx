@@ -211,7 +211,7 @@ export default function TeachersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-white pt-[4.5rem] dark:from-slate-900 dark:via-slate-800/50 dark:to-slate-950">
-      <MetaTags title="المدرسون | Noona" description="اكتشف نخبة من أفضل المدرسين في جميع التخصصات" />
+      <MetaTags title="المدرسون" description="اكتشف نخبة من أفضل المدرسين في جميع التخصصات" />
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* Hero Header */}
         <div className="mb-6 sm:mb-10 relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-950 via-[#101a2e] to-slate-900 p-6 sm:p-10 lg:p-16 shadow-2xl shadow-slate-900/30 ring-1 ring-white/10 dark:from-black dark:via-slate-900 dark:to-slate-950">

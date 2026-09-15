@@ -6,7 +6,7 @@ import { useSiteSettings, contact as settingsContact, whatsappHref } from '@/lib
 export default function Footer() {
   const settings = useSiteSettings();
   const contact = settingsContact(settings);
-  const siteName = String(settings.site_name ?? 'Noona | منصتك التعليمية الشاملة');
+  const siteName = String(settings.site_name ?? 'Noona');
   const footerAbout = String(settings.footer_texts?.about ?? 'منصة تعليمية عربية تجمع الطلاب بالمدرسين في تجربة منظمة وآمنة.');
   const copyright = String(settings.footer_texts?.copyright ?? 'جميع الحقوق محفوظة');
   const contactHeading = String(settings.footer_texts?.contact_heading ?? 'تواصل معنا');

@@ -38,6 +38,7 @@ export default function TeacherProfilePage() {
   const [teacher, setTeacher] = useState<Profile | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [totalViews, setTotalViews] = useState(0);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -78,7 +79,7 @@ export default function TeacherProfilePage() {
       setLoading(true);
       setError(false);
 
-      const [teacherResult, coursesResult, videosResult, reviewsResult, followResult, pageSettingsResult, liveResult, followersResult, subsResult, compsResult, qnaResult, myQuestionResult, packagesResult, sessionsResult, bookedResult] = await Promise.all([
+      const [teacherResult, coursesResult, videosResult, reviewsResult, followResult, pageSettingsResult, liveResult, followersResult, subsResult, compsResult, qnaResult, myQuestionResult, packagesResult, sessionsResult, bookedResult, totalViewsResult] = await Promise.all([
         supabase.from('profiles').select(PROFILE_PUBLIC_COLUMNS).eq('id', id).eq('is_teacher', true).eq('is_approved', true).maybeSingle(),
         supabase.from('courses').select('*, category:categories(*)').eq('teacher_id', id).eq('is_published', true).order('sort_order', { ascending: true }).order('created_at', { ascending: false }),
         supabase.from('videos').select(`${VIDEO_PUBLIC_COLUMNS}, category:categories(*), course:courses(*)`).eq('teacher_id', id).order('created_at', { ascending: false }).limit(12),
@@ -94,6 +95,7 @@ export default function TeacherProfilePage() {
         supabase.from('teacher_packages').select('*').eq('teacher_id', id).eq('is_active', true).order('created_at', { ascending: false }),
         supabase.from('scheduled_sessions').select('*').eq('teacher_id', id).in('status', ['scheduled', 'live']).order('scheduled_at', { ascending: true }).limit(20),
         user ? supabase.from('live_session_bookings').select('session_id').eq('student_id', user.id) : Promise.resolve({ data: null, error: null }),
+        supabase.from('videos').select('views_count').eq('teacher_id', id),
       ]);
 
       if (cancelled) return;
@@ -121,6 +123,7 @@ export default function TeacherProfilePage() {
       setLiveTitle(session?.title ?? '');
       setLiveUrl(session?.room_url ?? '');
       setFollowersCount((followersResult.data as number) ?? 0);
+      setTotalViews(((totalViewsResult.data ?? []) as Array<{ views_count: number | null }>).reduce((sum, v) => sum + (v.views_count || 0), 0));
       // A subscriber is a student with an active + paid subscription to this teacher
       // (or whose subscription end date hasn't passed), regardless of course.
       const mySubs = (subsResult.data as Array<{ end_date: string | null; status: string; payment_status: string }> | null) ?? [];
@@ -177,7 +180,6 @@ export default function TeacherProfilePage() {
   }
 
   const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
-  const totalViews = videos.reduce((sum, v) => sum + (v.views_count || 0), 0);
   const trust = isTrustedTeacher(teacher, averageRating, reviews.length);
 
   const shareProfile = async () => {
@@ -273,7 +275,7 @@ export default function TeacherProfilePage() {
 
   return (
     <div data-teacher-root="1" className="min-h-screen bg-slate-50 pt-[4.5rem] dark:bg-slate-950">
-      <MetaTags title={`${teacher.full_name} | Noona`} description={teacher.bio ?? `تعرف على ${teacher.full_name}`} />
+      <MetaTags title={`${teacher.full_name}`} description={teacher.bio ?? `تعرف على ${teacher.full_name}`} />
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
         <Link to="/teachers" className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 sm:mb-6 sm:text-sm"><ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" /> كل المدرسين</Link>
 

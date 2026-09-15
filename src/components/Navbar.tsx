@@ -62,7 +62,10 @@ export default function Navbar() {
             <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-brand-600 via-brand-600 to-brand-cyan-500 shadow-lg shadow-blue-500/25 transition-transform group-hover:scale-105">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
-            <span className="max-w-[15rem] truncate text-lg font-extrabold tracking-normal text-slate-800 dark:text-white sm:max-w-none sm:text-xl">{String(siteSettings.site_name ?? 'Noona | منصتك التعليمية الشاملة')}</span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-lg font-extrabold tracking-normal text-slate-800 dark:text-white sm:text-xl">{String(siteSettings.site_name ?? 'Noona')}</span>
+              <span className="hidden text-[11px] font-medium text-slate-400 dark:text-slate-500 sm:block">{String(siteSettings.site_tagline ?? 'منصتك التعليمية الشاملة')}</span>
+            </div>
           </Link>
 
           <div className="hidden items-center gap-1 md:flex">

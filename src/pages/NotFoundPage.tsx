@@ -5,7 +5,7 @@ import MetaTags from '@/components/MetaTags';
 export default function NotFoundPage() {
   return (
     <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center px-4">
-      <MetaTags title="الصفحة غير موجودة | Noona" description="الصفحة التي تبحث عنها غير موجودة" noIndex />
+      <MetaTags title="الصفحة غير موجودة" description="الصفحة التي تبحث عنها غير موجودة" noIndex />
       <div className="text-center">
         <div className="relative inline-block mb-8">
           <h1 className="text-[120px] sm:text-[180px] font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent leading-none">

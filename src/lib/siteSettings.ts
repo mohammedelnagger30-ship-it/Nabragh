@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
 export const SITE_SETTINGS_DEFAULTS: Record<string, any> = {
-  site_name: 'Noona | منصتك التعليمية الشاملة',
-  site_tagline: 'منصة تعليمية عربية تجمع الطلاب بالمدرسين في تجربة منظمة وآمنة.',
+  site_name: 'Noona',
+  site_tagline: 'منصتك التعليمية الشاملة',
   site_description: 'منصة تعليمية متكاملة',
   contact: {
     email: 'info@manhatalilm.com',
