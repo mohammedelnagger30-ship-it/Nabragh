@@ -151,7 +151,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center pt-[4.5rem]">
+      <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
@@ -165,7 +165,7 @@ export default function SettingsPage() {
     : [fullName, phone, guardianPhone, avatar, locationVal, stage, curriculum, bio];
   const completion = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
   return (
-    <div className="min-h-screen bg-slate-50 pt-[4.5rem] pb-16 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 pb-16 dark:bg-slate-900">
       <MetaTags title="الإعدادات | منصة العلم" noIndex />
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         {/* Header card with cover */}

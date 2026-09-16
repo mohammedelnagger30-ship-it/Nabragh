@@ -182,12 +182,12 @@ export default function VideoPlayerPage() {
   };
 
   if (loading) {
-    return <div className="pt-[4.5rem] min-h-screen flex items-center justify-center bg-slate-950"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+    return <div className="min-h-screen flex items-center justify-center bg-slate-950"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
   }
 
   if (!video) {
     return (
-      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center bg-slate-950">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950">
         <p className="text-slate-500 mb-4">الفيديو غير موجود</p>
         <Link to="/" className="text-blue-600 hover:underline">العودة للرئيسية</Link>
       </div>
@@ -195,7 +195,7 @@ export default function VideoPlayerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 pt-[4.5rem] pb-16">
+    <div className="min-h-screen bg-slate-950 pb-16">
       <MetaTags title={`${video.title} | منصة العلم`} description={video.description ?? 'درس تعليمي على منصة العلم'} />
       <StructuredData data={generateVideoStructuredData(video)} />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

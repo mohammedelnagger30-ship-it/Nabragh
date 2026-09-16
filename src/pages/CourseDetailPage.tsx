@@ -127,12 +127,12 @@ export default function CourseDetailPage() {
   };
 
   if (loading) {
-    return <div className="pt-[4.5rem] min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
   }
 
   if (!course) {
     return (
-      <div className="pt-[4.5rem] min-h-screen flex flex-col items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center">
         <p className="text-slate-500 dark:text-slate-400 mb-4">الدورة غير موجودة</p>
         <Link to="/" className="text-blue-600 hover:underline">العودة للرئيسية</Link>
       </div>
@@ -153,7 +153,7 @@ export default function CourseDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-[4.5rem] dark:from-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
       <MetaTags title={`${course.title} | منصة العلم`} description={course.description ?? 'دورة تدريبية على منصة العلم'} />
       <StructuredData data={generateCourseStructuredData(course)} />
       {/* Course Header */}

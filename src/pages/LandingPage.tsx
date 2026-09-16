@@ -35,6 +35,9 @@ export default function LandingPage() {
 
   useEffect(() => {
     let isMounted = true;
+    const loadingFallback = window.setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 4000);
     setIsLoading(true);
     setHasLoadError(false);
 
@@ -191,6 +194,7 @@ export default function LandingPage() {
 
     return () => {
       isMounted = false;
+      window.clearTimeout(loadingFallback);
     };
   }, [profile?.is_teacher, retryCount, user]);
 
@@ -219,18 +223,18 @@ export default function LandingPage() {
         title="تعلّم من أفضل المدرسين"
         description="منصة تعليمية متكاملة تتيح للمدرسين رفع فيديوهاتهم وللطلاب الوصول لمحتوى تعليمي متميز في جميع التخصصات"
       />
-      <div className="pt-[4.5rem]">
+      <main>
         {isLoading && (
           <div className="border-b border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-center text-sm font-medium text-blue-700 dark:text-blue-300" role="status">
             جاري تجهيز أفضل المحتوى لك...
           </div>
         )}
-      {hasLoadError && !isLoading && (
-        <div className="flex flex-wrap items-center justify-center gap-3 border-b border-rose-100 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-center text-sm font-medium text-rose-700" role="alert">
-          <span>تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.</span>
-          <button type="button" onClick={retryLoading} className="rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-bold text-rose-800 transition hover:bg-rose-200">إعادة المحاولة</button>
-        </div>
-      )}
+        {hasLoadError && !isLoading && (
+          <div className="flex flex-wrap items-center justify-center gap-3 border-b border-rose-100 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-center text-sm font-medium text-rose-700" role="alert">
+            <span>تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.</span>
+            <button type="button" onClick={retryLoading} className="rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-bold text-rose-800 transition hover:bg-rose-200">إعادة المحاولة</button>
+          </div>
+        )}
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-[#f7f9fc] dark:bg-slate-900">
         <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -748,7 +752,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      </div>
+      </main>
     </>
   );
 }

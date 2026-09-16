@@ -102,8 +102,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [serviceUsage, setServiceUsage] = useState<TeacherServiceUsage[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
-  const [examForm, setExamForm] = useState({ title: '', course_id: '', questions: [] as any[] });
+  const [examForm, setExamForm] = useState({ title: '', course_id: '', passing_score: 70, questions: [] as { question: string; options: string[]; correct_option: number }[] });
   const [showExamForm, setShowExamForm] = useState(false);
+  const [editingExam, setEditingExam] = useState<any>(null);
   const [showFlashcards, setShowFlashcards] = useState(false);
   const [usage, setUsage] = useState<TeacherUsageStats>(() => emptyUsage(profile?.teacher_tier));
 
@@ -554,7 +555,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
   if (loading) {
     return (
-      <div className="pt-[4.5rem] min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
@@ -623,7 +624,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const pendingPayoutAmount = teacherPayouts.filter((payout) => payout.status === 'pending' || payout.status === 'approved' || payout.status === 'processing').reduce((sum, payout) => sum + Number(payout.total_teacher_payout ?? 0), 0);
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <MetaTags title={profile.is_teacher ? 'مساحة المدرس | منصة العلم' : profile.is_guardian ? 'مساحة ولي الأمر | منصة العلم' : 'مساحة الطالب | منصة العلم'} noIndex />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -1432,7 +1433,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
                 {showExamForm && (
                   <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4">امتحان جديد</h4>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4">{editingExam ? 'تعديل الامتحان' : 'امتحان جديد'}</h4>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label="عنوان الامتحان" value={examForm.title} onChange={(v) => setExamForm({...examForm, title: v})} placeholder="امتحان الوحدة الأولى" />
                       <div>
@@ -1440,7 +1441,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                         <select
                           value={examForm.course_id}
                           onChange={(e) => setExamForm({...examForm, course_id: e.target.value})}
-                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"
+                          disabled={!!editingExam}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 disabled:opacity-50"
                         >
                           <option value="">اختر الدورة</option>
                           {courses.map((c) => (
@@ -1448,30 +1450,186 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                           ))}
                         </select>
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">درجة النجاح (%)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={examForm.passing_score}
+                          onChange={(e) => setExamForm({...examForm, passing_score: parseInt(e.target.value) || 70})}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
                     </div>
-                    <div className="mt-4 flex gap-2">
+
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-bold text-slate-800 dark:text-slate-100">الأسئلة</h5>
+                        <button
+                          onClick={() => setExamForm({...examForm, questions: [...examForm.questions, { question: '', options: ['', '', '', ''], correct_option: 0 }]})}
+                          className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1"
+                        >
+                          <Plus className="w-4 h-4" /> إضافة سؤال
+                        </button>
+                      </div>
+
+                      {examForm.questions.length === 0 ? (
+                        <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                          لا توجد أسئلة بعد. أضف سؤالاً للبدء.
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {examForm.questions.map((q, qIndex) => (
+                            <div key={qIndex} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-900">
+                              <div className="flex items-start justify-between mb-3">
+                                <span className="font-bold text-slate-700 dark:text-slate-200">سؤال {qIndex + 1}</span>
+                                <button
+                                  onClick={() => setExamForm({...examForm, questions: examForm.questions.filter((_, i) => i !== qIndex)})}
+                                  className="text-rose-500 hover:text-rose-700"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <input
+                                value={q.question}
+                                onChange={(e) => {
+                                  const newQuestions = [...examForm.questions];
+                                  newQuestions[qIndex].question = e.target.value;
+                                  setExamForm({...examForm, questions: newQuestions});
+                                }}
+                                placeholder="اكتب السؤال هنا..."
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 mb-3"
+                              />
+                              <div className="space-y-2">
+                                {q.options.map((opt, optIndex) => (
+                                  <div key={optIndex} className="flex items-center gap-2">
+                                    <input
+                                      type="radio"
+                                      name={`correct-${qIndex}`}
+                                      checked={q.correct_option === optIndex}
+                                      onChange={() => {
+                                        const newQuestions = [...examForm.questions];
+                                        newQuestions[qIndex].correct_option = optIndex;
+                                        setExamForm({...examForm, questions: newQuestions});
+                                      }}
+                                      className="accent-blue-600"
+                                    />
+                                    <input
+                                      value={opt}
+                                      onChange={(e) => {
+                                        const newQuestions = [...examForm.questions];
+                                        newQuestions[qIndex].options[optIndex] = e.target.value;
+                                        setExamForm({...examForm, questions: newQuestions});
+                                      }}
+                                      placeholder={`الخيار ${optIndex + 1}`}
+                                      className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">حدد الخيار الصحيح بالدائرة</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-6 flex gap-2">
                       <button
                         onClick={async () => {
-                          if (!examForm.title.trim() || !examForm.course_id) return;
-                          const { error } = await supabase.from('quizzes').insert({
-                            title: examForm.title,
-                            course_id: examForm.course_id,
-                          });
-                          if (!error) {
-                            setShowExamForm(false);
-                            setExamForm({ title: '', course_id: '', questions: [] });
-                            await fetchDashboardData();
-                            toast('تم إنشاء الامتحان بنجاح', 'success');
-                          } else {
-                            toast('فشل إنشاء الامتحان', 'error');
+                          if (!examForm.title.trim() || !examForm.course_id) {
+                            toast('أدخل عنوان الامتحان واختر الدورة', 'error');
+                            return;
                           }
+                          if (examForm.questions.length === 0) {
+                            toast('أضف سؤالاً واحداً على الأقل', 'error');
+                            return;
+                          }
+                          const hasEmptyQuestion = examForm.questions.some(q => !q.question.trim() || q.options.some(o => !o.trim()));
+                          if (hasEmptyQuestion) {
+                            toast('أكمل جميع حقول الأسئلة والخيارات', 'error');
+                            return;
+                          }
+
+                          if (editingExam) {
+                            // Update existing exam
+                            const { error: quizError } = await supabase.from('quizzes').update({
+                              title: examForm.title,
+                              passing_score: examForm.passing_score,
+                            }).eq('id', editingExam.id);
+
+                            if (quizError) {
+                              toast('فشل تحديث الامتحان', 'error');
+                              return;
+                            }
+
+                            // Delete existing questions
+                            await supabase.from('quiz_questions').delete().eq('quiz_id', editingExam.id);
+
+                            // Insert updated questions
+                            const questionsToInsert = examForm.questions.map((q, index) => ({
+                              quiz_id: editingExam.id,
+                              question: q.question,
+                              options: q.options,
+                              correct_option: q.correct_option,
+                              sort_order: index,
+                            }));
+
+                            const { error: questionsError } = await supabase.from('quiz_questions').insert(questionsToInsert);
+
+                            if (questionsError) {
+                              toast('فشل تحديث الأسئلة', 'error');
+                              return;
+                            }
+
+                            toast('تم تحديث الامتحان والأسئلة بنجاح', 'success');
+                          } else {
+                            // Create new exam
+                            const { data: quizData, error: quizError } = await supabase.from('quizzes').insert({
+                              title: examForm.title,
+                              course_id: examForm.course_id,
+                              passing_score: examForm.passing_score,
+                            }).select().single();
+
+                            if (quizError) {
+                              toast('فشل إنشاء الامتحان', 'error');
+                              return;
+                            }
+
+                            const questionsToInsert = examForm.questions.map((q, index) => ({
+                              quiz_id: quizData.id,
+                              question: q.question,
+                              options: q.options,
+                              correct_option: q.correct_option,
+                              sort_order: index,
+                            }));
+
+                            const { error: questionsError } = await supabase.from('quiz_questions').insert(questionsToInsert);
+
+                            if (questionsError) {
+                              toast('فشل إضافة الأسئلة', 'error');
+                              return;
+                            }
+
+                            toast('تم إنشاء الامتحان وإضافة الأسئلة بنجاح', 'success');
+                          }
+
+                          setShowExamForm(false);
+                          setEditingExam(null);
+                          setExamForm({ title: '', course_id: '', passing_score: 70, questions: [] });
+                          await fetchDashboardData();
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
                       >
-                        <Save className="w-4 h-4" /> إنشاء
+                        <Save className="w-4 h-4" /> {editingExam ? 'حفظ التعديلات' : 'إنشاء الامتحان'}
                       </button>
                       <button
-                        onClick={() => setShowExamForm(false)}
+                        onClick={() => {
+                          setShowExamForm(false);
+                          setEditingExam(null);
+                          setExamForm({ title: '', course_id: '', passing_score: 70, questions: [] });
+                        }}
                         className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                       >
                         إلغاء
@@ -1503,7 +1661,26 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                           </div>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setSelectedCourse(exam)}
+                              onClick={async () => {
+                                const { data: questions } = await supabase.from('quiz_questions').select('*').eq('quiz_id', exam.id).order('sort_order');
+                                const loadedQuestions = (questions ?? []).map((q: any) => ({
+                                  id: q.id,
+                                  question: q.question,
+                                  options: q.options,
+                                  correct_option: q.correct_option,
+                                }));
+                                setEditingExam({
+                                  ...exam,
+                                  questions: loadedQuestions
+                                });
+                                setExamForm({
+                                  title: exam.title,
+                                  course_id: exam.course_id,
+                                  passing_score: exam.passing_score,
+                                  questions: loadedQuestions
+                                });
+                                setShowExamForm(true);
+                              }}
                               className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                             >
                               <Edit className="w-5 h-5" />

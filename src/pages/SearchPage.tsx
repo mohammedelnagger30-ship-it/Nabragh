@@ -68,7 +68,7 @@ export default function SearchPage() {
   const totalResults = teachers.length + videos.length + courses.length;
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <MetaTags title="البحث | منصة العلم" description="ابحث في المدرسين والدروس والدورات على منصة العلم" />
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <h1 className="mb-2 text-2xl font-extrabold text-slate-900 sm:text-3xl dark:text-white">البحث</h1>

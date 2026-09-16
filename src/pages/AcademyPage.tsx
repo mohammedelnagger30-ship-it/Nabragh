@@ -80,14 +80,14 @@ export default function AcademyPage() {
     await loadAcademy();
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-50 pt-[4.5rem] dark:bg-slate-950"><div className="mx-auto max-w-6xl animate-pulse px-4 py-10"><div className="h-72 rounded-3xl bg-slate-200 dark:bg-slate-800" /></div></div>;
+  if (loading) return <div className="min-h-screen bg-slate-50 dark:bg-slate-950"><div className="mx-auto max-w-6xl animate-pulse px-4 py-10"><div className="h-72 rounded-3xl bg-slate-200 dark:bg-slate-800" /></div></div>;
 
   if (!settings || !teacher) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-[4.5rem] dark:bg-slate-950"><div className="text-center"><LockKeyhole className="mx-auto h-12 w-12 text-slate-300" /><h1 className="mt-4 text-2xl font-extrabold text-slate-800 dark:text-white">المنصة غير متاحة</h1><p className="mt-2 text-slate-500">الرابط غير صحيح أو المنصة غير منشورة.</p><Link to="/teachers" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">استكشاف المدرسين <ArrowRight className="h-4 w-4" /></Link></div></div>;
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950"><div className="text-center"><LockKeyhole className="mx-auto h-12 w-12 text-slate-300" /><h1 className="mt-4 text-2xl font-extrabold text-slate-800 dark:text-white">المنصة غير متاحة</h1><p className="mt-2 text-slate-500">الرابط غير صحيح أو المنصة غير منشورة.</p><Link to="/teachers" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">استكشاف المدرسين <ArrowRight className="h-4 w-4" /></Link></div></div>;
   }
 
   if (!settings.is_published && user?.id !== settings.teacher_id) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-[4.5rem] dark:bg-slate-950"><div className="text-center"><LockKeyhole className="mx-auto h-12 w-12 text-slate-300" /><h1 className="mt-4 text-2xl font-extrabold text-slate-800 dark:text-white">المنصة قيد الإعداد</h1><p className="mt-2 text-slate-500">هذه المنصة لم تُنشر بعد. عد لاحقاً لمشاهدتها.</p><Link to="/teachers" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">استكشاف المدرسين <ArrowRight className="h-4 w-4" /></Link></div></div>;
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950"><div className="text-center"><LockKeyhole className="mx-auto h-12 w-12 text-slate-300" /><h1 className="mt-4 text-2xl font-extrabold text-slate-800 dark:text-white">المنصة قيد الإعداد</h1><p className="mt-2 text-slate-500">هذه المنصة لم تُنشر بعد. عد لاحقاً لمشاهدتها.</p><Link to="/teachers" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">استكشاف المدرسين <ArrowRight className="h-4 w-4" /></Link></div></div>;
   }
 
   const isRestricted = settings.access_mode !== 'public';
@@ -95,7 +95,7 @@ export default function AcademyPage() {
   const actionLabel = !user ? 'تسجيل الدخول والانضمام' : settings.require_approval || settings.access_mode === 'invite' ? 'طلب الانضمام للمنصة' : 'الانضمام للمنصة';
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-[4.5rem] dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <MetaTags title={`${settings.academy_name} | منصة العلم`} description={teacher.bio ?? `منصة ${teacher.full_name}`} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link to="/teachers" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-blue-600"><ArrowRight className="h-4 w-4" /> كل المدرسين</Link>

@@ -168,7 +168,7 @@ export default function TeacherProfilePage() {
 
   if (error || !teacher) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-[4.5rem] dark:bg-slate-950">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
         <div className="text-center">
           <GraduationCap className="mx-auto mb-4 h-14 w-14 text-slate-300" />
           <h1 className="mb-3 text-2xl font-bold text-slate-800 dark:text-white">المدرس غير موجود</h1>
@@ -274,7 +274,7 @@ export default function TeacherProfilePage() {
   };
 
   return (
-    <div data-teacher-root="1" className="min-h-screen bg-slate-50 pt-[4.5rem] dark:bg-slate-950">
+    <div data-teacher-root="1" className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <MetaTags title={`${teacher.full_name}`} description={teacher.bio ?? `تعرف على ${teacher.full_name}`} />
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
         <Link to="/teachers" className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 sm:mb-6 sm:text-sm"><ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" /> كل المدرسين</Link>

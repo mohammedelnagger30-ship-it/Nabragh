@@ -45,7 +45,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 px-4 pb-8 pt-[4.5rem] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 sm:pb-10 sm:pt-20">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 px-4 pb-8 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 sm:pb-10">
       <MetaTags title="إنشاء حساب" description="انضم إلى Noona كطالب أو مدرس" />
       <div className="w-full max-w-md">
         {pendingTeacher ? (

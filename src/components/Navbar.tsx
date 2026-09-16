@@ -55,7 +55,48 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white/95 dark:border-slate-700/70 dark:bg-slate-900/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] backdrop-blur-sm" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <>
+      {/* Mobile Top Navigation Bar (formerly bottom) */}
+      <div className="fixed top-0 left-0 right-0 z-[60] border-b border-slate-200/80 bg-white dark:border-slate-800/80 dark:bg-slate-900 shadow-2xl md:hidden" style={{ paddingTop: 'max(0px, env(safe-area-inset-top))' }}>
+        <div className="grid grid-cols-5 gap-2 items-center max-w-lg mx-auto px-4 py-2">
+          {[
+            { to: '/', label: 'الرئيسية', icon: Home },
+            { to: '/teachers', label: 'المدرسون', icon: GraduationCap },
+            { to: '/courses', label: 'الدورات', icon: BookOpen },
+            { to: '/categories', label: 'التخصصات', icon: Layers },
+            { to: user ? homePath(profile, isAdmin) : '/signin', label: user ? 'حسابي' : 'دخول', icon: user ? LayoutDashboard : User },
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = location.pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2.5 px-1 transition-all duration-200 ${
+                  active 
+                    ? 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 scale-105 shadow-sm' 
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <div className={`relative ${active ? 'scale-110' : ''}`}>
+                  <Icon className={`h-5 w-5 transition-transform ${active ? 'text-blue-600 dark:text-blue-400' : ''}`} aria-hidden="true" />
+                  {active && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop Navigation Bar (now at bottom for mobile) */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/70 bg-white/95 dark:border-slate-700/70 dark:bg-slate-900/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] backdrop-blur-sm md:top-0 md:bottom-auto md:border-b md:border-t-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)', paddingTop: 'md:env(safe-area-inset-top)' }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-[4.5rem] items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
@@ -220,43 +261,7 @@ export default function Navbar() {
           </div>
         )}
       </div>
-      <div className="fixed inset-x-4 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 max-w-md mx-auto rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800/80 dark:bg-slate-900 shadow-2xl md:hidden">
-        <div className="grid grid-cols-5 gap-2 items-center">
-          {[
-            { to: '/', label: 'الرئيسية', icon: Home },
-            { to: '/teachers', label: 'المدرسون', icon: GraduationCap },
-            { to: '/courses', label: 'الدورات', icon: BookOpen },
-            { to: '/categories', label: 'التخصصات', icon: Layers },
-            { to: user ? homePath(profile, isAdmin) : '/signin', label: user ? 'حسابي' : 'دخول', icon: user ? LayoutDashboard : User },
-          ].map((item) => {
-            const Icon = item.icon;
-            const active = location.pathname === item.to;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2.5 px-1 transition-all duration-200 ${
-                  active 
-                    ? 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 scale-105 shadow-sm' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <div className={`relative ${active ? 'scale-110' : ''}`}>
-                  <Icon className={`h-5 w-5 transition-transform ${active ? 'text-blue-600 dark:text-blue-400' : ''}`} aria-hidden="true" />
-                  {active && (
-                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] font-bold">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
     </nav>
+    </>
   );
 }

@@ -68,7 +68,7 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="pt-[4.5rem] min-h-screen bg-slate-50/70 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-slate-900">
       <MetaTags title="الدورات التدريبية | منصة العلم" description="تصفح جميع الدورات التدريبية المتاحة على منصة العلم" />
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-8">
