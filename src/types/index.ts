@@ -280,6 +280,54 @@ export interface Notification {
   link: string | null;
   is_read: boolean;
   created_at: string;
+  category: NotificationCategory;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  icon: string | null;
+  image_url: string | null;
+  action_label: string | null;
+  action_url: string | null;
+  group_key: string | null;
+  meta: Record<string, unknown>;
+  archived_at: string | null;
+  expires_at: string | null;
+}
+
+export type NotificationCategory =
+  | 'enrollment'
+  | 'achievement'
+  | 'course'
+  | 'competition'
+  | 'payment'
+  | 'system'
+  | 'social'
+  | 'reminder'
+  | 'security';
+
+export interface NotificationCategoryInfo {
+  key: NotificationCategory;
+  label_ar: string;
+  label_en: string;
+  icon: string | null;
+  color: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  category: NotificationCategory;
+  channel_in_app: boolean;
+  channel_push: boolean;
+  channel_email: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationCounts {
+  category: NotificationCategory;
+  total_count: number;
+  unread_count: number;
 }
 
 export interface Quiz {

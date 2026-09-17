@@ -23,8 +23,6 @@ const CoursesPage = lazy(() => import('@/pages/CoursesPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const SearchPage = lazy(() => import('@/pages/SearchPage'));
 const CompetitionsPage = lazy(() => import('@/pages/CompetitionsPage'));
-const AdminPage = lazy(() => import('@/pages/AdminPage'));
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 
 // Load smaller pages normally
 import CategoriesPage from '@/pages/CategoriesPage';
@@ -51,7 +49,7 @@ function RootLandingRoute() {
   if (loading) return <LoadingScreen message="جاري تجهيز Noona..." />;
   
   // Check if running in Capacitor (mobile app)
-  const isMobile = (window as any).Capacitor?.isNativePlatform?.();
+  const isMobile = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })?.Capacitor?.isNativePlatform?.();
   
   if (!user) {
     // On mobile, require sign in. On web, show landing page.
@@ -108,6 +106,9 @@ function AppRoutes() {
 }
 
 function PublicApp() {
+  const location = useLocation();
+  const transitionKey = `${location.pathname}${location.search}`;
+
   return (
     <>
       <ScrollToTop />
@@ -116,28 +117,30 @@ function PublicApp() {
           <Navbar />
           <main className="pt-[4rem] overflow-x-clip pb-[4.5rem] md:pt-[4.5rem] md:pb-0">
             <Suspense fallback={<LoadingScreen />}>
-              <Routes>
-                <Route path="/" element={<RootLandingRoute />} />
-                <Route path="/teachers" element={<RequireAuth><TeachersPage /></RequireAuth>} />
-                <Route path="/teacher/:id" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
-                <Route path="/academy/:slug" element={<AcademyPage />} />
-                <Route path="/video/:id" element={<VideoPlayerPage />} />
-                <Route path="/course/:id" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
-                <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
-                <Route path="/categories" element={<CategoriesPage />} />
-                <Route path="/competitions" element={<RequireAuth><CompetitionsPage /></RequireAuth>} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/settings" element={<SettingsRedirect />} />
-                <Route path="/signin" element={<AuthGuard><SignInPage /></AuthGuard>} />
-                <Route path="/signup" element={<AuthGuard><SignUpPage /></AuthGuard>} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/about" element={<InfoPage />} />
-                <Route path="/privacy" element={<InfoPage />} />
-                <Route path="/terms" element={<InfoPage />} />
-                <Route path="/certificate/:id" element={<CertificatePage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
+              <div key={transitionKey} className="route-transition">
+                <Routes>
+                  <Route path="/" element={<RootLandingRoute />} />
+                  <Route path="/teachers" element={<RequireAuth><TeachersPage /></RequireAuth>} />
+                  <Route path="/teacher/:id" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
+                  <Route path="/academy/:slug" element={<AcademyPage />} />
+                  <Route path="/video/:id" element={<VideoPlayerPage />} />
+                  <Route path="/course/:id" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
+                  <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
+                  <Route path="/categories" element={<CategoriesPage />} />
+                  <Route path="/competitions" element={<RequireAuth><CompetitionsPage /></RequireAuth>} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/settings" element={<SettingsRedirect />} />
+                  <Route path="/signin" element={<AuthGuard><SignInPage /></AuthGuard>} />
+                  <Route path="/signup" element={<AuthGuard><SignUpPage /></AuthGuard>} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/about" element={<InfoPage />} />
+                  <Route path="/privacy" element={<InfoPage />} />
+                  <Route path="/terms" element={<InfoPage />} />
+                  <Route path="/certificate/:id" element={<CertificatePage />} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </div>
             </Suspense>
           </main>
           <Footer />

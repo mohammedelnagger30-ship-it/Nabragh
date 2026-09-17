@@ -1,7 +1,60 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
-export const SITE_SETTINGS_DEFAULTS: Record<string, any> = {
+type SiteSettingsValue = string | number | boolean | null | SiteSettingsValue[] | { [key: string]: SiteSettingsValue };
+
+export interface SiteSettings {
+  site_name: string;
+  site_tagline: string;
+  site_description: string;
+  contact: {
+    email: string;
+    phone_display: string;
+    phone_tel: string;
+    whatsapp: string;
+    city: string;
+    facebook: string;
+    youtube: string;
+    instagram: string;
+    tiktok: string;
+    telegram: string;
+    x: string;
+  };
+  homepage_texts: {
+    hero_badge: string;
+    hero_title_1: string;
+    hero_title_2: string;
+    hero_subtitle: string;
+    cta_primary: string;
+    cta_secondary: string;
+    categories_badge: string;
+    categories_title: string;
+    categories_subtitle: string;
+    teachers_badge: string;
+    teachers_title: string;
+    teachers_subtitle: string;
+    rising_badge: string;
+    rising_title: string;
+  };
+  footer_texts: {
+    about: string;
+    copyright: string;
+    contact_heading: string;
+  };
+  homepage_sections: {
+    teachers: boolean;
+    courses: boolean;
+    videos: boolean;
+    categories: boolean;
+    champions: boolean;
+  };
+  default_teacher_limit: number;
+  default_course_limit: number;
+  default_video_limit: number;
+  [key: string]: SiteSettingsValue;
+}
+
+export const SITE_SETTINGS_DEFAULTS: SiteSettings = {
   site_name: 'Noona',
   site_tagline: 'منصتك التعليمية الشاملة',
   site_description: 'منصة تعليمية متكاملة',
@@ -51,16 +104,16 @@ export const SITE_SETTINGS_DEFAULTS: Record<string, any> = {
   default_video_limit: 6,
 };
 
-let settingsPromise: Promise<Record<string, any>> | null = null;
+let settingsPromise: Promise<SiteSettings> | null = null;
 let settingsLoadedAt = 0;
 const SETTINGS_CACHE_TTL = 5 * 60 * 1000;
 
-function loadSiteSettings(): Promise<Record<string, any>> {
+function loadSiteSettings(): Promise<SiteSettings> {
   if (settingsPromise && Date.now() - settingsLoadedAt < SETTINGS_CACHE_TTL) {
     return settingsPromise;
   }
   settingsPromise = (async () => {
-    const merged: Record<string, any> = { ...SITE_SETTINGS_DEFAULTS };
+    const merged: SiteSettings = { ...SITE_SETTINGS_DEFAULTS };
     try {
       const { data } = await supabase.from('site_settings').select('key,value');
       if (data) {
@@ -81,8 +134,8 @@ export function invalidateSiteSettingsCache(): void {
   settingsPromise = null;
 }
 
-export function useSiteSettings(): Record<string, any> {
-  const [settings, setSettings] = useState<Record<string, any>>(SITE_SETTINGS_DEFAULTS);
+export function useSiteSettings(): SiteSettings {
+  const [settings, setSettings] = useState<SiteSettings>(SITE_SETTINGS_DEFAULTS);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,13 +150,13 @@ export function useSiteSettings(): Record<string, any> {
   return settings;
 }
 
-export function text(settings: Record<string, any>, key: string, fallback: string): string {
+export function text(settings: SiteSettings, key: string, fallback: string): string {
   const v = settings[key];
   if (v == null) return fallback;
   return String(v);
 }
 
-export function contact(settings: Record<string, any>) {
+export function contact(settings: SiteSettings) {
   const c = settings.contact ?? {};
   return {
     email: String(c.email ?? SITE_SETTINGS_DEFAULTS.contact.email),

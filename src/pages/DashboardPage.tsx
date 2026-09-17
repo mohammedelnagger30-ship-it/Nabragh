@@ -5,10 +5,10 @@ import {
   Image as ImageIcon, Plus, Save, Loader2, FileText, Calendar, Crown, Play, BookOpen,
   TrendingUp, Heart, Clock, Award, Bell, MessageCircle,
   BarChart3, FolderPlus, Settings, Palette, Medal, Users as UsersIcon
-  , Gamepad2, ListPlus, ClipboardCheck, GraduationCap, Search, Filter,
-  Download, Send, CheckCircle, XCircle, AlertCircle, ChevronDown, MoreVertical,
-  Edit, Copy, ExternalLink, Target, Activity, Flame, Star, MessageSquare, X,
-  Banknote, Lock, ShieldCheck, EyeOff, Check, Smartphone, LogOut, Mail,
+  , Gamepad2, ListPlus, ClipboardCheck,
+  Send, CheckCircle, 
+  Edit, ExternalLink, MessageSquare, X,
+  Banknote, ShieldCheck, Check, Smartphone, LogOut, Mail,
   Sun, Moon, Pin, Package as PackageIcon, HelpCircle, CalendarDays, Sparkles
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
@@ -22,14 +22,14 @@ import { uploadFile, uploadPrivateFile } from '@/lib/storage';
 import { whatsappLink } from '@/lib/contact';
 import MetaTags from '@/components/MetaTags';
 import { curricula, educationStages } from '@/lib/education';
-import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherStudents, TeacherHonors, TeacherLeaderboards, TeacherAssistants } from '@/components/TeacherManagerTools';
+import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherHonors, TeacherLeaderboards, TeacherAssistants } from '@/components/TeacherManagerTools';
 import { TeacherQA, TeacherLiveSessions, TeacherMessages, TeacherPackages, TeacherCertificates } from '@/components/TeacherFeaturePanels';
-import { TeacherActivationCodes, TeacherHomeworkManager, GuardianReportModal, TeacherProAnalytics } from '@/components/TeacherProTools';
 import AcademyMembersPanel from '@/components/AcademyMembersPanel';
 import StreakWidget from '@/components/StreakWidget';
 import FlashcardsModal from '@/components/FlashcardsModal';
+import NotificationCenter from '@/components/NotificationCenter';
 import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
-import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Notification, Competition, CompetitionQuestion, TeacherUsageStats } from '@/types';
+import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats } from '@/types';
 
 type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance';
 
@@ -70,6 +70,38 @@ type TeacherServiceUsage = {
   monthly_limit: number;
 };
 
+type StudentRow = Profile & {
+  enrollment_count?: number;
+  total_spent?: number;
+  courses?: Course[];
+};
+
+type QuizRow = Quiz & {
+  course?: Course;
+};
+
+type QuizAttemptRow = {
+  id: string;
+  quiz_id: string;
+  student_id: string;
+  score: number;
+  passed: boolean;
+  answers?: Record<string, number>;
+  created_at: string;
+  student?: Profile;
+  quiz?: Quiz;
+};
+
+type TeacherAnalytics = {
+  totalViews: number;
+  totalEnrollments: number;
+  avgProgress: number;
+  avgScore: number;
+  totalExams: number;
+  totalAttempts: number;
+  passedExams: number;
+} | null;
+
 export default function DashboardPage({ teacherWorkspace = false }: { teacherWorkspace?: boolean }) {
   const { user, profile, isAdmin, loading, refreshProfile } = useAuth();
   const { toast } = useToast();
@@ -83,7 +115,6 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -92,19 +123,18 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // New states for enhanced features
-  const [students, setStudents] = useState<any[]>([]);
-  const [studentProgress, setStudentProgress] = useState<Record<string, any>>({});
-  const [exams, setExams] = useState<any[]>([]);
-  const [examResults, setExamResults] = useState<any[]>([]);
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [studentProgress, setStudentProgress] = useState<Record<string, VideoProgress[]>>({});
+  const [exams, setExams] = useState<QuizRow[]>([]);
+  const [examResults, setExamResults] = useState<QuizAttemptRow[]>([]);
+  const [analytics, setAnalytics] = useState<TeacherAnalytics>(null);
   const [teacherPayouts, setTeacherPayouts] = useState<TeacherPayoutRecord[]>([]);
   const [teacherPayoutTransactions, setTeacherPayoutTransactions] = useState<TeacherPayoutTransactionRecord[]>([]);
   const [serviceUsage, setServiceUsage] = useState<TeacherServiceUsage[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
   const [examForm, setExamForm] = useState({ title: '', course_id: '', passing_score: 70, questions: [] as { question: string; options: string[]; correct_option: number }[] });
   const [showExamForm, setShowExamForm] = useState(false);
-  const [editingExam, setEditingExam] = useState<any>(null);
+  const [editingExam, setEditingExam] = useState<QuizRow | null>(null);
   const [showFlashcards, setShowFlashcards] = useState(false);
   const [usage, setUsage] = useState<TeacherUsageStats>(() => emptyUsage(profile?.teacher_tier));
 
@@ -241,14 +271,14 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       setStudents(enrollData ?? []);
 
       // Load student progress (single query instead of N+1 loop)
-      const progressMap: Record<string, any> = {};
-      const studentIds = [...new Set((enrollData as any[] ?? []).map((enrollment) => enrollment.student_id))];
+      const progressMap: Record<string, VideoProgress[]> = {};
+      const studentIds = [...new Set((enrollData as StudentRow[] ?? []).map((enrollment) => enrollment.student_id))];
       if (studentIds.length) {
         const { data: progressData } = await supabase
           .from('video_progress')
           .select('*, video:videos(*)')
           .in('student_id', studentIds);
-        const rows = (progressData ?? []) as any[];
+        const rows = (progressData ?? []) as VideoProgress[];
         for (const row of rows) {
           if (!progressMap[row.student_id]) progressMap[row.student_id] = [];
           progressMap[row.student_id].push(row);
@@ -275,10 +305,10 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       const totalViews = (vidData as unknown as Video[]).reduce((sum, v) => sum + (v.views_count || 0), 0);
       const totalEnrollments = (enrollData ?? []).length;
       const avgProgress = Object.values(progressMap).flat().length > 0
-        ? Object.values(progressMap).flat().reduce((sum: number, p: any) => sum + (p.progress_percent || 0), 0) / Object.values(progressMap).flat().length
+        ? Object.values(progressMap).flat().reduce((sum: number, p: VideoProgress) => sum + (p.progress_percent || 0), 0) / Object.values(progressMap).flat().length
         : 0;
       const avgScore = (resultsData ?? []).length > 0
-        ? (resultsData as any[]).reduce((sum, r) => sum + (r.score || 0), 0) / (resultsData as any[]).length
+        ? (resultsData as QuizAttemptRow[]).reduce((sum, r) => sum + (r.score || 0), 0) / (resultsData as QuizAttemptRow[]).length
         : 0;
 
       setAnalytics({
@@ -288,7 +318,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
         avgScore,
         totalExams: (examData ?? []).length,
         totalAttempts: (resultsData ?? []).length,
-        passedExams: (resultsData as any[]).filter(r => r.passed).length,
+        passedExams: (resultsData as QuizAttemptRow[]).filter(r => r.passed).length,
       });
 
       const { count } = await supabase
@@ -353,14 +383,6 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       .order('watched_at', { ascending: false })
       .limit(20);
     setHistory(histData as WatchHistoryItem[] ?? []);
-
-    const { data: notificationData } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(30);
-    setNotifications(notificationData as Notification[] ?? []);
   }, [user, isTeacher, teacherTier]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
@@ -896,36 +918,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
             )}
 
             {activeTab === 'notifications' && !profile.is_teacher && (
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm sm:p-6">
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100"><Bell className="h-5 w-5 text-blue-500" /> الإشعارات</h3>
-                  {notifications.some((notification) => !notification.is_read) && (
-                    <button type="button" onClick={async () => {
-                      await supabase.from('notifications').update({ is_read: true }).eq('user_id', user!.id).eq('is_read', false);
-                      setNotifications((items) => items.map((item) => ({ ...item, is_read: true })));
-                    }} className="text-xs font-semibold text-blue-600 hover:text-blue-700">تحديد الكل كمقروء</button>
-                  )}
-                </div>
-                {notifications.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">لا توجد إشعارات جديدة.</div>
-                ) : (
-                  <div className="space-y-2">
-                    {notifications.map((notification) => (
-                      <Link key={notification.id} to={notification.link ?? '#'} onClick={() => {
-                        if (!notification.is_read) {
-                          supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
-                          setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, is_read: true } : item));
-                        }
-                      }} className={`block rounded-xl border p-4 transition hover:border-blue-200 dark:hover:border-blue-900 ${notification.is_read ? 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800' : 'border-blue-100 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-900/20'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div><p className="font-semibold text-slate-800 dark:text-slate-100">{notification.title}</p>{notification.body && <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{notification.body}</p>}</div>
-                          <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{new Date(notification.created_at).toLocaleDateString('ar-EG')}</span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <NotificationCenter userId={user!.id} />
             )}
 
             {activeTab === 'profile' && (
@@ -1663,7 +1656,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                             <button
                               onClick={async () => {
                                 const { data: questions } = await supabase.from('quiz_questions').select('*').eq('quiz_id', exam.id).order('sort_order');
-                                const loadedQuestions = (questions ?? []).map((q: any) => ({
+                                const loadedQuestions = (questions ?? []).map((q: QuizQuestion) => ({
                                   id: q.id,
                                   question: q.question,
                                   options: q.options,
@@ -1937,7 +1930,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                     <div>
                       <h5 className="font-bold text-slate-800 dark:text-slate-100 mb-3">آخر النشاط</h5>
                       <div className="space-y-2">
-                        {studentProgress[selectedStudent.id]?.slice(0, 5).map((progress: any) => (
+                        {studentProgress[selectedStudent.id]?.slice(0, 5).map((progress: VideoProgress) => (
                           <div key={progress.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                             <Play className="w-4 h-4 text-blue-500" />
                             <div className="flex-1">

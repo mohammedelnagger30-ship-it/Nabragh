@@ -4,7 +4,6 @@ import { GraduationCap, Mail, User, Phone, AlertCircle, Loader2, MessageCircle, 
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { curricula, getStagesForCurriculum } from '@/lib/education';
-import { CONTACT, whatsappLink } from '@/lib/contact';
 import PasswordField from '@/components/PasswordField';
 import MetaTags from '@/components/MetaTags';
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  CheckCircle2, ChevronLeft, Clock, Crown, Gamepad2, Loader2, Medal, Trophy, Users, Zap,
-  Swords, Flame, Timer, Sparkles, RefreshCw, AlertCircle, Award, Target, Volume2, VolumeX, ShieldAlert, ArrowLeft
+  ChevronLeft, Clock, Crown, Gamepad2, Loader2, Medal, Trophy, Zap,
+  Swords, Flame, Timer, RefreshCw, Volume2, VolumeX, ShieldAlert, ArrowLeft
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -14,7 +14,7 @@ import { addWatchedTime } from '@/lib/streak';
 import ArenaMatchmaker from '@/components/ArenaMatchmaker';
 import { getLeagueByPoints, type RealisticRival } from '@/lib/arena';
 import { soundEngine } from '@/lib/soundFX';
-import { educationStages, STAGE_GROUPS } from '@/lib/education';
+import { STAGE_GROUPS } from '@/lib/education';
 
 type GameMode = 'solo' | 'duel';
 
@@ -36,7 +36,7 @@ export default function CompetitionsPage() {
   const [selected, setSelected] = useState<Competition | null>(null);
   const [questions, setQuestions] = useState<CompetitionQuestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   // Stage Filter
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>(profile?.education_stage || 'all');
@@ -93,6 +93,7 @@ export default function CompetitionsPage() {
         }
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compParam, profile?.is_teacher]);
 
   const visibleCompetitions = useMemo(
@@ -185,6 +186,7 @@ export default function CompetitionsPage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQIndex, isPlaying, gameFinished]);
 
   // Booster Handlers
@@ -240,6 +242,7 @@ export default function CompetitionsPage() {
     return () => {
       if (opponentTimerRef.current) clearTimeout(opponentTimerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQIndex, gameMode, isPlaying, gameFinished]);
 
   const handleTimeOut = () => {

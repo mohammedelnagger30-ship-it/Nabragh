@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Ticket, Plus, Trash2, Copy, Download, CheckCircle2, MessageCircle,
-  FileText, Clock, Send, Award, BarChart3, TrendingUp, Users, Video as VideoIcon,
-  BookOpen, Eye, Loader2, RefreshCw, Share2, Sparkles, Check, AlertCircle
+  Ticket, Plus, Copy, MessageCircle,
+  FileText, Clock, Send, Award, BarChart3, TrendingUp, Users,
+  Loader2, Check
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/context/ToastContext';
@@ -518,7 +518,7 @@ export function GuardianReportModal({
 // ==========================================
 // 4. مركز التحليلات والتقارير المتقدمة للمدرس
 // ==========================================
-export function TeacherProAnalytics({ teacherId }: { teacherId: string }) {
+export function TeacherProAnalytics(_props: { teacherId: string }) {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">

@@ -147,7 +147,7 @@ export default function TeacherProfilePage() {
       }
     };
 
-    void loadTeacher().catch((caught) => {
+    void loadTeacher().catch(() => {
       if (!cancelled) {
         setError(true);
         setLoading(false);

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, Mail, AlertCircle, Loader2, Info, User, Lock, Eye, EyeOff } from 'lucide-react';
+import { GraduationCap, Mail, AlertCircle, Loader2, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { homePath, roleLabel } from '@/lib/roles';
-import { CONTACT, whatsappLink } from '@/lib/contact';
 import PasswordField from '@/components/PasswordField';
 import MetaTags from '@/components/MetaTags';
 

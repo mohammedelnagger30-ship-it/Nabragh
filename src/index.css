@@ -168,9 +168,9 @@ img {
   animation: fadeIn 0.4s ease-out;
 }
 
-/* Smooth page transitions */
-main {
-  animation: fadeIn 0.3s ease-out;
+.route-transition {
+  animation: fadeIn 0.22s ease-out;
+  will-change: opacity;
 }
 
 @media (max-width: 767px) {

@@ -95,8 +95,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Desktop Navigation Bar (now at bottom for mobile) */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/70 bg-white/95 dark:border-slate-700/70 dark:bg-slate-900/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] backdrop-blur-sm md:top-0 md:bottom-auto md:border-b md:border-t-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)', paddingTop: 'md:env(safe-area-inset-top)' }}>
+      {/* Desktop Navigation Bar (at top for desktop) */}
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white/95 dark:border-slate-700/70 dark:bg-slate-900/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] backdrop-blur-sm hidden md:block" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-[4.5rem] items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">

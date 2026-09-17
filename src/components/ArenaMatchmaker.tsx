@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Swords, X, Loader2, CheckCircle2, User, Zap, ShieldAlert, Sparkles, Trophy } from 'lucide-react';
+import { Swords, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { REALISTIC_RIVALS, getLeagueByPoints, type RealisticRival } from '@/lib/arena';
 
 interface ArenaMatchmakerProps {

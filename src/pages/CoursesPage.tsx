@@ -9,7 +9,7 @@ import AdvancedFilter from '@/components/AdvancedFilter';
 import MetaTags from '@/components/MetaTags';
 
 export default function CoursesPage() {
-  const { profile } = useAuth();
+  useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,11 +61,6 @@ export default function CoursesPage() {
     const q = search.toLowerCase();
     return c.title.toLowerCase().includes(q) || (c.description?.toLowerCase().includes(q) ?? false);
   });
-
-  const levelLabels: Record<string, string> = { beginner: 'مبتدئ', intermediate: 'متوسط', advanced: 'متقدم' };
-  const levelColors: Record<string, string> = {
-    beginner: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', intermediate: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400', advanced: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
-  };
 
   return (
     <div className="min-h-screen bg-slate-50/70 dark:bg-slate-900">

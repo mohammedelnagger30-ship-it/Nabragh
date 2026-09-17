@@ -45,7 +45,7 @@ import {
   Swords,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { SITE_SETTINGS_DEFAULTS, invalidateSiteSettingsCache } from '@/lib/siteSettings';
+import { SITE_SETTINGS_DEFAULTS, invalidateSiteSettingsCache, type SiteSettings } from '@/lib/siteSettings';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -144,18 +144,6 @@ interface DailyPoint {
   signups: number;
   subscriptions: number;
   revenue: number;
-}
-
-interface PaymentRow {
-  id: string;
-  student_name: string | null;
-  teacher_name: string | null;
-  amount: number;
-  currency: string;
-  method: string;
-  status: string;
-  created_at: string;
-  paid_at: string | null;
 }
 
 interface TeacherPayoutRow {
@@ -739,7 +727,6 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
   const [rows, setRows] = useState<AdminStudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [busy, setBusy] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -872,7 +859,6 @@ function CoursesPanel() {
   }, [rows, query]);
 
   const totalRevenue = rows.reduce((sum, c) => sum + Number(c.revenue), 0);
-  const totalViews = rows.reduce((sum, c) => sum + Number(c.views_count), 0);
   const publishedCount = rows.filter((c) => c.is_published).length;
   const featuredCount = rows.filter((c) => c.is_featured).length;
 
@@ -1270,7 +1256,7 @@ function SettingsCard({ icon: Icon, title, description, onSave, saving, children
 }
 
 function SiteSettingsPanel() {
-  const [draft, setDraft] = useState<Record<string, any>>(() => JSON.parse(JSON.stringify(SITE_SETTINGS_DEFAULTS)));
+  const [draft, setDraft] = useState<SiteSettings>(() => JSON.parse(JSON.stringify(SITE_SETTINGS_DEFAULTS)));
   const [loaded, setLoaded] = useState(false);
   const [savingKeys, setSavingKeys] = useState<string[]>([]);
   const [savedToast, setSavedToast] = useState<string | null>(null);
@@ -1278,7 +1264,7 @@ function SiteSettingsPanel() {
   const load = useCallback(async () => {
     const { data } = await supabase.from('site_settings').select('key,value');
     setDraft((prev) => {
-      const next: Record<string, any> = { ...prev };
+      const next: SiteSettings = { ...prev };
       for (const row of data ?? []) next[row.key] = row.value;
       return next;
     });

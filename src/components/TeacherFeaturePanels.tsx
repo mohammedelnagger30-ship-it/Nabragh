@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  MessageSquare, Plus, Loader2, Trash2, RefreshCw, Send, CheckCircle2,
-  CalendarDays, Video as VideoIcon, Star, Package as PackageIcon, Award,
-  MessagesSquare, Radio, BookOpen, User as UserIcon, X,
+  MessageSquare, Plus, Loader2, Trash2, RefreshCw, Send,
+  CalendarDays, Video as VideoIcon, Package as PackageIcon, Award,
+  MessagesSquare, Radio, User as UserIcon, X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
