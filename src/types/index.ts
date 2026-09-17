@@ -7,6 +7,7 @@ export interface Profile {
   cover_url: string | null;
   phone: string | null;
   guardian_phone: string | null;
+  guardian_email: string | null;
   location: string | null;
   website: string | null;
   specialization: string | null;

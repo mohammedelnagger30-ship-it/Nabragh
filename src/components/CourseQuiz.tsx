@@ -47,6 +47,19 @@ export default function CourseQuiz({ courseId }: { courseId: string }) {
     }
     setResult({ score: result.score, passed: result.passed, certificateNumber: result.certificate_number ?? undefined });
     toast(result.passed ? 'أحسنت! اجتزت الاختبار' : 'حاول مرة أخرى لتحسين نتيجتك', result.passed ? 'success' : 'info');
+
+    // Notify guardian asynchronously (fire-and-forget)
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.rpc('notify_guardian_quiz_result', {
+          p_student_id: user.id,
+          p_quiz_id: quiz.id,
+          p_score: result.score,
+          p_passed: result.passed,
+          p_certificate_number: result.certificate_number ?? null,
+        });
+      }
+    });
   };
 
   if (loading || !quiz) return null;

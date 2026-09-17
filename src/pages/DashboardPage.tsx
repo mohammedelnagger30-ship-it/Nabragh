@@ -32,9 +32,9 @@ import NotificationCenter from '@/components/NotificationCenter';
 import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
 import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams';
 
-const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance'];
+const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams'];
 
 type TeacherPayoutRecord = {
   id: string;
@@ -116,6 +116,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
+  const [studentCertificates, setStudentCertificates] = useState<Array<{ id: string; course_id: string; certificate_number: string; issued_at: string; course?: { title: string | null; teacher?: { full_name: string | null } | null } | null }>>([]);
+  const [studentQuizAttempts, setStudentQuizAttempts] = useState<Array<{ id: string; quiz_id: string; score: number; passed: boolean; created_at: string; quiz?: { title: string | null; course_id: string; course?: { title: string | null } | null } | null }>>([]);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -147,6 +149,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [yearsExp, setYearsExp] = useState(0);
   const [phone, setPhone] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
+  const [guardianEmail, setGuardianEmail] = useState('');
   const [location, setLocation] = useState('');
   const [website, setWebsite] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -211,6 +214,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       setYearsExp(profile.years_experience ?? 0);
       setPhone(profile.phone ?? '');
       setGuardianPhone(profile.guardian_phone ?? '');
+      setGuardianEmail((profile as Record<string, unknown>).guardian_email as string ?? '');
       setLocation(profile.location ?? '');
       setWebsite(profile.website ?? '');
       setAvatarUrl(profile.avatar_url ?? '');
@@ -392,6 +396,26 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       .order('watched_at', { ascending: false })
       .limit(20);
     setHistory(histData as WatchHistoryItem[] ?? []);
+
+    // Student certificates
+    if (!isTeacher) {
+      const { data: certData } = await supabase
+        .from('certificates')
+        .select('*, course:courses!certificates_course_id_fkey(title, teacher:profiles!courses_teacher_id_fkey(full_name))')
+        .eq('student_id', user.id)
+        .order('issued_at', { ascending: false });
+      setStudentCertificates((certData ?? []) as typeof studentCertificates);
+    }
+
+    // Student quiz attempts
+    if (!isTeacher) {
+      const { data: qaData } = await supabase
+        .from('quiz_attempts')
+        .select('*, quiz:quizzes!quiz_attempts_quiz_id_fkey(title, course_id, course:courses!quizzes_course_id_fkey(title))')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false });
+      setStudentQuizAttempts((qaData ?? []) as typeof studentQuizAttempts);
+    }
   }, [user, isTeacher, teacherTier]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
@@ -412,6 +436,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       full_name: fullName, bio, specialization, years_experience: yearsExp,
       phone, location, website, avatar_url: avatarUrl, cover_url: coverUrl, cv_url: cvUrl,
       guardian_phone: profile?.is_teacher ? null : guardianPhone || null,
+      guardian_email: profile?.is_teacher ? null : guardianEmail || null,
       education_stage: profile?.is_teacher ? null : profileStage || null,
       curriculum: profile?.is_teacher ? null : profileCurriculum || null,
       teaching_stages: profile?.is_teacher && profileStage ? [profileStage] : [],
@@ -649,6 +674,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'overview', label: 'نظرة عامة', icon: LayoutDashboard },
     { id: 'profile', label: 'الملف الشخصي', icon: User },
     { id: 'subscriptions', label: 'اشتراكاتي', icon: Crown },
+    { id: 'my_certificates', label: 'شهاداتي', icon: Award },
+    { id: 'my_exams', label: 'نتائج امتحاناتي', icon: ClipboardCheck },
     { id: 'favorites', label: 'المفضلة', icon: Heart },
     { id: 'history', label: 'سجل المشاهدة', icon: Clock },
     { id: 'notifications', label: 'الإشعارات', icon: Bell },
@@ -992,8 +1019,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
                 <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <div className="mb-4 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-800 dark:text-white">اكتمال الملف</h3><p className="mt-1 text-xs text-slate-500">{profile.is_teacher ? 'كلما اكتمل الملف زادت ثقة المستخدمين بك.' : 'أكمل بياناتك ليظهر مرحلتك الدراسية في الترشيحات.'}</p></div><span className="text-xl font-extrabold text-blue-600">{profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone })}%</span></div>
-                    <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all" style={{ width: `${profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone })}%` }} /></div>
+                    <div className="mb-4 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-800 dark:text-white">اكتمال الملف</h3><p className="mt-1 text-xs text-slate-500">{profile.is_teacher ? 'كلما اكتمل الملف زادت ثقة المستخدمين بك.' : 'أكمل بياناتك ليظهر مرحلتك الدراسية في الترشيحات.'}</p></div><span className="text-xl font-extrabold text-blue-600">{profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone, guardianEmail })}%</span></div>
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all" style={{ width: `${profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone, guardianEmail })}%` }} /></div>
                     <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">{!avatarUrl && <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">أضف صورة شخصية</span>}{!bio && <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">أضف نبذة</span>}{!location && <span className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 dark:bg-slate-700 dark:text-slate-300">أضف موقعك</span>}</div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-extrabold text-slate-800 dark:text-white">روابط سريعة</h3><div className="mt-4 space-y-2">{profile.is_teacher ? <><QuickProfileLink icon={Upload} label="رفع فيديو جديد" onClick={() => setActiveTab('videos')} /><QuickProfileLink icon={FolderPlus} label="إنشاء دورة" onClick={() => setActiveTab('courses')} /><QuickProfileLink icon={BarChart3} label="عرض التحليلات" onClick={() => setActiveTab('analytics')} /></> : <><QuickProfileLink icon={BookOpen} label="تصفح الدورات" href="/courses" /><QuickProfileLink icon={Heart} label="فتح المفضلة" onClick={() => setActiveTab('favorites')} /><QuickProfileLink icon={Bell} label="عرض الإشعارات" onClick={() => setActiveTab('notifications')} /></>}</div></div>
@@ -1008,6 +1035,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{profile.is_teacher ? 'المنهج الذي تدرّسه' : 'نوع المنهج'}</label><select value={profileCurriculum} onChange={(e) => setProfileCurriculum(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200"><option value="">كل المناهج</option>{curricula.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
                   <Field label="رقم الهاتف" value={phone} onChange={setPhone} placeholder="+20..." dir="ltr" />
                   {!profile.is_teacher && <Field label="رقم ولي الأمر" value={guardianPhone} onChange={setGuardianPhone} placeholder="+20..." dir="ltr" />}
+                  {!profile.is_teacher && <Field label="إيميل ولي الأمر" value={guardianEmail} onChange={setGuardianEmail} placeholder="guardian@email.com" dir="ltr" />}
                   <Field label="الموقع" value={location} onChange={setLocation} placeholder="القاهرة، مصر" />
                   {profile.is_teacher && <Field label="الموقع الإلكتروني" value={website} onChange={setWebsite} placeholder="https://..." dir="ltr" />}
                   {profile.is_teacher && <Field label="سنوات الخبرة" value={String(yearsExp)} onChange={(v) => setYearsExp(parseInt(v) || 0)} type="number" />}
@@ -2146,6 +2174,82 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               </div>
             )}
 
+            {activeTab === 'my_certificates' && !profile.is_teacher && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Award className="w-5 h-5 text-amber-500" /> شهاداتي</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">الشهادات اللي حصلت عليها من الدورات</p>
+                  </div>
+                  <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-sm font-medium">{studentCertificates.length} شهادة</span>
+                </div>
+                {studentCertificates.length === 0 ? (
+                  <EmptyState icon={Award} text="لم تحصل على أي شهادة بعد" action={
+                    <Link to="/courses" className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">استكشف الدورات</Link>
+                  } />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {studentCertificates.map((cert) => (
+                      <div key={cert.id} className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-gradient-to-br from-amber-50 via-white to-orange-50 dark:from-amber-900/20 dark:via-slate-800 dark:to-orange-900/20 p-5 shadow-sm hover:shadow-md transition-all">
+                        <div className="absolute top-3 left-3">
+                          <Award className="w-8 h-8 text-amber-400 dark:text-amber-500 opacity-50" />
+                        </div>
+                        <div className="relative">
+                          <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">شهادة إتمام</p>
+                          <p className="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{cert.course?.title || 'دورة'}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">المدرس: {cert.course?.teacher?.full_name || 'مدرس'}</p>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500">{new Date(cert.issued_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 px-2 py-0.5 rounded-lg">{cert.certificate_number}</span>
+                          </div>
+                          <Link to={`/certificate/${cert.id}`} className="mt-3 flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-colors">
+                            <Award className="w-3.5 h-3.5" /> عرض الشهادة
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'my_exams' && !profile.is_teacher && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-violet-500" /> نتائج امتحاناتي</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">كل المحاولات والنتائج في امتحانات الدورات</p>
+                  </div>
+                  <span className="px-3 py-1 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-full text-sm font-medium">{studentQuizAttempts.length} محاولة</span>
+                </div>
+                {studentQuizAttempts.length === 0 ? (
+                  <EmptyState icon={ClipboardCheck} text="لم تحاول أي امتحان بعد" action={
+                    <Link to="/courses" className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">استكشف الدورات</Link>
+                  } />
+                ) : (
+                  <div className="space-y-3">
+                    {studentQuizAttempts.map((attempt) => (
+                      <div key={attempt.id} className={`flex items-center gap-4 p-4 rounded-2xl border ${attempt.passed ? 'border-emerald-200 dark:border-emerald-700/50 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-rose-200 dark:border-rose-700/50 bg-rose-50/50 dark:bg-rose-900/10'}`}>
+                        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${attempt.passed ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/30'}`}>
+                          <span className={`text-lg font-black ${attempt.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{attempt.score}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{attempt.quiz?.title || 'امتحان'}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{attempt.quiz?.course?.title || 'دورة'}</p>
+                        </div>
+                        <div className="text-left flex-shrink-0">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${attempt.passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
+                            {attempt.passed ? 'نجح' : 'لم ينجح'}
+                          </span>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{new Date(attempt.created_at).toLocaleDateString('ar-EG')}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'history' && !profile.is_teacher && (
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2"><Clock className="w-5 h-5 text-blue-500" /> سجل المشاهدة</h3>
@@ -2350,10 +2454,10 @@ function ProfileMetric({ icon: Icon, label, value, tone }: { icon: typeof Eye; l
   return <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"><div className={`flex h-10 w-10 items-center justify-center rounded-xl ${styles[tone]}`}><Icon className="h-5 w-5" /></div><div><strong className="block text-xl text-slate-900 dark:text-white">{value}</strong><span className="text-xs text-slate-500 dark:text-slate-400">{label}</span></div></div>;
 }
 
-function profileCompletion(profile: Profile, values: { fullName: string; bio: string; specialization: string; avatarUrl: string; location: string; profileStage: string; profileCurriculum: string; phone: string; guardianPhone: string }) {
+function profileCompletion(profile: Profile, values: { fullName: string; bio: string; specialization: string; avatarUrl: string; location: string; profileStage: string; profileCurriculum: string; phone: string; guardianPhone: string; guardianEmail: string }) {
   const fields = profile.is_teacher
     ? [values.fullName, values.bio, values.specialization, values.avatarUrl, values.location, values.profileStage, values.profileCurriculum, values.phone]
-    : [values.fullName, values.phone, values.guardianPhone, values.avatarUrl, values.profileStage, values.profileCurriculum, values.location, values.bio];
+    : [values.fullName, values.phone, values.guardianPhone, values.guardianEmail, values.avatarUrl, values.profileStage, values.profileCurriculum, values.location, values.bio];
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);
 }
 

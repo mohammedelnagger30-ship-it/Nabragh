@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
+  const [guardianEmail, setGuardianEmail] = useState('');
   const [locationVal, setLocationVal] = useState('');
   const [website, setWebsite] = useState('');
   const [specialization, setSpecialization] = useState('');
@@ -60,6 +61,7 @@ export default function SettingsPage() {
     setFullName(profile.full_name ?? '');
     setPhone(profile.phone ?? '');
     setGuardianPhone(profile.guardian_phone ?? '');
+    setGuardianEmail((profile as Record<string, unknown>).guardian_email as string ?? '');
     setLocationVal(profile.location ?? '');
     setWebsite(profile.website ?? '');
     setSpecialization(profile.specialization ?? '');
@@ -111,6 +113,7 @@ export default function SettingsPage() {
       full_name: fullName,
       phone, location: locationVal, website,
       guardian_phone: profile?.is_teacher ? null : guardianPhone || null,
+      guardian_email: profile?.is_teacher ? null : guardianEmail || null,
       specialization: profile?.is_teacher ? specialization : null,
       bio,
       education_stage: profile?.is_teacher ? null : stage || null,
@@ -326,6 +329,12 @@ export default function SettingsPage() {
                     <div>
                       <label className={labelCls}>رقم ولي الأمر</label>
                       <input value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} dir="ltr" placeholder="+20..." className={inputCls} />
+                    </div>
+                  )}
+                  {!profile.is_teacher && (
+                    <div>
+                      <label className={labelCls}>إيميل ولي الأمر</label>
+                      <input value={guardianEmail} onChange={(e) => setGuardianEmail(e.target.value)} dir="ltr" placeholder="guardian@email.com" className={inputCls} />
                     </div>
                   )}
                   <div>
