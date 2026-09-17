@@ -30,7 +30,7 @@ function formatDuration(seconds: number): string {
 
 interface TeacherQnA { id: string; question: string; answer: string | null; created_at: string; student: { full_name: string | null } | null; }
 interface TeacherPkg { id: string; title: string; description: string | null; price: number; duration_days: number; }
-interface ScheduledSessionLite { id: string; title: string; scheduled_at: string; duration_minutes: number; status: string; }
+interface ScheduledSessionLite { id: string; title: string; scheduled_at: string; duration_minutes: number; status: string; room_url: string | null; }
 
 export default function TeacherProfilePage() {
   const { id } = useParams<{ id: string }>();

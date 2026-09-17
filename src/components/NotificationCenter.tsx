@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Bell, Check, CheckCheck, Trash2, Archive, Loader2,
   BookOpen, Trophy, GraduationCap, Gamepad2, CreditCard, Users, Clock, ShieldCheck,
-  Search, Inbox
+  Search, Inbox, Filter
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/context/ToastContext';

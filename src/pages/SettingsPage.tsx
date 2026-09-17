@@ -61,7 +61,7 @@ export default function SettingsPage() {
     setFullName(profile.full_name ?? '');
     setPhone(profile.phone ?? '');
     setGuardianPhone(profile.guardian_phone ?? '');
-    setGuardianEmail((profile as Record<string, unknown>).guardian_email as string ?? '');
+    setGuardianEmail(profile.guardian_email ?? '');
     setLocationVal(profile.location ?? '');
     setWebsite(profile.website ?? '');
     setSpecialization(profile.specialization ?? '');

@@ -9,7 +9,7 @@ import {
   Send, CheckCircle, 
   Edit, ExternalLink, MessageSquare, X,
   Banknote, ShieldCheck, Check, Smartphone, LogOut, Mail,
-  Sun, Moon, Pin, Package as PackageIcon, HelpCircle, CalendarDays, Sparkles, Ticket
+  Sun, Moon, Pin, Package as PackageIcon, HelpCircle, CalendarDays, Sparkles, Ticket, EyeOff
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -30,7 +30,7 @@ import StreakWidget from '@/components/StreakWidget';
 import FlashcardsModal from '@/components/FlashcardsModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
-import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats } from '@/types';
+import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats, Quiz, VideoProgress, QuizQuestion } from '@/types';
 
 type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams';
 
@@ -71,7 +71,9 @@ type TeacherServiceUsage = {
   monthly_limit: number;
 };
 
-type StudentRow = Profile & {
+type StudentRow = CourseEnrollment & {
+  student: Profile;
+  course: Course;
   enrollment_count?: number;
   total_spent?: number;
   courses?: Course[];
@@ -214,7 +216,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
       setYearsExp(profile.years_experience ?? 0);
       setPhone(profile.phone ?? '');
       setGuardianPhone(profile.guardian_phone ?? '');
-      setGuardianEmail((profile as Record<string, unknown>).guardian_email as string ?? '');
+      setGuardianEmail(profile.guardian_email ?? '');
       setLocation(profile.location ?? '');
       setWebsite(profile.website ?? '');
       setAvatarUrl(profile.avatar_url ?? '');

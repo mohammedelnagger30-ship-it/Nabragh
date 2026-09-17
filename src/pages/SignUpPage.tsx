@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Mail, User, Phone, AlertCircle, Loader2, MessageCircle, CheckCircle2, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { whatsappLink } from '@/lib/contact';
 import { curricula, getStagesForCurriculum } from '@/lib/education';
 import PasswordField from '@/components/PasswordField';
 import MetaTags from '@/components/MetaTags';

@@ -75,6 +75,8 @@ export interface Course {
   subscription_duration_months: number;
   is_published: boolean;
   is_featured?: boolean;
+  is_visible?: boolean;
+  sort_order?: number;
   featured_order?: number;
   views_count?: number;
   education_stage: string | null;

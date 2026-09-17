@@ -1382,7 +1382,7 @@ function SiteSettingsPanel() {
 
   const setFlat = (key: string) => (value: string | number) => setDraft((p) => ({ ...p, [key]: value }));
   const setSection = (key: string) => (field: string) => (value: string) =>
-    setDraft((p) => ({ ...p, [key]: { ...(p[key] ?? {}), [field]: value } }));
+    setDraft((p) => ({ ...p, [key]: { ...((p[key] ?? {}) as Record<string, unknown>), [field]: value } }));
   const toggleSection = (field: string) => (value: boolean) =>
     setDraft((p) => ({ ...p, homepage_sections: { ...(p.homepage_sections ?? {}), [field]: value } }));
 
