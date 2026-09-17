@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export interface Flashcard {
   id: string;
   question: string;
@@ -14,8 +16,6 @@ export interface FlashcardSet {
   createdAt: string;
   cards: Flashcard[];
 }
-
-const STORAGE_KEY = 'nabragh_flashcard_sets';
 
 const DEFAULT_SETS: FlashcardSet[] = [
   {
@@ -44,58 +44,77 @@ const DEFAULT_SETS: FlashcardSet[] = [
   },
 ];
 
-export function loadFlashcardSets(): FlashcardSet[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      saveFlashcardSets(DEFAULT_SETS);
-      return DEFAULT_SETS;
+export async function loadFlashcardSets(): Promise<FlashcardSet[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return DEFAULT_SETS;
+
+  const { data, error } = await supabase.rpc('get_student_flashcards', { p_student_id: user.id });
+  if (error || !data || data.length === 0) return DEFAULT_SETS;
+
+  const setsMap = new Map<string, FlashcardSet>();
+  for (const row of data) {
+    if (!setsMap.has(row.set_id)) {
+      setsMap.set(row.set_id, {
+        id: row.set_id,
+        title: row.set_title,
+        description: row.set_description ?? undefined,
+        subject: row.set_subject ?? 'عام',
+        courseId: row.set_course_id ?? undefined,
+        createdAt: row.set_created_at,
+        cards: [],
+      });
     }
-    const parsed: FlashcardSet[] = JSON.parse(raw);
-    return parsed.length ? parsed : DEFAULT_SETS;
-  } catch {
-    return DEFAULT_SETS;
+    if (row.card_id) {
+      setsMap.get(row.set_id)!.cards.push({
+        id: row.card_id,
+        question: row.card_question,
+        answer: row.card_answer,
+        mastered: row.card_mastered,
+      });
+    }
   }
+
+  return Array.from(setsMap.values());
 }
 
-export function saveFlashcardSets(sets: FlashcardSet[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
-  } catch (err) {
-    console.error('Error saving flashcards:', err);
-  }
-}
+export async function createFlashcardSet(
+  title: string,
+  description: string,
+  subject: string,
+  cards: { question: string; answer: string }[],
+  courseId?: string
+): Promise<FlashcardSet | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
-export function createFlashcardSet(title: string, description: string, subject: string, cards: { question: string; answer: string }[], courseId?: string): FlashcardSet {
-  const sets = loadFlashcardSets();
-  const newSet: FlashcardSet = {
-    id: `set_${Date.now()}`,
+  const { data: setId, error } = await supabase.rpc('create_flashcard_set_rpc', {
+    p_title: title,
+    p_description: description || null,
+    p_subject: subject || 'عام',
+    p_course_id: courseId || null,
+    p_cards: cards.map((c, i) => ({ question: c.question, answer: c.answer, sort_order: i })),
+  });
+
+  if (error || !setId) return null;
+
+  return {
+    id: setId,
     title,
-    description,
-    subject,
+    description: description || undefined,
+    subject: subject || 'عام',
     courseId,
     createdAt: new Date().toISOString(),
-    cards: cards.map((c, i) => ({
-      id: `card_${Date.now()}_${i}`,
-      question: c.question,
-      answer: c.answer,
-      mastered: false,
-    })),
+    cards: cards.map((c, i) => ({ id: `temp_${i}`, question: c.question, answer: c.answer, mastered: false })),
   };
-  sets.unshift(newSet);
-  saveFlashcardSets(sets);
-  return newSet;
 }
 
-export function toggleCardMastered(setId: string, cardId: string): FlashcardSet[] {
-  const sets = loadFlashcardSets();
-  const targetSet = sets.find((s) => s.id === setId);
-  if (targetSet) {
-    const card = targetSet.cards.find((c) => c.id === cardId);
-    if (card) {
-      card.mastered = !card.mastered;
-      saveFlashcardSets(sets);
-    }
-  }
-  return sets;
+export async function toggleCardMastered(setId: string, cardId: string): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc('toggle_flashcard_mastered', { p_card_id: cardId });
+  if (error) return null;
+  return data as boolean;
+}
+
+export async function deleteFlashcardSet(setId: string): Promise<boolean> {
+  const { error } = await supabase.rpc('delete_flashcard_set_rpc', { p_set_id: setId });
+  return !error;
 }

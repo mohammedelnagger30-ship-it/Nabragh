@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { X, RotateCw, CheckCircle2, ChevronRight, ChevronLeft, Brain, Sparkles, Plus } from 'lucide-react';
-import { loadFlashcardSets, toggleCardMastered, createFlashcardSet, type FlashcardSet } from '@/lib/flashcards';
+import { useState, useEffect, useCallback } from 'react';
+import { X, RotateCw, CheckCircle2, ChevronRight, ChevronLeft, Brain, Sparkles, Plus, Loader2, Trash2 } from 'lucide-react';
+import { loadFlashcardSets, toggleCardMastered, createFlashcardSet, deleteFlashcardSet, type FlashcardSet } from '@/lib/flashcards';
 
 interface FlashcardsModalProps {
   isOpen: boolean;
@@ -9,19 +9,33 @@ interface FlashcardsModalProps {
 }
 
 export default function FlashcardsModal({ isOpen, onClose, courseId }: FlashcardsModalProps) {
-  const [sets, setSets] = useState<FlashcardSet[]>(() => loadFlashcardSets());
+  const [sets, setSets] = useState<FlashcardSet[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  // New set form
   const [newTitle, setNewTitle] = useState('');
   const [newSubject, setNewSubject] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newCards, setNewCards] = useState<{ question: string; answer: string }[]>([
     { question: '', answer: '' },
   ]);
+
+  const fetchSets = useCallback(async () => {
+    const data = await loadFlashcardSets();
+    setSets(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoading(true);
+      void fetchSets();
+    }
+  }, [isOpen, fetchSets]);
 
   if (!isOpen) return null;
 
@@ -32,10 +46,17 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
   const masteredCount = currentSet?.cards.filter((c) => c.mastered).length ?? 0;
   const totalCards = currentSet?.cards.length ?? 0;
 
-  const handleToggleMastered = () => {
+  const handleToggleMastered = async () => {
     if (!currentSet || !activeCard) return;
-    const updatedSets = toggleCardMastered(currentSet.id, activeCard.id);
-    setSets(updatedSets);
+    const newMastered = await toggleCardMastered(currentSet.id, activeCard.id);
+    if (newMastered === null) return;
+    setSets((prev) =>
+      prev.map((s) =>
+        s.id === currentSet.id
+          ? { ...s, cards: s.cards.map((c) => (c.id === activeCard.id ? { ...c, mastered: newMastered } : c)) }
+          : s
+      )
+    );
   };
 
   const handleNext = () => {
@@ -52,18 +73,34 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
     }
   };
 
-  const handleCreateSet = (e: React.FormEvent) => {
+  const handleCreateSet = async (e: React.FormEvent) => {
     e.preventDefault();
     const validCards = newCards.filter((c) => c.question.trim() && c.answer.trim());
     if (!newTitle.trim() || validCards.length === 0) return;
 
-    createFlashcardSet(newTitle, newDesc, newSubject || 'عام', validCards, courseId);
-    setSets(loadFlashcardSets());
-    setShowCreateForm(false);
-    setNewTitle('');
-    setNewDesc('');
-    setNewSubject('');
-    setNewCards([{ question: '', answer: '' }]);
+    setCreating(true);
+    const newSet = await createFlashcardSet(newTitle, newDesc, newSubject || 'عام', validCards, courseId);
+    setCreating(false);
+
+    if (newSet) {
+      setSets((prev) => [newSet, ...prev]);
+      setShowCreateForm(false);
+      setNewTitle('');
+      setNewDesc('');
+      setNewSubject('');
+      setNewCards([{ question: '', answer: '' }]);
+    }
+  };
+
+  const handleDeleteSet = async (setId: string) => {
+    const ok = await deleteFlashcardSet(setId);
+    if (ok) {
+      setSets((prev) => prev.filter((s) => s.id !== setId));
+      if (selectedSetId === setId) {
+        setSelectedSetId(null);
+        setCurrentIndex(0);
+      }
+    }
   };
 
   return (
@@ -90,8 +127,11 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
           </div>
         </div>
 
-        {/* View Mode: Select Set or Review */}
-        {!currentSet && !showCreateForm ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          </div>
+        ) : !currentSet && !showCreateForm ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-800 dark:text-slate-200">اختر مجموعة بطاقات:</h3>
@@ -105,35 +145,45 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
 
             <div className="grid gap-3 sm:grid-cols-2">
               {filteredSets.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    setSelectedSetId(s.id);
-                    setCurrentIndex(0);
-                    setIsFlipped(false);
-                  }}
-                  className="group rounded-2xl border border-slate-200/90 bg-slate-50/70 p-4 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white hover:shadow-md dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                      {s.subject ?? 'عام'}
-                    </span>
-                    <span className="text-xs font-bold text-slate-400">{s.cards.length} بطاقة</span>
-                  </div>
-                  <h4 className="mt-2 font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
-                    {s.title}
-                  </h4>
-                  {s.description && (
-                    <p className="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-400">
-                      {s.description}
-                    </p>
-                  )}
-                </button>
+                <div key={s.id} className="group relative">
+                  <button
+                    onClick={() => {
+                      setSelectedSetId(s.id);
+                      setCurrentIndex(0);
+                      setIsFlipped(false);
+                    }}
+                    className="w-full rounded-2xl border border-slate-200/90 bg-slate-50/70 p-4 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white hover:shadow-md dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        {s.subject ?? 'عام'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">{s.cards.length} بطاقة</span>
+                    </div>
+                    <h4 className="mt-2 font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                      {s.title}
+                    </h4>
+                    {s.description && (
+                      <p className="mt-1 text-xs text-slate-500 line-clamp-2 dark:text-slate-400">
+                        {s.description}
+                      </p>
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteSet(s.id);
+                    }}
+                    className="absolute top-2 left-2 rounded-lg bg-white/80 p-1.5 text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:bg-slate-800/80"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
         ) : showCreateForm ? (
-          <form onSubmit={handleCreateSet} className="space-y-4">
+          <form onSubmit={(e) => void handleCreateSet(e)} className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
               <h3 className="font-bold text-slate-900 dark:text-white">إنشاء مجموعة كروت جديدة</h3>
               <button
@@ -208,15 +258,16 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
 
               <button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-md hover:shadow-lg"
+                disabled={creating}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-md hover:shadow-lg disabled:opacity-50"
               >
-                حفظ المجموعة
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {creating ? 'جاري الحفظ...' : 'حفظ المجموعة'}
               </button>
             </div>
           </form>
         ) : (
           <div>
-            {/* Header with back button */}
             <div className="mb-4 flex items-center justify-between">
               <button
                 onClick={() => setSelectedSetId(null)}
@@ -229,7 +280,6 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
               </div>
             </div>
 
-            {/* Flashcard Box */}
             {activeCard && (
               <div className="space-y-4">
                 <div
@@ -250,7 +300,6 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
                   </div>
                 </div>
 
-                {/* Controls */}
                 <div className="flex items-center justify-between pt-2">
                   <button
                     onClick={handlePrev}
@@ -261,7 +310,7 @@ export default function FlashcardsModal({ isOpen, onClose, courseId }: Flashcard
                   </button>
 
                   <button
-                    onClick={handleToggleMastered}
+                    onClick={() => void handleToggleMastered()}
                     className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
                       activeCard.mastered
                         ? 'bg-emerald-600 text-white shadow-md'
