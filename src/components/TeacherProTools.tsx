@@ -72,13 +72,13 @@ export function TeacherActivationCodes({ teacherId, courses }: { teacherId: stri
     try {
       const { error } = await supabase.from('activation_codes').insert(newCodes);
       if (error) {
-        toast('تم توليد الأكواد بنجاح في الجلسة المحلية!', 'success');
+        toast('تعذر توليد الأكواد: ' + (error.message ?? 'خطأ غير معروف'), 'error');
       } else {
-        toast(`تم إنشاء ${countToGenerate} كود تفعيل بنجاح! 🎉`, 'success');
+        toast(`تم إنشاء ${countToGenerate} كود تفعيل بنجاح!`, 'success');
       }
       await fetchCodes();
     } catch {
-      toast('تم توليد الأكواد بنجاح', 'success');
+      toast('تعذر توليد الأكواد', 'error');
     } finally {
       setGenerating(false);
     }
@@ -292,16 +292,16 @@ export function TeacherHomeworkManager({ teacherId, courses }: { teacherId: stri
         deadline: deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       });
       if (error) {
-        toast('تم حفظ الواجب بنجاح!', 'success');
+        toast('تعذر حفظ الواجب: ' + (error.message ?? 'خطأ غير معروف'), 'error');
       } else {
-        toast('تم نشر الواجب وإشعارات الطلاب بنجاح! 📝', 'success');
+        toast('تم نشر الواجب وإشعارات الطلاب بنجاح!', 'success');
       }
       setShowAddModal(false);
       setTitle('');
       setDescription('');
       await fetchAssignments();
     } catch {
-      toast('تم نشر الواجب بنجاح!', 'success');
+      toast('تعذر حفظ الواجب', 'error');
     } finally {
       setSaving(false);
     }

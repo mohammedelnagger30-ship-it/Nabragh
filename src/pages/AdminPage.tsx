@@ -43,14 +43,20 @@ import {
   MessageSquare,
   FileDown,
   Swords,
+  Clock,
+  Trophy,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SITE_SETTINGS_DEFAULTS, invalidateSiteSettingsCache, type SiteSettings } from '@/lib/siteSettings';
+import { downloadExcel } from '@/lib/excelExport';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import AdminConfirmModal from '@/components/AdminConfirmModal';
+import AdminPagination from '@/components/AdminPagination';
 
-type TabId = 'home' | 'overview' | 'analytics' | 'teachers' | 'students' | 'courses' | 'videos' | 'exams' | 'moderation' | 'subscriptions' | 'broadcast' | 'admins' | 'reports' | 'settings';
+type TabId = 'home' | 'overview' | 'analytics' | 'teachers' | 'students' | 'courses' | 'videos' | 'exams' | 'moderation' | 'subscriptions' | 'broadcast' | 'admins' | 'reports' | 'settings' | 'performance' | 'audit';
 
 interface AdminSubscriptionRow {
   id: string;
@@ -207,8 +213,10 @@ const TABS: Array<{ id: TabId; label: string; icon: LucideIcon }> = [
   { id: 'exams', label: 'الامتحانات والمنافسات', icon: Swords },
   { id: 'moderation', label: 'التعليقات والتقييمات', icon: MessageSquare },
   { id: 'subscriptions', label: 'الاشتراكات والمدفوعات', icon: CreditCard },
+  { id: 'performance', label: 'أداء المدرسين', icon: Trophy },
   { id: 'broadcast', label: 'إشعار للجميع', icon: Send },
   { id: 'admins', label: 'الإداريون', icon: Shield },
+  { id: 'audit', label: 'سجل العمليات', icon: Clock },
   { id: 'reports', label: 'التقارير', icon: FileDown },
   { id: 'settings', label: 'الإعدادات', icon: Settings },
 ];
@@ -225,6 +233,7 @@ const TONE_MAP: Record<string, string> = {
 export default function AdminPage() {
   const navigate = useNavigate();
   const { profile, loading: authLoading, isAdmin, signOut } = useAuth();
+  const { toast } = useToast();
   const [tab, setTab] = useState<TabId>('overview');
 
   useEffect(() => {
@@ -235,6 +244,17 @@ export default function AdminPage() {
 
   const [subscriptions, setSubscriptions] = useState<AdminSubscriptionRow[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{ title: string; description: string; variant: 'danger' | 'warning' | 'info'; action: () => void }>({ title: '', description: '', variant: 'danger', action: () => {} });
+
+  const askConfirm = useCallback((config: { title: string; description: string; variant: 'danger' | 'warning' | 'info'; action: () => void }) => {
+    setConfirmConfig(config);
+    setConfirmOpen(true);
+  }, []);
+
+  const logAdminAction = useCallback(async (action: string, targetType: string, targetId?: string, details?: Record<string, unknown>) => {
+    await supabase.rpc('admin_log_action', { p_action: action, p_target_type: targetType, p_target_id: targetId ?? null, p_details: details ? JSON.stringify(details) : null });
+  }, []);
 
   const loadSubscriptions = useCallback(async () => {
     const { data } = await supabase.rpc('admin_subscriptions_list');
@@ -264,7 +284,13 @@ export default function AdminPage() {
   };
 
   const blockUser = async (id: string) => {
-    await supabase.rpc('admin_set_approved', { target_id: id, approved: false });
+    const { error } = await supabase.rpc('admin_set_approved', { target_id: id, approved: false });
+    if (error) {
+      toast('تعذر حظر المستخدم', 'error');
+      return;
+    }
+    toast('تم حظر المستخدم بنجاح', 'success');
+    loadAll();
   };
 
   if (authLoading || !profile || !isAdmin) {
@@ -273,11 +299,20 @@ export default function AdminPage() {
 
   return (
     <AdminPortalShell onNavigate={(t) => setTab(t)} onSignOut={() => { void signOut(); navigate('/signin?next=/admin', { replace: true }); }} activeTab={tab} onRefresh={loadAll}>
-      {tab === 'home' && <HomepageManager />}
+      <AdminConfirmModal
+        open={confirmOpen}
+        title={confirmConfig.title}
+        description={confirmConfig.description}
+        variant={confirmConfig.variant}
+        confirmLabel={confirmConfig.variant === 'danger' ? 'نعم، حذف' : confirmConfig.variant === 'warning' ? 'نعم، تنفيذ' : 'تأكيد'}
+        onConfirm={() => { confirmConfig.action(); setConfirmOpen(false); }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+      {tab === 'home' && <HomepageManager logAction={logAdminAction} />}
       {tab === 'overview' && <OverviewPanel />}
       {tab === 'analytics' && <AnalyticsPanel />}
-      {tab === 'teachers' && <TeachersPanel busy={busy} onApprove={async (t) => { await supabase.rpc('admin_set_approved', { target_id: t.id, approved: true }); }} onReject={async (t) => { if (confirm('هل تريد رفض هذا المدرس وحذفه من قائمة المدرسين؟')) await supabase.rpc('admin_reject_teacher', { target_id: t.id }); }} onBlock={(t) => { void (async () => { if (confirm('هل تريد حظر وايقاف هذا المدرس؟')) await blockUser(t.id); })(); }} />}
-      {tab === 'students' && <StudentsPanel onBlock={async (s) => { if (confirm('هل تريد حظر هذا الطالب وإزالته من قائمة الطلاب؟')) await blockUser(s.id); }} />}
+      {tab === 'teachers' && <TeachersPanel busy={busy} onApprove={async (t) => { const { error } = await supabase.rpc('admin_set_approved', { target_id: t.id, approved: true }); if (error) { toast('تعذر قبول المدرس', 'error'); } else { await logAdminAction('approve_teacher', 'teacher', t.id); toast('تم قبول المدرس بنجاح', 'success'); loadAll(); } }} onReject={async (t) => { askConfirm({ title: 'رفض المدرس', description: `هل تريد رفض "${t.full_name ?? ''}" وحذفه من قائمة المدرسين؟`, variant: 'warning', action: async () => { const { error } = await supabase.rpc('admin_reject_teacher', { target_id: t.id }); if (error) { toast('تعذر رفض المدرس', 'error'); } else { await logAdminAction('reject_teacher', 'teacher', t.id); toast('تم رفض المدرس', 'info'); loadAll(); } } }); }} onBlock={(t) => { askConfirm({ title: 'حظر المدرس', description: `هل تريد حظر "${t.full_name ?? ''}" وإيقافه؟`, variant: 'danger', action: async () => { await blockUser(t.id); await logAdminAction('block_teacher', 'teacher', t.id); } }); }} />}
+      {tab === 'students' && <StudentsPanel onBlock={async (s) => { askConfirm({ title: 'حظر الطالب', description: `هل تريد حظر "${s.full_name ?? ''}" وإزالته من قائمة الطلاب؟`, variant: 'danger', action: async () => { await blockUser(s.id); await logAdminAction('block_student', 'student', s.id); } }); }} />}
       {tab === 'courses' && <CoursesPanel />}
       {tab === 'videos' && <VideosPanel />}
       {tab === 'exams' && <ExamsPanel />}
@@ -291,8 +326,10 @@ export default function AdminPage() {
           onReject={rejectSubscription}
         />
       )}
+      {tab === 'performance' && <PerformancePanel logAction={logAdminAction} />}
       {tab === 'broadcast' && <BroadcastPanel />}
       {tab === 'admins' && <AdminUsersPanel />}
+      {tab === 'audit' && <AuditLogPanel />}
       {tab === 'reports' && <ReportsPanel />}
       {tab === 'settings' && <SiteSettingsPanel />}
     </AdminPortalShell>
@@ -584,6 +621,9 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const PER_PAGE = 20;
 
   const applyAction = async (t: AdminTeacherRow, action: () => Promise<unknown>) => {
     setActionId(t.id);
@@ -612,6 +652,22 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
 
   const pending = filtered.filter((t) => !t.is_approved);
   const approved = filtered.filter((t) => t.is_approved);
+  const paginatedApproved = useMemo(() => {
+    const start = (page - 1) * PER_PAGE;
+    return approved.slice(start, start + PER_PAGE);
+  }, [approved, page]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedApproved.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(paginatedApproved.map((t) => t.id))); }
+  };
 
   if (loading) {
     return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
@@ -674,6 +730,7 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
             <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
+                  <th className="px-4 py-3"><input type="checkbox" checked={selectedIds.size === paginatedApproved.length && paginatedApproved.length > 0} onChange={toggleSelectAll} className="h-4 w-4 rounded border-slate-300" /></th>
                   <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
                   <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">التخصص</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الدورات</th>
@@ -684,8 +741,9 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {approved.map((t) => (
-                  <tr key={t.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                {paginatedApproved.map((t) => (
+                  <tr key={t.id} className={`transition hover:bg-slate-50 dark:hover:bg-slate-700/50 ${selectedIds.has(t.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
+                    <td className="px-4 py-4"><input type="checkbox" checked={selectedIds.has(t.id)} onChange={() => toggleSelect(t.id)} className="h-4 w-4 rounded border-slate-300" /></td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
@@ -714,6 +772,9 @@ function TeachersPanel({ busy, onApprove, onReject, onBlock }: { busy: boolean; 
               </tbody>
             </table>
           </div>
+          <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-700">
+            <AdminPagination page={page} total={approved.length} perPage={PER_PAGE} onPageChange={setPage} />
+          </div>
         </div>
       )}
     </div>
@@ -728,6 +789,9 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const PER_PAGE = 20;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -754,6 +818,23 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
     return rows.filter((s) => (s.full_name ?? '').toLowerCase().includes(q) || (s.email ?? '').toLowerCase().includes(q));
   }, [rows, query]);
 
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PER_PAGE;
+    return filtered.slice(start, start + PER_PAGE);
+  }, [filtered, page]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginated.length) { setSelectedIds(new Set()); } else { setSelectedIds(new Set(paginated.map((s) => s.id))); }
+  };
+
   const totalSpent = rows.reduce((sum, s) => sum + Number(s.total_spent), 0);
   const totalEnrollments = rows.reduce((sum, s) => sum + s.enrollment_count, 0);
 
@@ -776,14 +857,19 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
             placeholder="ابحث عن طالب بالاسم أو البريد..."
             className="h-11 w-full rounded-xl border border-slate-200 bg-white ps-10 pe-4 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           />
         </div>
-        <button type="button" onClick={load} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-          <RefreshCw className={`ml-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> تحديث
+        <button type="button" onClick={load} disabled={loading} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <RefreshCw className={`ml-1 inline h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> تحديث
         </button>
+        {selectedIds.size > 0 && (
+          <button type="button" onClick={() => { const ids = [...selectedIds]; ids.forEach((id) => { void onBlock({ id } as AdminStudentRow); }); setSelectedIds(new Set()); }} className="flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700">
+            <Shield className="h-4 w-4" /> حظر المحدد ({selectedIds.size})
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -794,6 +880,7 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
             <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
+                  <th className="px-4 py-3"><input type="checkbox" checked={selectedIds.size === paginated.length && paginated.length > 0} onChange={toggleSelectAll} className="h-4 w-4 rounded border-slate-300" /></th>
                   <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">الطالب</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الاشتراكات</th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">المدفوعات</th>
@@ -802,8 +889,9 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {filtered.map((s) => (
-                  <tr key={s.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                {paginated.map((s) => (
+                  <tr key={s.id} className={`transition hover:bg-slate-50 dark:hover:bg-slate-700/50 ${selectedIds.has(s.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
+                    <td className="px-4 py-4"><input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} className="h-4 w-4 rounded border-slate-300" /></td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-bold text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
@@ -819,7 +907,7 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
                     <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(s.total_spent).toLocaleString('ar-EG')} جنيه</td>
                     <td className="px-6 py-4 text-center text-xs text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('ar-EG') : '-'}</td>
                     <td className="px-6 py-4 text-center">
-                      <button type="button" onClick={() => void handleBlock(s)} disabled={busy || actionId === s.id} className="rounded-lg bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300" title="حظر وإزالة من القائمة">
+                      <button type="button" onClick={() => void handleBlock(s)} disabled={actionId === s.id} className="rounded-lg bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/20 dark:text-rose-300" title="حظر وإزالة من القائمة">
                           <X className="h-4 w-4" />
                         </button>
                     </td>
@@ -827,6 +915,9 @@ function StudentsPanel({ onBlock }: { onBlock: (s: AdminStudentRow) => Promise<u
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-700">
+            <AdminPagination page={page} total={filtered.length} perPage={PER_PAGE} onPageChange={setPage} />
           </div>
         </div>
       )}
@@ -1034,7 +1125,7 @@ interface FeaturedItem {
 
 type FeaturedPool = 'courses' | 'profiles' | 'videos';
 
-function HomepageManager() {
+function HomepageManager({ logAction: _logAction }: { logAction?: (action: string, targetType: string, targetId?: string, details?: Record<string, unknown>) => Promise<void> }) {
   const [pools, setPools] = useState<Record<FeaturedPool, FeaturedItem[]>>({ courses: [], profiles: [], videos: [] } as Record<FeaturedPool, FeaturedItem[]>);
   const [queries, setQueries] = useState<Record<FeaturedPool, string>>({ courses: '', profiles: '', videos: '' });
   const [results, setResults] = useState<Record<FeaturedPool, FeaturedItem[]>>({ courses: [], profiles: [], videos: [] } as Record<FeaturedPool, FeaturedItem[]>);
@@ -1938,6 +2029,15 @@ function ReportsPanel() {
     setLoadingKey(null);
   };
 
+  const runExcel = async (key: string, rpc: string, filename: string, headers: string[], map: (r: Record<string, unknown>) => (string | number | null)[]) => {
+    setLoadingKey(key);
+    const { data } = (await supabase.rpc(rpc)) as unknown as { data: Record<string, unknown>[] | null };
+    const rowsRaw = (data ?? []) as Record<string, unknown>[];
+    downloadExcel(filename, headers, rowsRaw.map(map));
+    setCounts((c) => ({ ...c, [key]: rowsRaw.length }));
+    setLoadingKey(null);
+  };
+
   const argDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('ar-EG') : '');
 
   const payoutTotalGross = payoutRows.reduce((sum, row) => sum + Number(row.total_gross ?? 0), 0);
@@ -2016,7 +2116,10 @@ function ReportsPanel() {
           <div key={b.key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <h4 className="text-base font-black text-slate-900 dark:text-white">{b.label}</h4>
             {typeof counts[b.key] === 'number' && <p className="mt-1 text-xs text-slate-400">آخر تصدير: {counts[b.key].toLocaleString('ar-EG')} صف</p>}
-            <button type="button" onClick={() => { void run(b.key, b.rpc, b.filename, b.headers, b.map); }} disabled={loadingKey !== null} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loadingKey === b.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} تصدير CSV</button>
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={() => { void run(b.key, b.rpc, b.filename, b.headers, b.map); }} disabled={loadingKey !== null} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loadingKey === b.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} CSV</button>
+              <button type="button" onClick={() => { void runExcel(b.key, b.rpc, b.filename.replace('.csv', ''), b.headers, b.map); }} disabled={loadingKey !== null} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">{loadingKey === b.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Excel</button>
+            </div>
           </div>
         ))}
       </div>
@@ -2165,6 +2268,177 @@ function ExamsPanel() {
         </div>
       )}
     </section>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Teacher Performance Panel
+// ──────────────────────────────────────────────
+function PerformancePanel({ logAction }: { logAction?: (action: string, targetType: string, targetId?: string, details?: Record<string, unknown>) => Promise<void> }) {
+  const [rows, setRows] = useState<Array<{ teacher_id: string; full_name: string | null; email: string | null; score: number; rating_avg: number | null; rating_count: number; student_count: number; course_count: number; revenue_total: number; calculated_at: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
+  const { toast } = useToast();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc('admin_teacher_performance_list');
+    setRows((data ?? []) as unknown as typeof rows);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const recalculate = async () => {
+    setRecalculating(true);
+    const { error } = await supabase.rpc('admin_recalculate_teacher_scores');
+    setRecalculating(false);
+    if (error) { toast('تعذر إعادة الحساب', 'error'); return; }
+    if (logAction) await logAction('recalculate_scores', 'system');
+    toast('تم إعادة حساب درجات المدرسين', 'success');
+    await load();
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/30';
+    if (score >= 50) return 'text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30';
+    return 'text-rose-600 bg-rose-50 dark:text-rose-300 dark:bg-rose-900/30';
+  };
+
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={Trophy} title="أداء المدرسين" description="نظام تقييم شامل يعتمد على التقييمات والمبيعات والنشاط." />
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500 dark:text-slate-400">{rows.length} مدرس • آخر تحديث: {rows[0]?.calculated_at ? new Date(rows[0].calculated_at).toLocaleString('ar-EG') : '-'}</p>
+        <button type="button" onClick={() => void recalculate()} disabled={recalculating} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+          {recalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} إعادة حساب الدرجات
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
+      ) : rows.length === 0 ? (
+        <EmptyAdminState title="لا توجد بيانات أداء" />
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">المدرس</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الدرجة</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">متوسط التقييم</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الطلاب</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الدورات</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">الإيراد</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {rows.map((r) => (
+                  <tr key={r.teacher_id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">{(r.full_name ?? 'م')[0]}</div>
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">{r.full_name}</div>
+                          <div className="text-xs text-slate-500">{r.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-extrabold ${getScoreColor(r.score)}`}>
+                        {r.score.toFixed(0)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-amber-600 dark:text-amber-400">
+                      {r.rating_avg ? `${r.rating_avg.toFixed(1)} ★ (${r.rating_count})` : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{r.student_count}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">{r.course_count}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-emerald-600 dark:text-emerald-400">{Number(r.revenue_total).toLocaleString('ar-EG')} ج.م</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Audit Log Panel
+// ──────────────────────────────────────────────
+function AuditLogPanel() {
+  const [rows, setRows] = useState<Array<{ id: string; admin_name: string | null; action: string; target_type: string; target_id: string | null; details: Record<string, unknown> | null; created_at: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc('admin_audit_log_list', { p_limit: 200 });
+    setRows((data ?? []) as unknown as typeof rows);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const ACTION_LABELS: Record<string, string> = {
+    approve_teacher: 'اعتماد مدرس',
+    reject_teacher: 'رفض مدرس',
+    block_teacher: 'حظر مدرس',
+    block_student: 'حظر طالب',
+    soft_delete: 'حذف ناعم',
+    restore: 'استعادة',
+    block: 'حظر',
+    unblock: 'إلغاء الحظر',
+    recalculate_scores: 'إعادة حساب الدرجات',
+    set_featured: 'تمييز',
+    update_setting: 'تحديث إعداد',
+    broadcast: 'إشعار جماعي',
+    delete: 'حذف',
+    approve_subscription: 'اعتماد اشتراك',
+    reject_subscription: 'رفض اشتراك',
+  };
+
+  return (
+    <div className="space-y-6">
+      <PanelHeading icon={Clock} title="سجل العمليات" description="تتبع جميع إجراءات الإدارة على المنصة." />
+
+      {loading ? (
+        <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
+      ) : rows.length === 0 ? (
+        <EmptyAdminState title="لا توجد عمليات مسجلة" />
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">المسؤول</th>
+                  <th className="px-6 py-3 text-start text-xs font-bold text-slate-500 dark:text-slate-400">العملية</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">النوع</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">التفاصيل</th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {rows.map((r) => (
+                  <tr key={r.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">{r.admin_name ?? 'غير معروف'}</td>
+                    <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{ACTION_LABELS[r.action] ?? r.action}</td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-500">{r.target_type}</td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-400">{r.details ? JSON.stringify(r.details).slice(0, 50) : '-'}</td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-500">{new Date(r.created_at).toLocaleString('ar-EG')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

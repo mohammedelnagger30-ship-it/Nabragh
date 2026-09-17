@@ -571,20 +571,33 @@ export default function TeacherProfilePage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       {future.slice(0, 6).map((s) => {
                         const booked = bookedIds.has(s.id);
+                        const isLiveNow = s.status === 'live';
                         return (
-                          <div key={s.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                            <div className="min-w-0">
-                              <p className="truncate font-bold text-slate-800 dark:text-white">{s.title}</p>
-                              <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><Clock className="h-3.5 w-3.5" /> {new Date(s.scheduled_at).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })} - {new Date(s.scheduled_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}{s.status === 'live' ? ' • مباشر الآن' : ''} • {s.duration_minutes} دقيقة</p>
+                          <div key={s.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate font-bold text-slate-800 dark:text-white">{s.title}</p>
+                                <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><Clock className="h-3.5 w-3.5" /> {new Date(s.scheduled_at).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })} - {new Date(s.scheduled_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}{isLiveNow ? ' • مباشر الآن' : ''} • {s.duration_minutes} دقيقة</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => void toggleBooking(s.id)}
+                                disabled={bookingBusy === s.id || isOwner}
+                                className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition ${booked ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:cursor-not-allowed disabled:opacity-60`}
+                              >
+                                {bookingBusy === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : booked ? 'إلغاء الحجز' : <span className="flex items-center gap-1.5"><Ticket className="h-4 w-4" /> احجز</span>}
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => void toggleBooking(s.id)}
-                              disabled={bookingBusy === s.id || isOwner}
-                              className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition ${booked ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:cursor-not-allowed disabled:opacity-60`}
-                            >
-                              {bookingBusy === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : booked ? 'إلغاء الحجز' : <span className="flex items-center gap-1.5"><Ticket className="h-4 w-4" /> احجز</span>}
-                            </button>
+                            {isLiveNow && s.room_url && (
+                              <a
+                                href={s.room_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-500/30 transition hover:shadow-red-500/40"
+                              >
+                                <ExternalLink className="h-4 w-4" /> دخول الحصة المباشرة
+                              </a>
+                            )}
                           </div>
                         );
                       })}

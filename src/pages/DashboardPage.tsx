@@ -9,7 +9,7 @@ import {
   Send, CheckCircle, 
   Edit, ExternalLink, MessageSquare, X,
   Banknote, ShieldCheck, Check, Smartphone, LogOut, Mail,
-  Sun, Moon, Pin, Package as PackageIcon, HelpCircle, CalendarDays, Sparkles
+  Sun, Moon, Pin, Package as PackageIcon, HelpCircle, CalendarDays, Sparkles, Ticket
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -24,6 +24,7 @@ import MetaTags from '@/components/MetaTags';
 import { curricula, educationStages } from '@/lib/education';
 import { TeacherPageSettings as TeacherPageSettingsPanel, TeacherHonors, TeacherLeaderboards, TeacherAssistants } from '@/components/TeacherManagerTools';
 import { TeacherQA, TeacherLiveSessions, TeacherMessages, TeacherPackages, TeacherCertificates } from '@/components/TeacherFeaturePanels';
+import { TeacherActivationCodes, TeacherHomeworkManager, GuardianReportModal as TeacherGuardianReportModal } from '@/components/TeacherProTools';
 import AcademyMembersPanel from '@/components/AcademyMembersPanel';
 import StreakWidget from '@/components/StreakWidget';
 import FlashcardsModal from '@/components/FlashcardsModal';
@@ -132,6 +133,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [teacherPayoutTransactions, setTeacherPayoutTransactions] = useState<TeacherPayoutTransactionRecord[]>([]);
   const [serviceUsage, setServiceUsage] = useState<TeacherServiceUsage[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
+  const [reportStudent, setReportStudent] = useState<Profile | null>(null);
   const [examForm, setExamForm] = useState({ title: '', course_id: '', passing_score: 70, questions: [] as { question: string; options: string[]; correct_option: number }[] });
   const [showExamForm, setShowExamForm] = useState(false);
   const [editingExam, setEditingExam] = useState<QuizRow | null>(null);
@@ -171,6 +173,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [videoIsFree, setVideoIsFree] = useState(true);
   const [videoStage, setVideoStage] = useState('');
   const [videoCurriculum, setVideoCurriculum] = useState('');
+  const [editingVideo, setEditingVideo] = useState<{ id: string; title: string; description: string | null } | null>(null);
+  const [editVideoTitle, setEditVideoTitle] = useState('');
+  const [editVideoDesc, setEditVideoDesc] = useState('');
 
   // Course form state
   const [courseTitle, setCourseTitle] = useState('');
@@ -187,6 +192,10 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [courseThumb, setCourseThumb] = useState('');
   const [courseStage, setCourseStage] = useState('');
   const [courseCurriculum, setCourseCurriculum] = useState('');
+  const [editingCourse, setEditingCourse] = useState<{ id: string; title: string; description: string | null; level: string } | null>(null);
+  const [editCourseTitle, setEditCourseTitle] = useState('');
+  const [editCourseDesc, setEditCourseDesc] = useState('');
+  const [editCourseLevel, setEditCourseLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
 
   useEffect(() => {
     if (!loading && !user) navigate('/signin');
@@ -506,6 +515,15 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     toast('تم حذف الفيديو', 'info');
   };
 
+  const saveVideoEdit = async () => {
+    if (!editingVideo || !editVideoTitle.trim()) return;
+    const { error } = await supabase.from('videos').update({ title: editVideoTitle.trim(), description: editVideoDesc.trim() || null }).eq('id', editingVideo.id);
+    if (error) { toast('تعذر حفظ التغييرات', 'error'); return; }
+    setVideos(videos.map(v => v.id === editingVideo.id ? { ...v, title: editVideoTitle.trim(), description: editVideoDesc.trim() || null } : v));
+    setEditingVideo(null);
+    toast('تم تحديث الفيديو', 'success');
+  };
+
   const togglePinVideo = async (vidId: string, currentlyPinnedId: string | null) => {
     if (!user) return;
     const { error } = currentlyPinnedId === vidId
@@ -524,6 +542,15 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     await supabase.from('courses').delete().eq('id', courseId);
     setCourses(courses.filter(c => c.id !== courseId));
     toast('تم حذف الدورة', 'info');
+  };
+
+  const saveCourseEdit = async () => {
+    if (!editingCourse || !editCourseTitle.trim()) return;
+    const { error } = await supabase.from('courses').update({ title: editCourseTitle.trim(), description: editCourseDesc.trim() || null, level: editCourseLevel }).eq('id', editingCourse.id);
+    if (error) { toast('تعذر حفظ التغييرات', 'error'); return; }
+    setCourses(courses.map(c => c.id === editingCourse.id ? { ...c, title: editCourseTitle.trim(), description: editCourseDesc.trim() || null, level: editCourseLevel } : c));
+    setEditingCourse(null);
+    toast('تم تحديث الدورة', 'success');
   };
 
   const openPricingEditor = (c: Course) => {
@@ -605,6 +632,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'messages', label: 'رسائل الطلاب', icon: Send },
     { id: 'packages', label: 'العروض والباقات', icon: PackageIcon },
     { id: 'certificates', label: 'شهادات الطلاب', icon: Award },
+    { id: 'notifications', label: 'الإشعارات', icon: Bell },
+    { id: 'codes', label: 'أكواد التفعيل', icon: Ticket },
+    { id: 'homework', label: 'الواجبات', icon: FileText },
     ...(profile.is_manager ? [
       { id: 'page' as Tab, label: 'إعدادات صفحتي', icon: Palette },
       { id: 'honors' as Tab, label: 'التكريم', icon: Medal },
@@ -917,7 +947,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               </div>
             )}
 
-            {activeTab === 'notifications' && !profile.is_teacher && (
+            {activeTab === 'notifications' && (
               <NotificationCenter userId={user!.id} />
             )}
 
@@ -1172,6 +1202,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                         >
                           <Pin className="w-5 h-5" />
                         </button>
+                        <button onClick={() => { setEditingVideo(v); setEditVideoTitle(v.title); setEditVideoDesc(v.description ?? ''); }} className="p-2 text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="تعديل">
+                          <Edit className="w-5 h-5" />
+                        </button>
                         <button onClick={() => deleteVideo(v.id)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -1180,6 +1213,31 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {editingVideo && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">تعديل الفيديو</h3>
+                    <button onClick={() => setEditingVideo(null)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العنوان</label>
+                      <input value={editVideoTitle} onChange={(e) => setEditVideoTitle(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الوصف</label>
+                      <textarea value={editVideoDesc} onChange={(e) => setEditVideoDesc(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                      <button onClick={() => setEditingVideo(null)} className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">إلغاء</button>
+                      <button onClick={() => void saveVideoEdit()} disabled={!editVideoTitle.trim()} className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"><Save className="w-4 h-4" /> حفظ</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1250,6 +1308,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <button onClick={() => openPricingEditor(c)} title="تعديل الأسعار" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
                               <Banknote className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => { setEditingCourse(c); setEditCourseTitle(c.title); setEditCourseDesc(c.description ?? ''); setEditCourseLevel(c.level as typeof courseLevel); }} title="تعديل الدورة" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
+                              <Edit className="w-4 h-4" />
                             </button>
                             <button onClick={() => deleteCourse(c.id)} className="p-1.5 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex-shrink-0">
                               <Trash2 className="w-4 h-4" />
@@ -1401,6 +1462,39 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               </div>
             )}
 
+            {editingCourse && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">تعديل الدورة</h3>
+                    <button onClick={() => setEditingCourse(null)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العنوان</label>
+                      <input value={editCourseTitle} onChange={(e) => setEditCourseTitle(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الوصف</label>
+                      <textarea value={editCourseDesc} onChange={(e) => setEditCourseDesc(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المستوى</label>
+                      <select value={editCourseLevel} onChange={(e) => setEditCourseLevel(e.target.value as typeof editCourseLevel)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                        <option value="beginner">مبتدئ</option>
+                        <option value="intermediate">متوسط</option>
+                        <option value="advanced">متقدم</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                      <button onClick={() => setEditingCourse(null)} className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">إلغاء</button>
+                      <button onClick={() => void saveCourseEdit()} disabled={!editCourseTitle.trim()} className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"><Save className="w-4 h-4" /> حفظ</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'members' && profile.is_teacher && <AcademyMembersPanel teacherId={user!.id} />}
 
             {activeTab === 'qa' && profile.is_teacher && <TeacherQA teacherId={user!.id} />}
@@ -1408,6 +1502,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
             {activeTab === 'messages' && profile.is_teacher && <TeacherMessages teacherId={user!.id} />}
             {activeTab === 'packages' && profile.is_teacher && <TeacherPackages teacherId={user!.id} />}
             {activeTab === 'certificates' && profile.is_teacher && <TeacherCertificates teacherId={user!.id} />}
+            {activeTab === 'codes' && profile.is_teacher && <TeacherActivationCodes teacherId={user!.id} courses={courses} />}
+            {activeTab === 'homework' && profile.is_teacher && <TeacherHomeworkManager teacherId={user!.id} courses={courses} />}
 
             {activeTab === 'exams' && profile.is_teacher && (
               <div className="space-y-6">
@@ -1883,8 +1979,6 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
             {activeTab === 'page' && profile.is_manager && <TeacherPageSettingsPanel teacherId={user!.id} premium={limits.premium} />}
 
             {activeTab === 'honors' && profile.is_manager && <TeacherHonors teacherId={user!.id} />}
-
-            {activeTab === 'honors' && profile.is_manager && <TeacherHonors teacherId={user!.id} />}
             {activeTab === 'assistants' && profile.is_manager && <TeacherAssistants />}
 
             {/* Student Details Modal */}
@@ -1941,6 +2035,14 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                         ))}
                       </div>
                     </div>
+
+                    <button
+                      onClick={() => { setReportStudent(selectedStudent); }}
+                      className="w-full px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      إرسال تقرير ولي الأمر
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2167,6 +2269,12 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
           </div>
         </div>
       </div>
+
+      <TeacherGuardianReportModal
+        isOpen={!!reportStudent}
+        onClose={() => setReportStudent(null)}
+        student={reportStudent}
+      />
     </div>
   );
 }

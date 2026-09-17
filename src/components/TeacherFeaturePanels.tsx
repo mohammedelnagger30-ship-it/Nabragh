@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   MessageSquare, Plus, Loader2, Trash2, RefreshCw, Send,
   CalendarDays, Video as VideoIcon, Package as PackageIcon, Award,
-  MessagesSquare, Radio, User as UserIcon, X,
+  MessagesSquare, Radio, User as UserIcon, X, ExternalLink,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -22,7 +22,7 @@ interface SessionRow {
   scheduled_at: string | null;
   duration_minutes: number;
   status: string;
-  is_live: boolean;
+  room_url: string | null;
 }
 
 interface BookingRow {
@@ -89,6 +89,15 @@ export const TeacherQA = memo(function TeacherQA({ teacherId }: { teacherId: str
   }, [teacherId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Real-time: listen for new questions
+  useEffect(() => {
+    const channel = supabase
+      .channel('teacher-questions-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teacher_questions', filter: `teacher_id=eq.${teacherId}` }, () => { void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [teacherId, load]);
 
   const pending = rows.filter((r) => !r.answer);
   const answered = rows.filter((r) => r.answer);
@@ -173,6 +182,7 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
   const [title, setTitle] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [duration, setDuration] = useState(60);
+  const [roomUrl, setRoomUrl] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -182,11 +192,25 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
       supabase.from('live_session_bookings').select('*, student:profiles!live_session_bookings_student_id_fkey(full_name)').order('created_at', { ascending: false }).limit(300),
     ]);
     setSessions((s ?? []) as unknown as SessionRow[]);
-    setBookings((b ?? []) as unknown as BookingRow[]);
+
+    const sessionIds = new Set((s ?? []).map((x: SessionRow) => x.id));
+    const myBookings = ((b ?? []) as unknown as BookingRow[]).filter((bk) => sessionIds.has(bk.session_id));
+    setBookings(myBookings);
+
     setLoading(false);
   }, [teacherId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Real-time: listen for new bookings and session changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('teacher-sessions-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_session_bookings' }, () => { void load(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scheduled_sessions', filter: `teacher_id=eq.${teacherId}` }, () => { void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [teacherId, load]);
 
   const bookingsBySession = useMemo(() => {
     const m: Record<string, BookingRow[]> = {};
@@ -202,16 +226,23 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
       title: title.trim(),
       scheduled_at: new Date(scheduledAt).toISOString(),
       duration_minutes: duration,
+      room_url: roomUrl.trim() || null,
       status: 'scheduled',
     });
     setBusyId(null);
     toast(error ? 'تعذر إضافة الحصة' : 'تمت إضافة الحصة المباشرة', error ? 'error' : 'success');
-    if (!error) { setTitle(''); setScheduledAt(''); setDuration(60); await load(); }
+    if (!error) { setTitle(''); setScheduledAt(''); setDuration(60); setRoomUrl(''); await load(); }
   };
 
   const setStatus = async (s: SessionRow, status: string) => {
     setBusyId(s.id);
-    const { error } = await supabase.from('scheduled_sessions').update({ status }).eq('id', s.id);
+    const update: Record<string, unknown> = { status };
+    if (status === 'live' && !s.room_url) {
+      toast('أضف رابط الغرفة أولاً قبل بدء البث', 'error');
+      setBusyId(null);
+      return;
+    }
+    const { error } = await supabase.from('scheduled_sessions').update(update).eq('id', s.id);
     setBusyId(null);
     if (!error) await load();
   };
@@ -267,6 +298,7 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
             <button type="button" onClick={() => void add()} disabled={busyId === 'new'} className={btnPrimary}><Plus className="h-4 w-4" /> إضافة</button>
           </div>
         </div>
+        <input value={roomUrl} onChange={(e) => setRoomUrl(e.target.value)} placeholder="رابط غرفة البث (Google Meet / Zoom / غيره) — اختياري، يمكن إضافته لاحقاً" dir="ltr" className={inputCls + ' mt-2'} />
         {busyId === 'new' && <p className={errCls}>...</p>}
       </div>
 
@@ -293,6 +325,12 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
                 <button type="button" onClick={() => void removeSession(s)} disabled={busyId === s.id} className={btnDanger}><Trash2 className="h-4 w-4" /></button>
               </div>
             </div>
+            {s.room_url && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs dark:bg-blue-900/20">
+                <ExternalLink className="h-3.5 w-3.5 text-blue-500" />
+                <a href={s.room_url} target="_blank" rel="noopener noreferrer" className="truncate text-blue-600 underline dark:text-blue-400">{s.room_url}</a>
+              </div>
+            )}
             <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-700">
               <p className="mb-2 text-xs font-black text-slate-500 dark:text-slate-400">الحجوزات ({bookingsBySession[s.id]?.length ?? 0})</p>
               {!bookingsBySession[s.id]?.length ? <p className="text-xs text-slate-400">لا توجد حجوزات بعد.</p> : (
@@ -336,28 +374,34 @@ export const TeacherMessages = memo(function TeacherMessages({ teacherId }: { te
     const { data } = await supabase
       .from('messages')
       .select('*')
-      .eq('receiver_id', teacherId)
+      .or(`receiver_id.eq.${teacherId},sender_id.eq.${teacherId}`)
       .order('created_at', { ascending: false })
       .limit(300);
     const rows = (data ?? []) as unknown as MessageRow[];
+    const otherIds = new Set<string>();
+    for (const r of rows) {
+      if (r.sender_id !== teacherId) otherIds.add(r.sender_id);
+      if (r.receiver_id !== teacherId) otherIds.add(r.receiver_id);
+    }
     const { data: senders } = await supabase
       .from('profiles')
       .select('id, full_name')
-      .in('id', Array.from(new Set(rows.map((r) => r.sender_id))));
+      .in('id', Array.from(otherIds));
     const nameMap: Record<string, string> = {};
     for (const p of (senders ?? []) as { id: string; full_name: string | null }[]) nameMap[p.id] = p.full_name ?? 'طالب';
 
-    const bySender = new Map<string, MessageRow[]>();
+    const byOther = new Map<string, MessageRow[]>();
     for (const r of rows) {
-      const arr = bySender.get(r.sender_id) ?? [];
+      const otherId = r.sender_id === teacherId ? r.receiver_id : r.sender_id;
+      const arr = byOther.get(otherId) ?? [];
       arr.push(r);
-      bySender.set(r.sender_id, arr);
+      byOther.set(otherId, arr);
     }
-    const convs = Array.from(bySender.entries()).map(([sid, msgs]) => ({
+    const convs = Array.from(byOther.entries()).map(([sid, msgs]) => ({
       studentId: sid,
       studentName: nameMap[sid] ?? 'طالب',
-      messages: msgs,
-      unread: msgs.filter((m) => !m.read_at).length,
+      messages: msgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+      unread: msgs.filter((m) => !m.read_at && m.receiver_id === teacherId).length,
     }));
     setConversations(convs);
     setLoading(false);
@@ -365,6 +409,15 @@ export const TeacherMessages = memo(function TeacherMessages({ teacherId }: { te
   }, [teacherId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Real-time: listen for new messages
+  useEffect(() => {
+    const channel = supabase
+      .channel('teacher-messages-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${teacherId}` }, () => { void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [teacherId, load]);
 
   const open = async (c: Conversation) => {
     setActive({ ...c, unread: 0 });

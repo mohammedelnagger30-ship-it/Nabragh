@@ -234,7 +234,7 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
                     <li key={i} className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> {f}</li>
                   ))}
                 </ul>
-                <LinkButton color={primary} label={profile?.is_teacher ? 'تواصل مع المدرس' : 'اشترك الآن'} />
+                <LinkButton color={primary} label={profile?.is_teacher ? 'تواصل مع المدرس' : 'اشترك الآن'} teacherId={teacherId} />
               </div>
             ))}
           </div>
@@ -244,11 +244,10 @@ export default function TeacherPublicExtras({ teacherId, settings }: { teacherId
   );
 }
 
-function LinkButton({ color, label }: { color: string; label: string }) {
+function LinkButton({ color, label, teacherId }: { color: string; label: string; teacherId: string }) {
   return (
     <a
-      href={`mailto:${'placeholder'}`}
-      onClick={(e) => e.preventDefault()}
+      href={`/teacher/${teacherId}`}
       className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
       style={{ backgroundColor: color }}
     >
