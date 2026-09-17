@@ -32,9 +32,9 @@ import NotificationCenter from '@/components/NotificationCenter';
 import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
 import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats, Quiz, VideoProgress, QuizQuestion } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams' | 'guardian_overview' | 'guardian_child';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams' | 'guardian_overview' | 'guardian_child' | 'my_homework';
 
-const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams', 'guardian_overview', 'guardian_child'];
+const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams', 'guardian_overview', 'guardian_child', 'my_homework'];
 
 type TeacherPayoutRecord = {
   id: string;
@@ -120,6 +120,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
   const [studentCertificates, setStudentCertificates] = useState<Array<{ id: string; course_id: string; certificate_number: string; issued_at: string; course?: { title: string | null; teacher?: { full_name: string | null } | null } | null }>>([]);
   const [studentQuizAttempts, setStudentQuizAttempts] = useState<Array<{ id: string; quiz_id: string; score: number; passed: boolean; created_at: string; quiz?: { title: string | null; course_id: string; course?: { title: string | null } | null } | null }>>([]);
+  const [studentAssignments, setStudentAssignments] = useState<Array<{ assignment_id: string; title: string; description: string; file_url: string | null; deadline: string; created_at: string; course_id: string; course_title: string; submission_id: string | null; submission_content: string | null; submission_file_url: string | null; submitted_at: string | null; grade: number | null; feedback: string | null; graded_at: string | null }>>([]);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -419,6 +420,12 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
         .order('created_at', { ascending: false });
       setStudentQuizAttempts((qaData ?? []) as typeof studentQuizAttempts);
     }
+
+    // Student assignments
+    if (!isTeacher) {
+      const { data: asData } = await supabase.rpc('get_student_assignments');
+      setStudentAssignments((asData ?? []) as typeof studentAssignments);
+    }
   }, [user, isTeacher, teacherTier]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
@@ -677,6 +684,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'overview', label: 'نظرة عامة', icon: LayoutDashboard },
     { id: 'profile', label: 'الملف الشخصي', icon: User },
     { id: 'subscriptions', label: 'اشتراكاتي', icon: Crown },
+    { id: 'my_homework', label: 'واجباتي', icon: FileText },
     { id: 'my_certificates', label: 'شهاداتي', icon: Award },
     { id: 'my_exams', label: 'نتائج امتحاناتي', icon: ClipboardCheck },
     { id: 'favorites', label: 'المفضلة', icon: Heart },
@@ -2155,6 +2163,59 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               </div>
             )}
 
+            {activeTab === 'my_homework' && !profile.is_teacher && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-500" /> واجباتي</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">الواجبات المُكلفّة من المدرسين وحالة التسليم</p>
+                  </div>
+                  <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-medium">{studentAssignments.length} واجب</span>
+                </div>
+                {studentAssignments.length === 0 ? (
+                  <EmptyState icon={FileText} text="لا توجد واجبات مُكلفّة بعد" action={
+                    <Link to="/courses" className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">استكشف الدورات</Link>
+                  } />
+                ) : (
+                  <div className="space-y-4">
+                    {studentAssignments.map((a) => {
+                      const isOverdue = new Date(a.deadline) < new Date();
+                      const isSubmitted = !!a.submission_id;
+                      const isGraded = a.grade !== null;
+                      const daysLeft = Math.ceil((new Date(a.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={a.assignment_id} className={`rounded-2xl border p-5 shadow-sm transition-all ${isGraded ? 'border-emerald-200 dark:border-emerald-700/50 bg-emerald-50/30 dark:bg-emerald-900/10' : isSubmitted ? 'border-blue-200 dark:border-blue-700/50 bg-blue-50/30 dark:bg-blue-900/10' : isOverdue ? 'border-rose-200 dark:border-rose-700/50 bg-rose-50/30 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-bold text-slate-800 dark:text-white">{a.title}</h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isGraded ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : isSubmitted ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : isOverdue ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                                  {isGraded ? `تم التصحيح: ${a.grade}%` : isSubmitted ? 'تم التسليم' : isOverdue ? 'منتهي المدة' : `متبقي ${daysLeft} يوم`}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{a.course_title}</p>
+                              {a.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{a.description}</p>}
+                            </div>
+                          </div>
+                          {isGraded && a.feedback && (
+                            <div className="mt-3 p-3 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/20 text-sm text-emerald-800 dark:text-emerald-200"><span className="font-bold">ملاحظات المدرس:</span> {a.feedback}</div>
+                          )}
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500">الموعد النهائي: {new Date(a.deadline).toLocaleDateString('ar-EG', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            {!isSubmitted && !isOverdue && (
+                              <StudentSubmitAssignment assignmentId={a.assignment_id} onSubmit={(sub) => {
+                                setStudentAssignments((prev) => prev.map((x) => x.assignment_id === a.assignment_id ? { ...x, submission_id: sub.id, submitted_at: sub.submitted_at } : x));
+                              }} />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'favorites' && !profile.is_teacher && (
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2"><Heart className="w-5 h-5 text-rose-500" /> المفضلة</h3>
@@ -2491,6 +2552,36 @@ type GuardianChildSummary = {
   passed_exams: number;
   certificates_count: number;
 };
+
+function StudentSubmitAssignment({ assignmentId, onSubmit }: { assignmentId: string; onSubmit: (sub: { id: string; submitted_at: string }) => void }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setSaving(true);
+    const { data, error } = await supabase.rpc('submit_assignment', { p_assignment_id: assignmentId, p_content: content.trim() });
+    setSaving(false);
+    if (error) { toast('تعذر تسليم الواجب', 'error'); return; }
+    const result = Array.isArray(data) ? data[0] : data;
+    if (result?.error) { toast(result.error, 'error'); return; }
+    toast('تم تسليم الواجب بنجاح!', 'success');
+    onSubmit({ id: result?.id || '', submitted_at: result?.submitted_at || new Date().toISOString() });
+    setOpen(false);
+    setContent('');
+  };
+
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors">تسليم الواجب</button>;
+
+  return (
+    <div className="flex items-center gap-2">
+      <input value={content} onChange={(e) => setContent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }} placeholder="اكتب إجابتك هنا..." className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+      <button type="button" onClick={() => void submit()} disabled={saving} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 disabled:opacity-50">{saving ? '...' : 'إرسال'}</button>
+      <button type="button" onClick={() => setOpen(false)} className="p-1 text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>
+    </div>
+  );
+}
 
 function GuardianOverview({ onNavigateToChild }: { onNavigateToChild: (id: string) => void }) {
   const { toast } = useToast();
