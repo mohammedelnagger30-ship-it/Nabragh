@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Play, Eye, Clock, Loader2, Lock, Award, BarChart3, Star, BadgeCheck, Loader, ShieldCheck } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +15,7 @@ import { getEducationStageLabel } from '@/lib/education';
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [course, setCourse] = useState<Course | null>(null);
@@ -23,7 +24,6 @@ export default function CourseDetailPage() {
   const [courseSub, setCourseSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
-  const [requesting, setRequesting] = useState<'subscription' | 'purchase' | null>(null);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
 
   useEffect(() => {
@@ -75,55 +75,9 @@ export default function CourseDetailPage() {
     }
   };
 
-  const requestAccess = async (type: 'subscription' | 'purchase') => {
+  const requestAccess = async (_type: 'subscription' | 'purchase') => {
     if (!user || !id || !course) return;
-    setRequesting(type);
-    const teacherId = course.teacher_id;
-    const endDate = type === 'subscription'
-      ? new Date(Date.now() + Math.max(1, course.subscription_duration_months || 1) * 30 * 24 * 60 * 60 * 1000).toISOString()
-      : null;
-    const amount = type === 'purchase' ? course.price : course.subscription_price;
-    const { data: subRow, error: subErr } = await supabase.from('subscriptions').insert({
-      student_id: user.id,
-      teacher_id: teacherId,
-      course_id: id,
-      access_type: type,
-      status: 'pending',
-      payment_status: 'pending',
-      start_date: new Date().toISOString(),
-      end_date: endDate,
-      notes: type === 'purchase' ? 'شراء نهائي للدورة' : 'اشتراك دوري في الدورة',
-    }).select().single();
-    if (subErr || !subRow) {
-      setRequesting(null);
-      toast('تعذر إرسال الطلب', 'error');
-      return;
-    }
-    const { data: paymentRow, error: paymentError } = await supabase.from('payments').insert({
-      subscription_id: (subRow as Subscription).id,
-      student_id: user.id,
-      teacher_id: teacherId,
-      amount,
-      method: 'manual',
-      status: 'pending',
-      notes: `طلب وصول لدورة: ${course.title}`,
-    }).select('id').single();
-    if (paymentError || !paymentRow) {
-      setRequesting(null);
-      toast('تم إنشاء الطلب لكن تعذر تجهيز رابط الدفع', 'error');
-      return;
-    }
-
-    const { data: paymentLink, error: linkError } = await supabase.functions.invoke('create-paymob-payment-link', {
-      body: { paymentId: paymentRow.id },
-    });
-    setRequesting(null);
-    setCourseSub(subRow as Subscription);
-    if (linkError || !paymentLink?.paymentUrl) {
-      toast('تم إنشاء الطلب لكن تعذر تجهيز رابط الدفع. تواصل مع الإدارة.', 'error');
-      return;
-    }
-    window.location.assign(paymentLink.paymentUrl as string);
+    navigate(`/checkout?course=${id}`);
   };
 
   if (loading) {
@@ -243,16 +197,16 @@ export default function CourseDetailPage() {
                     الفيديوهات المجانية متاحة للجميع، والفيديوهات المحمية تُفتح بعد دفع الاشتراك واعتماده.
                   </p>
                   {course.subscription_price > 0 && (
-                    <button onClick={() => requestAccess('subscription')} disabled={requesting !== null || !user}
+                    <button onClick={() => requestAccess('subscription')} disabled={!user}
                       className="mb-3 w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 font-semibold text-white hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-                      {requesting === 'subscription' ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
+                      <BookOpen className="w-5 h-5" />
                       اشترك شهريًا — {course.subscription_price} جنيه
                     </button>
                   )}
                   {course.price > 0 && (
-                    <button onClick={() => requestAccess('purchase')} disabled={requesting !== null || !user}
+                    <button onClick={() => requestAccess('purchase')} disabled={!user}
                       className="mb-3 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 font-semibold text-white hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-                      {requesting === 'purchase' ? <Loader2 className="w-5 h-5 animate-spin" /> : <BadgeCheck className="w-5 h-5" />}
+                      <BadgeCheck className="w-5 h-5" />
                       شراء الدورة نهائيًا — {course.price} جنيه
                     </button>
                   )}

@@ -23,6 +23,8 @@ const CoursesPage = lazy(() => import('@/pages/CoursesPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const SearchPage = lazy(() => import('@/pages/SearchPage'));
 const CompetitionsPage = lazy(() => import('@/pages/CompetitionsPage'));
+const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+const PaymentStatusPage = lazy(() => import('@/pages/PaymentStatusPage'));
 
 // Load smaller pages normally
 import CategoriesPage from '@/pages/CategoriesPage';
@@ -138,6 +140,8 @@ function PublicApp() {
                   <Route path="/privacy" element={<InfoPage />} />
                   <Route path="/terms" element={<InfoPage />} />
                   <Route path="/certificate/:id" element={<CertificatePage />} />
+                  <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
+                  <Route path="/payment-status" element={<RequireAuth><PaymentStatusPage /></RequireAuth>} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </div>
