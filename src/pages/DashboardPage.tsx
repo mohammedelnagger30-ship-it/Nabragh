@@ -32,9 +32,9 @@ import NotificationCenter from '@/components/NotificationCenter';
 import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
 import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats, Quiz, VideoProgress, QuizQuestion } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams' | 'guardian_overview' | 'guardian_child' | 'my_homework';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams' | 'guardian_overview' | 'guardian_child' | 'my_homework' | 'guardian_messages' | 'my_playlists';
 
-const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams', 'guardian_overview', 'guardian_child', 'my_homework'];
+const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams', 'guardian_overview', 'guardian_child', 'my_homework', 'guardian_messages', 'my_playlists'];
 
 type TeacherPayoutRecord = {
   id: string;
@@ -688,6 +688,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
     { id: 'my_certificates', label: 'شهاداتي', icon: Award },
     { id: 'my_exams', label: 'نتائج امتحاناتي', icon: ClipboardCheck },
     { id: 'favorites', label: 'المفضلة', icon: Heart },
+    { id: 'my_playlists', label: 'مجموعاتي', icon: ListPlus },
     { id: 'history', label: 'سجل المشاهدة', icon: Clock },
     { id: 'notifications', label: 'الإشعارات', icon: Bell },
     { id: 'account', label: 'الحساب', icon: User },
@@ -698,6 +699,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const guardianTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: 'guardian_overview', label: 'نظرة عامة', icon: LayoutDashboard },
     { id: 'children', label: 'أبنائي', icon: UsersIcon },
+    { id: 'guardian_messages', label: 'رسائل للمدرسين', icon: Send },
     { id: 'notifications', label: 'الإشعارات', icon: Bell },
     { id: 'account', label: 'الحساب', icon: User },
     { id: 'security', label: 'الأمان', icon: ShieldCheck },
@@ -887,6 +889,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               <GuardianOverview onNavigateToChild={(id) => { setSelectedChildId(id); setActiveTab('children'); }} />
             )}
             {activeTab === 'children' && profile.is_guardian && <GuardianWorkspace selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} />}
+            {activeTab === 'guardian_messages' && profile.is_guardian && <GuardianMessages />}
 
             {activeTab === 'overview' && !profile.is_guardian && (
               <div className="space-y-6">
@@ -2243,6 +2246,10 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
               </div>
             )}
 
+            {activeTab === 'my_playlists' && !profile.is_teacher && (
+              <StudentPlaylists />
+            )}
+
             {activeTab === 'my_certificates' && !profile.is_teacher && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -2553,6 +2560,111 @@ type GuardianChildSummary = {
   certificates_count: number;
 };
 
+function StudentPlaylists() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [playlists, setPlaylists] = useState<Array<{ id: string; name: string; description: string | null; is_public: boolean; created_at: string; videos?: Array<{ id: string; title: string | null; teacher?: { full_name: string | null } | null }> }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedVideos, setExpandedVideos] = useState<Array<{ id: string; playlist_video_id: string; title: string | null; teacher?: { full_name: string | null } | null }>>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    void (async () => {
+      const { data } = await supabase.from('playlists').select('*').eq('student_id', user.id).order('created_at', { ascending: false });
+      setPlaylists((data ?? []) as typeof playlists);
+      setLoading(false);
+    })();
+  }, [user]);
+
+  const create = async () => {
+    if (!newName.trim() || !user) return;
+    setCreating(true);
+    const { data, error } = await supabase.from('playlists').insert({ student_id: user.id, name: newName.trim(), is_public: false }).select().single();
+    setCreating(false);
+    if (error) { toast('تعذر إنشاء المجموعة', 'error'); return; }
+    setPlaylists((prev) => [{ ...(data as typeof playlists[0]), videos: [] }, ...prev]);
+    setNewName('');
+    toast('تم إنشاء المجموعة', 'success');
+  };
+
+  const toggleExpand = async (playlistId: string) => {
+    if (expandedId === playlistId) { setExpandedId(null); return; }
+    setExpandedId(playlistId);
+    const { data } = await supabase.from('playlist_videos').select('id, video_id, sort_order, video:videos!playlist_videos_video_id_fkey(id, title, teacher:profiles!videos_teacher_id_fkey(full_name))').eq('playlist_id', playlistId).order('sort_order');
+    setExpandedVideos(((data ?? []) as Array<{ id: string; video_id: string; sort_order: number; video: { id: string; title: string | null; teacher: { full_name: string | null } | null } | null }>).map((r) => ({ id: r.video_id, playlist_video_id: r.id, title: r.video?.title ?? 'فيديو', teacher: r.video?.teacher })));
+  };
+
+  const removeVideo = async (playlistId: string, playlistVideoId: string) => {
+    await supabase.from('playlist_videos').delete().eq('id', playlistVideoId);
+    setExpandedVideos((prev) => prev.filter((v) => v.playlist_video_id !== playlistVideoId));
+  };
+
+  const deletePlaylist = async (playlistId: string) => {
+    await supabase.from('playlists').delete().eq('id', playlistId);
+    setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+    if (expandedId === playlistId) setExpandedId(null);
+    toast('تم حذف المجموعة', 'success');
+  };
+
+  if (loading) return <Loader2 className="mx-auto mt-10 h-8 w-8 animate-spin text-blue-500" />;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><ListPlus className="w-5 h-5 text-violet-500" /> مجموعاتي</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">أنشئ مجموعات فيديوهات ونظم مشاهداتك</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void create(); }} placeholder="اسم المجموعة الجديدة..." className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-violet-500" />
+        <button type="button" onClick={() => void create()} disabled={creating || !newName.trim()} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">{creating ? '...' : 'إنشاء'}</button>
+      </div>
+
+      {playlists.length === 0 ? (
+        <EmptyState icon={ListPlus} text="لم تنشئ أي مجموعة بعد" />
+      ) : (
+        <div className="space-y-3">
+          {playlists.map((pl) => (
+            <div key={pl.id} className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 overflow-hidden">
+              <button type="button" onClick={() => void toggleExpand(pl.id)} className="w-full flex items-center justify-between p-4 text-right hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30"><ListPlus className="h-5 w-5 text-violet-600 dark:text-violet-400" /></div>
+                  <div>
+                    <p className="font-bold text-slate-800 dark:text-white">{pl.name}</p>
+                    <p className="text-xs text-slate-400">{new Date(pl.created_at).toLocaleDateString('ar-EG')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={(e) => { e.stopPropagation(); void deletePlaylist(pl.id); }} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </button>
+              {expandedId === pl.id && (
+                <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-2">
+                  {expandedVideos.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-4">لا توجد فيديوهات في هذه المجموعة. أضف فيديو من صفحة المشاهدة.</p>
+                  ) : expandedVideos.map((v) => (
+                    <div key={v.playlist_video_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <Play className="h-4 w-4 text-violet-500 flex-shrink-0" />
+                      <Link to={`/video/${v.id}`} className="flex-1 text-sm font-medium text-slate-800 dark:text-white hover:text-violet-600 transition-colors truncate">{v.title}</Link>
+                      <span className="text-xs text-slate-400">{v.teacher?.full_name || ''}</span>
+                      <button type="button" onClick={() => void removeVideo(pl.id, v.playlist_video_id)} className="p-1 text-slate-400 hover:text-rose-500"><Trash2 className="h-3 w-3" /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StudentSubmitAssignment({ assignmentId, onSubmit }: { assignmentId: string; onSubmit: (sub: { id: string; submitted_at: string }) => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -2844,6 +2956,110 @@ function GuardianWorkspace({ selectedChildId, onSelectChild }: { selectedChildId
               <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-xs dark:bg-slate-900/60"><span className="text-slate-500 dark:text-slate-400">{child.exams_count} محاولات امتحان • {child.passed_exams} ناجحة</span><span className="font-bold text-emerald-600 dark:text-emerald-300">عرض التفاصيل ←</span></div>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuardianMessages() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [teachers, setTeachers] = useState<Array<{ id: string; full_name: string | null; avatar_url: string | null }>>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{ id: string; sender_id: string; receiver_id: string; body: string; created_at: string }>>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const { data: childrenData } = await supabase.rpc('guardian_children_summary');
+      const kids = (childrenData ?? []) as GuardianChildSummary[];
+
+      const teacherIds = new Set<string>();
+      for (const kid of kids) {
+        const { data: enrollData } = await supabase.from('course_enrollments').select('course:courses!course_enrollments_course_id_fkey(teacher_id)').eq('student_id', kid.student_id);
+        for (const e of (enrollData ?? []) as Array<{ course: { teacher_id: string } | null }>) {
+          if (e.course?.teacher_id) teacherIds.add(e.course.teacher_id);
+        }
+      }
+      if (teacherIds.size) {
+        const { data: tData } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', Array.from(teacherIds));
+        setTeachers((tData ?? []) as typeof teachers);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTeacher || !user) return;
+    void (async () => {
+      const { data } = await supabase.from('messages').select('*').or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedTeacher}),and(sender_id.eq.${selectedTeacher},receiver_id.eq.${user.id})`).order('created_at', { ascending: true }).limit(100);
+      setMessages((data ?? []) as typeof messages);
+
+      const unreadIds = ((data ?? []) as Array<{ id: string; receiver_id: string; read_at: string | null }>)
+        .filter((m) => m.receiver_id === user.id && !m.read_at)
+        .map((m) => m.id);
+      if (unreadIds.length) await supabase.from('messages').update({ read_at: new Date().toISOString() }).in('id', unreadIds);
+    })();
+  }, [selectedTeacher, user]);
+
+  const send = async () => {
+    if (!newMessage.trim() || !selectedTeacher || !user) return;
+    setSending(true);
+    const { error } = await supabase.from('messages').insert({ sender_id: user.id, receiver_id: selectedTeacher, body: newMessage.trim() });
+    setSending(false);
+    if (error) { toast('تعذر إرسال الرسالة', 'error'); return; }
+    setMessages((prev) => [...prev, { id: crypto.randomUUID(), sender_id: user.id, receiver_id: selectedTeacher, body: newMessage.trim(), created_at: new Date().toISOString() }]);
+    setNewMessage('');
+  };
+
+  if (loading) return <Loader2 className="mx-auto mt-10 h-8 w-8 animate-spin text-emerald-600" />;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Send className="w-5 h-5 text-blue-500" /> رسائل للمدرسين</h3>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">تواصل مع مدرسي أبنائك مباشرة</p>
+      </div>
+
+      {teachers.length === 0 ? (
+        <EmptyState icon={Send} text="لا يوجد مدرسون مرتبطون بأبنائك بعد" />
+      ) : (
+        <div className="flex gap-4" style={{ minHeight: 400 }}>
+          <div className="w-64 flex-shrink-0 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+            {teachers.map((t) => (
+              <button key={t.id} type="button" onClick={() => setSelectedTeacher(t.id)} className={`w-full flex items-center gap-3 rounded-xl p-3 text-right transition ${selectedTeacher === t.id ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-bold text-white">{t.avatar_url ? <img src={t.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : (t.full_name?.charAt(0) || 'م')}</div>
+                <span className="font-medium text-slate-800 dark:text-white text-sm truncate">{t.full_name || 'مدرس'}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 flex flex-col rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 overflow-hidden">
+            {!selectedTeacher ? (
+              <div className="flex flex-1 items-center justify-center text-sm text-slate-400">اختر مدرسًا للبدء في المحادثة</div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {messages.map((m) => (
+                    <div key={m.id} className={`flex ${m.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${m.sender_id === user?.id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white'}`}>
+                        <p className="text-sm">{m.body}</p>
+                        <p className={`text-[10px] mt-1 ${m.sender_id === user?.id ? 'text-blue-200' : 'text-slate-400'}`}>{new Date(m.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {messages.length === 0 && <p className="text-center text-sm text-slate-400 py-8">ابدأ المحادثة مع المدرس</p>}
+                </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 p-3 flex gap-2">
+                  <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} placeholder="اكتب رسالتك..." className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  <button type="button" onClick={() => void send()} disabled={sending || !newMessage.trim()} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{sending ? '...' : 'إرسال'}</button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

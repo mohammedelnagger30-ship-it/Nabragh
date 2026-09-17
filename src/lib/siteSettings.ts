@@ -121,8 +121,8 @@ function loadSiteSettings(): Promise<SiteSettings> {
           merged[row.key] = row.value;
         }
       }
-    } catch {
-      // Keep defaults if site settings are unavailable
+    } catch (err) {
+      console.warn('Failed to load site settings, using defaults:', err);
     }
     settingsLoadedAt = Date.now();
     return merged;

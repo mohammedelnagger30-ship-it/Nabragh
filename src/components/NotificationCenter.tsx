@@ -86,8 +86,8 @@ export default function NotificationCenter({ userId, onCountChange, isTeacher }:
         const filtered = rows.filter((n) => !n.archived_at);
         setNotifications(filtered);
       }
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.warn('Failed to fetch notifications:', err);
     }
     setLoading(false);
   }, [userId, filter, newColumnsExist]);
@@ -102,8 +102,8 @@ export default function NotificationCenter({ userId, onCountChange, isTeacher }:
       const c = count ?? 0;
       setUnreadCount(c);
       onCountChange?.(c);
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.warn('Failed to fetch unread count:', err);
     }
   }, [userId, onCountChange]);
 
