@@ -48,125 +48,105 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const subscriptionId = searchParams.get('sub');
   const courseId = searchParams.get('course');
 
-  const [subscription, setSubscription] = useState<Record<string, unknown> | null>(null);
   const [course, setCourse] = useState<Record<string, unknown> | null>(null);
-  const [payment, setPayment] = useState<Record<string, unknown> | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string>('card');
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymobUrl, setPaymobUrl] = useState<string | null>(null);
+  const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/signin', { replace: true }); return; }
-    if (!subscriptionId && !courseId) { navigate('/dashboard', { replace: true }); return; }
+    if (!courseId) { navigate('/dashboard', { replace: true }); return; }
 
     void (async () => {
-      setLoading(true);
-
-      if (subscriptionId) {
-        const { data: sub } = await supabase
-          .from('subscriptions')
-          .select('*, course:courses!subscriptions_course_id_fkey(id, title, description, price, subscription_price, teacher_id, teacher:profiles!courses_teacher_id_fkey(full_name))')
-          .eq('id', subscriptionId)
-          .eq('student_id', user.id)
-          .maybeSingle();
-        setSubscription(sub);
-
-        if (sub) {
-          const { data: existingPayment } = await supabase
-            .from('payments')
-            .select('*')
-            .eq('subscription_id', subscriptionId)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          setPayment(existingPayment);
-        }
-      }
-
-      if (courseId && !subscriptionId) {
-        const { data: c } = await supabase.from('courses').select('*, teacher:profiles!courses_teacher_id_fkey(full_name)').eq('id', courseId).maybeSingle();
-        setCourse(c);
-      }
-
+      const { data: c } = await supabase.from('courses').select('*, teacher:profiles!courses_teacher_id_fkey(full_name)').eq('id', courseId).maybeSingle();
+      setCourse(c);
       setLoading(false);
     })();
-  }, [user, subscriptionId, courseId, navigate]);
+  }, [user, courseId, navigate]);
+
+  // Poll payment status after showing Paymob
+  useEffect(() => {
+    if (!currentPaymentId) return;
+
+    let attempts = 0;
+    const maxAttempts = 30; // 60 seconds max
+
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) { clearInterval(interval); return; }
+
+      const { data } = await supabase
+        .from('payments')
+        .select('status')
+        .eq('id', currentPaymentId)
+        .maybeSingle();
+
+      if (data?.status === 'paid') {
+        clearInterval(interval);
+        setPaymentSuccess(true);
+        setPaymobUrl(null);
+        toast('تم الدفع بنجاح!', 'success');
+      } else if (data?.status === 'failed') {
+        clearInterval(interval);
+        setPaymobUrl(null);
+        setError('فشلت عملية الدفع. يمكنك المحاولة مرة أخرى.');
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [currentPaymentId, toast]);
 
   const handlePay = async () => {
-    if (!user) return;
+    if (!user || !courseId) return;
     setProcessing(true);
     setError(null);
 
     try {
-      let subId = subscriptionId;
+      const c = course as { id: string; teacher_id: string; title: string; price: number; subscription_price: number; subscription_duration_months?: number } | null;
+      if (!c) { setError('الدورة غير موجودة'); setProcessing(false); return; }
 
-      // If coming from courseId, create subscription + payment first
-      if (courseId && !subId) {
-        const c = course as { id: string; teacher_id: string; title: string; price: number; subscription_price: number; subscription_duration_months?: number } | null;
-        if (!c) { setError('الدورة غير موجودة'); setProcessing(false); return; }
+      const amount = c.price > 0 ? c.price : c.subscription_price;
+      const endDate = new Date(Date.now() + Math.max(1, c.subscription_duration_months ?? 1) * 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        const amount = c.price > 0 ? c.price : c.subscription_price;
-        const endDate = new Date(Date.now() + Math.max(1, c.subscription_duration_months ?? 1) * 30 * 24 * 60 * 60 * 1000).toISOString();
+      // Create subscription
+      const { data: subRow, error: subErr } = await supabase.from('subscriptions').insert({
+        student_id: user.id,
+        teacher_id: c.teacher_id,
+        course_id: c.id,
+        access_type: c.price > 0 ? 'purchase' : 'subscription',
+        status: 'pending',
+        payment_status: 'pending',
+        start_date: new Date().toISOString(),
+        end_date: c.price > 0 ? null : endDate,
+        notes: c.price > 0 ? 'شراء نهائي للدورة' : 'اشتراك في الدورة',
+      }).select('id').single();
 
-        const { data: subRow, error: subErr } = await supabase.from('subscriptions').insert({
-          student_id: user.id,
-          teacher_id: c.teacher_id,
-          course_id: c.id,
-          access_type: c.price > 0 ? 'purchase' : 'subscription',
-          status: 'pending',
-          payment_status: 'pending',
-          start_date: new Date().toISOString(),
-          end_date: c.price > 0 ? null : endDate,
-          notes: c.price > 0 ? 'شراء نهائي للدورة' : 'اشتراك في الدورة',
-        }).select('id').single();
+      if (subErr || !subRow) { setError('تعذر إنشاء الاشتراك'); setProcessing(false); return; }
 
-        if (subErr || !subRow) { setError('تعذر إنشاء الاشتراك'); setProcessing(false); return; }
-        subId = subRow.id;
+      // Create payment
+      const { data: payRow, error: payErr } = await supabase.from('payments').insert({
+        subscription_id: subRow.id,
+        student_id: user.id,
+        teacher_id: c.teacher_id,
+        amount,
+        method: selectedMethod,
+        status: 'pending',
+        notes: `دفع عبر ${selectedMethod} للدورة: ${c.title}`,
+      }).select('id').single();
 
-        const { data: payRow, error: payErr } = await supabase.from('payments').insert({
-          subscription_id: subId,
-          student_id: user.id,
-          teacher_id: c.teacher_id,
-          amount,
-          method: selectedMethod,
-          status: 'pending',
-          notes: `دفع عبر ${selectedMethod} للدورة: ${c.title}`,
-        }).select('id').single();
+      if (payErr || !payRow) { setError('تعذر تجهيز الدفع'); setProcessing(false); return; }
 
-        if (payErr || !payRow) { setError('تعذر تجهيز الدفع'); setProcessing(false); return; }
-        setPayment(payRow);
-      }
-
-      // If we have a subscription but no payment yet
-      if (subId && !payment) {
-        const sub = subscription as { id: string; teacher_id: string; course: { title: string } | null } | null;
-        const amount = (sub?.course as Record<string, unknown>)?.price as number ?? 0;
-
-        const { data: payRow, error: payErr } = await supabase.from('payments').insert({
-          subscription_id: subId,
-          student_id: user.id,
-          teacher_id: sub?.teacher_id,
-          amount,
-          method: selectedMethod,
-          status: 'pending',
-          notes: `دفع عبر ${selectedMethod}`,
-        }).select('id').single();
-
-        if (payErr || !payRow) { setError('تعذر تجهيز الدفع'); setProcessing(false); return; }
-        setPayment(payRow);
-      }
-
-      const payId = payment?.id ?? (payment === null ? null : null);
-      if (!payId) { setError('لم يتم العثور على سجل الدفع'); setProcessing(false); return; }
+      setCurrentPaymentId(payRow.id);
 
       // Get Paymob payment link
       const { data: linkData, error: linkErr } = await supabase.functions.invoke('create-paymob-payment-link', {
-        body: { paymentId: payId },
+        body: { paymentId: payRow.id },
       });
 
       setProcessing(false);
@@ -177,8 +157,8 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Redirect to Paymob
-      window.location.assign(linkData.paymentUrl as string);
+      // Show Paymob iframe
+      setPaymobUrl(linkData.paymentUrl as string);
     } catch (err) {
       console.error('Checkout error:', err);
       setError('حدث خطأ غير متوقع');
@@ -194,30 +174,77 @@ export default function CheckoutPage() {
     );
   }
 
-  const amount = subscription
-    ? ((subscription.course as Record<string, unknown>)?.price as number ?? 0)
-    : (course?.price as number ?? 0);
+  const amount = (course?.price as number) ?? 0;
+  const title = (course?.title as string) ?? 'دورة';
+  const teacherName = (course?.teacher as Record<string, unknown>)?.full_name as string ?? '';
 
-  const title = subscription
-    ? ((subscription.course as Record<string, unknown>)?.title as string ?? 'اشتراك')
-    : (course?.title as string ?? 'دورة');
+  // Payment success screen
+  if (paymentSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
+        <MetaTags title="تم الدفع بنجاح" description="تم تفعيل اشتراكيك" />
+        <div className="w-full max-w-md text-center">
+          <div className="rounded-3xl border border-emerald-200 bg-white p-10 shadow-xl dark:border-emerald-800 dark:bg-slate-800">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+              <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h2 className="mt-6 text-xl font-extrabold text-slate-900 dark:text-white">تم الدفع بنجاح!</h2>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">تم تفعيل اشتراكيك. يمكنك الآن الوصول للمحتوى.</p>
+            <div className="mt-8 flex flex-col gap-3">
+              <Link to={`/course/${courseId}`} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-3 text-sm font-bold text-white shadow-md transition-all hover:-translate-y-0.5">
+                فتح الدورة
+              </Link>
+              <Link to="/dashboard?tab=subscriptions" className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                عرض اشتراكاتي
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const teacherName = subscription
-    ? ((subscription.course as Record<string, unknown>)?.teacher as Record<string, unknown>)?.full_name as string ?? ''
-    : (course?.teacher as Record<string, unknown>)?.full_name as string ?? '';
+  // Paymob iframe view
+  if (paymobUrl) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+        <MetaTags title={`دفع — ${title}`} description="إتمام الدفع عبر Paymob" />
+        <div className="max-w-lg mx-auto px-4 py-6">
+          <div className="mb-4 flex items-center justify-between">
+            <button onClick={() => { setPaymobUrl(null); setCurrentPaymentId(null); }} className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400">
+              ← إلغاء والعودة
+            </button>
+            <p className="text-sm font-bold text-slate-800 dark:text-white">{amount} جنيه</p>
+          </div>
 
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-lg dark:border-slate-700 dark:bg-slate-800">
+            <iframe
+              src={paymobUrl}
+              title="Paymob Payment"
+              className="w-full border-0"
+              style={{ minHeight: '600px' }}
+            />
+          </div>
+
+          <p className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">
+            أكمل الدفع في النافذة أعلاه. بعد الدفع، سيتم التحقق تلقائياً.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Checkout form
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
       <MetaTags title={`دفع — ${title}`} description={`إتمام الدفع للدورة ${title}`} />
 
       <div className="max-w-lg mx-auto px-4 py-8 sm:py-12">
-        {/* Back Link */}
-        <Link to={courseId ? `/course/${courseId}` : '/dashboard'} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors">
+        <Link to={`/course/${courseId}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors">
           <ArrowRight className="h-4 w-4" />
-          العودة
+          العودة للدورة
         </Link>
 
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white sm:text-3xl">إتمام الدفع</h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">اختر طريقة الدفع المناسبة لك</p>

@@ -48,7 +48,7 @@ Deno.serve(async (request) => {
       .maybeSingle();
     if (paymentError || !payment) return json({ error: 'Payment not found' }, 404);
     if (payment.status !== 'pending') return json({ error: 'Payment is not pending' }, 400);
-    if (payment.payment_url) return json({ paymentUrl: payment.payment_url });
+    if (payment.payment_url) return json({ paymentUrl: payment.payment_url, paymentId: payment.id });
 
     const paymobApiKey = Deno.env.get('PAYMOB_API_KEY');
     const integrationId = Deno.env.get('PAYMOB_INTEGRATION_ID');
@@ -68,7 +68,8 @@ Deno.serve(async (request) => {
 
     const auth = await paymobRequest('/auth/tokens', { api_key: paymobApiKey });
     const order = await paymobRequest('/ecommerce/orders', {
-      auth_token: auth.token, delivery_needed: false, amount_cents: amountCents, currency: 'EGP', items: [],
+      auth_token: auth.token, delivery_needed: false, amount_cents: amountCents, currency: 'EGP',
+      items: [{ name: `Payment for ${payment.id}`, amount_cents: amountCents, quantity: 1 }],
     });
     const paymentKey = await paymobRequest('/acceptance/payment_keys', {
       auth_token: auth.token, amount_cents: amountCents, expiration: 3600, order_id: order.id,
@@ -81,7 +82,7 @@ Deno.serve(async (request) => {
     }).eq('id', payment.id);
     if (updateError) throw updateError;
 
-    return json({ paymentUrl, providerOrderId: String(order.id) });
+    return json({ paymentUrl, paymentId: payment.id, providerOrderId: String(order.id) });
   } catch (error) {
     console.error(error);
     return json({ error: error instanceof Error ? error.message : 'Could not create payment link' }, 400);

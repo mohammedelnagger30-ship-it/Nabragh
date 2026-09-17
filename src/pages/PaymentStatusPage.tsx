@@ -8,8 +8,13 @@ type PaymentStatus = 'loading' | 'success' | 'failed' | 'pending' | 'not_found';
 
 export default function PaymentStatusPage() {
   const [searchParams] = useSearchParams();
-  const paymentId = searchParams.get('payment_id');
+  const paymentIdFromUrl = searchParams.get('payment_id');
   const orderId = searchParams.get('order_id');
+
+  // Fallback: check sessionStorage for payment_id set by CheckoutPage
+  const paymentId = paymentIdFromUrl ?? (() => {
+    try { return sessionStorage.getItem('last_payment_id'); } catch { return null; }
+  })();
 
   const [status, setStatus] = useState<PaymentStatus>('loading');
   const [paymentData, setPaymentData] = useState<Record<string, unknown> | null>(null);
