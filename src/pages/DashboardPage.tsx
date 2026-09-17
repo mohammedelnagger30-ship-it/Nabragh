@@ -32,9 +32,9 @@ import NotificationCenter from '@/components/NotificationCenter';
 import { calculateCommissionBreakdown, formatCurrency } from '@/lib/commission';
 import type { Profile, Video, Subscription, Category, Course, CourseEnrollment, Favorite, WatchHistoryItem, Competition, CompetitionQuestion, TeacherUsageStats, Quiz, VideoProgress, QuizQuestion } from '@/types';
 
-type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams';
+type Tab = 'overview' | 'profile' | 'videos' | 'courses' | 'competitions' | 'page' | 'students' | 'members' | 'exams' | 'analytics' | 'payouts' | 'children' | 'honors' | 'assistants' | 'qa' | 'sessions' | 'messages' | 'packages' | 'certificates' | 'codes' | 'homework' | 'subscriptions' | 'favorites' | 'history' | 'notifications' | 'account' | 'security' | 'appearance' | 'my_certificates' | 'my_exams' | 'guardian_overview' | 'guardian_child';
 
-const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams'];
+const ALL_TABS: Tab[] = ['overview', 'profile', 'videos', 'courses', 'competitions', 'page', 'students', 'members', 'exams', 'analytics', 'payouts', 'children', 'honors', 'assistants', 'qa', 'sessions', 'messages', 'packages', 'certificates', 'codes', 'homework', 'subscriptions', 'favorites', 'history', 'notifications', 'account', 'security', 'appearance', 'my_certificates', 'my_exams', 'guardian_overview', 'guardian_child'];
 
 type TeacherPayoutRecord = {
   id: string;
@@ -137,6 +137,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   const [teacherPayoutTransactions, setTeacherPayoutTransactions] = useState<TeacherPayoutTransactionRecord[]>([]);
   const [serviceUsage, setServiceUsage] = useState<TeacherServiceUsage[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [reportStudent, setReportStudent] = useState<Profile | null>(null);
   const [examForm, setExamForm] = useState({ title: '', course_id: '', passing_score: 70, questions: [] as { question: string; options: string[]; correct_option: number }[] });
   const [showExamForm, setShowExamForm] = useState(false);
@@ -687,7 +688,9 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
   ];
 
   const guardianTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+    { id: 'guardian_overview', label: 'نظرة عامة', icon: LayoutDashboard },
     { id: 'children', label: 'أبنائي', icon: UsersIcon },
+    { id: 'notifications', label: 'الإشعارات', icon: Bell },
     { id: 'account', label: 'الحساب', icon: User },
     { id: 'security', label: 'الأمان', icon: ShieldCheck },
     { id: 'appearance', label: 'المظهر', icon: Sun },
@@ -872,7 +875,10 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'children' && profile.is_guardian && <GuardianWorkspace />}
+            {activeTab === 'guardian_overview' && profile.is_guardian && (
+              <GuardianOverview onNavigateToChild={(id) => { setSelectedChildId(id); setActiveTab('children'); }} />
+            )}
+            {activeTab === 'children' && profile.is_guardian && <GuardianWorkspace selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} />}
 
             {activeTab === 'overview' && !profile.is_guardian && (
               <div className="space-y-6">
@@ -2486,12 +2492,98 @@ type GuardianChildSummary = {
   certificates_count: number;
 };
 
-function GuardianWorkspace() {
+function GuardianOverview({ onNavigateToChild }: { onNavigateToChild: (id: string) => void }) {
+  const { toast } = useToast();
+  const [children, setChildren] = useState<GuardianChildSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void (async () => {
+      const { data, error } = await supabase.rpc('guardian_children_summary');
+      if (error) toast('تعذر تحميل بيانات الأبناء', 'error');
+      setChildren((data ?? []) as GuardianChildSummary[]);
+      setLoading(false);
+    })();
+  }, [toast]);
+
+  if (loading) return <Loader2 className="mx-auto mt-10 h-8 w-8 animate-spin text-emerald-600" />;
+
+  const totalCourses = children.reduce((sum, c) => sum + (c.courses_count || 0), 0);
+  const totalCompleted = children.reduce((sum, c) => sum + (c.completed_courses || 0), 0);
+  const totalExams = children.reduce((sum, c) => sum + (c.exams_count || 0), 0);
+  const totalPassed = children.reduce((sum, c) => sum + (c.passed_exams || 0), 0);
+  const totalCerts = children.reduce((sum, c) => sum + (c.certificates_count || 0), 0);
+  const avgProgress = children.length ? children.reduce((sum, c) => sum + Number(c.average_progress || 0), 0) / children.length : 0;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><LayoutDashboard className="w-5 h-5 text-emerald-500" /> لوحة تحكم ولي الأمر</h3>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">نظرة عامة على تقدم أبنائك التعليمي</p>
+      </div>
+
+      {children.length === 0 ? (
+        <EmptyState icon={UsersIcon} text="لم تربط أي حساب طالب بعد" action={<button onClick={() => onNavigateToChild('')} className="px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-colors">إضافة ابن/ابنة</button>} />
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي الدورات</p>
+              <p className="mt-1 text-3xl font-black text-slate-800 dark:text-white">{totalCourses}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">{totalCompleted} مكتملة</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 dark:text-slate-400">متوسط التقدم</p>
+              <p className="mt-1 text-3xl font-black text-blue-600 dark:text-blue-400">{Math.round(avgProgress)}%</p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500" style={{ width: `${avgProgress}%` }} /></div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 dark:text-slate-400">الامتحانات</p>
+              <p className="mt-1 text-3xl font-black text-violet-600 dark:text-violet-400">{totalExams}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">{totalPassed} ناجحة</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 dark:text-slate-400">الشهادات</p>
+              <p className="mt-1 text-3xl font-black text-amber-600 dark:text-amber-400">{totalCerts}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">شهادة مكتسبة</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-bold text-slate-800 dark:text-slate-100">تفاصيل الأبناء</h4>
+            {children.map((child) => (
+              <button key={child.link_id} onClick={() => onNavigateToChild(child.student_id)} type="button" className="w-full text-left rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 text-lg font-bold text-white">{child.avatar_url ? <img src={child.avatar_url} alt={child.student_name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : child.student_name.charAt(0)}</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-slate-800 dark:text-white">{child.student_name}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{child.education_stage || 'غير محدد'} • {child.courses_count} دورة • {child.certificates_count} شهادة</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-center">
+                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{Math.round(Number(child.average_progress || 0))}%</p>
+                      <p className="text-[10px] text-slate-400">التقدم</p>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-slate-400" />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function GuardianWorkspace({ selectedChildId, onSelectChild }: { selectedChildId: string | null; onSelectChild: (id: string | null) => void }) {
   const { toast } = useToast();
   const [children, setChildren] = useState<GuardianChildSummary[]>([]);
   const [studentEmail, setStudentEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
+  const [childDetail, setChildDetail] = useState<{ courses: Array<{ id: string; title: string | null; progress_percent: number; status: string; enrolled_at: string }>; exams: Array<{ id: string; score: number; passed: boolean; created_at: string; quiz: { title: string | null } | null }>; certificates: Array<{ id: string; certificate_number: string; issued_at: string; course: { title: string | null } | null }>; history: Array<{ id: string; watched_at: string; video: { title: string | null } | null }> } | null>(null);
+  const [childLoading, setChildLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -2502,6 +2594,26 @@ function GuardianWorkspace() {
   }, [toast]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!selectedChildId) { setChildDetail(null); return; }
+    setChildLoading(true);
+    void (async () => {
+      const [coursesRes, examsRes, certsRes, histRes] = await Promise.all([
+        supabase.from('course_enrollments').select('id, course_id, progress_percent, status, enrolled_at, course:courses!course_enrollments_course_id_fkey(title)').eq('student_id', selectedChildId).order('enrolled_at', { ascending: false }),
+        supabase.from('quiz_attempts').select('id, score, passed, created_at, quiz:quizzes!quiz_attempts_quiz_id_fkey(title)').eq('student_id', selectedChildId).order('created_at', { ascending: false }).limit(20),
+        supabase.from('certificates').select('id, certificate_number, issued_at, course:courses!certificates_course_id_fkey(title)').eq('student_id', selectedChildId).order('issued_at', { ascending: false }),
+        supabase.from('watch_history').select('id, watched_at, video:videos!watch_history_video_id_fkey(title)').eq('student_id', selectedChildId).order('watched_at', { ascending: false }).limit(10),
+      ]);
+      setChildDetail({
+        courses: (coursesRes.data ?? []) as Array<{ id: string; title: string | null; progress_percent: number; status: string; enrolled_at: string; course: { title: string | null } | null }>,
+        exams: (examsRes.data ?? []) as Array<{ id: string; score: number; passed: boolean; created_at: string; quiz: { title: string | null } | null }>,
+        certificates: (certsRes.data ?? []) as Array<{ id: string; certificate_number: string; issued_at: string; course: { title: string | null } | null }>,
+        history: (histRes.data ?? []) as Array<{ id: string; watched_at: string; video: { title: string | null } | null }>,
+      });
+      setChildLoading(false);
+    })();
+  }, [selectedChildId]);
 
   const requestStudent = async () => {
     if (!studentEmail.trim()) return;
@@ -2515,6 +2627,94 @@ function GuardianWorkspace() {
     setStudentEmail('');
     toast('تم إرسال طلب الربط. يجب أن يوافق الطالب أولًا.', 'success');
   };
+
+  if (selectedChildId && childDetail) {
+    const child = children.find((c) => c.student_id === selectedChildId);
+    return (
+      <div className="space-y-6">
+        <button onClick={() => onSelectChild(null)} className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-emerald-600 transition-colors"><X className="h-4 w-4" /> العودة لقائمة الأبناء</button>
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400 text-xl font-bold text-white">{child?.avatar_url ? <img src={child.avatar_url} alt="" className="h-full w-full object-cover" /> : child?.student_name?.charAt(0) || 'ط'}</div>
+          <div>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white">{child?.student_name || 'طالب'}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{child?.education_stage || 'غير محدد'} • {child?.student_email}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-4">
+          <GuardianMetric label="الدورات" value={childDetail.courses.length} />
+          <GuardianMetric label="متوسط التقدم" value={`${childDetail.courses.length ? Math.round(childDetail.courses.reduce((s, c) => s + c.progress_percent, 0) / childDetail.courses.length) : 0}%`} />
+          <GuardianMetric label="الامتحانات" value={`${childDetail.exams.length} (${childDetail.exams.filter((e) => e.passed).length} ناجحة)`} />
+          <GuardianMetric label="الشهادات" value={childDetail.certificates.length} />
+        </div>
+
+        {childDetail.courses.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="font-bold text-slate-800 dark:text-white mb-3">الدورات المسجلة</h4>
+            <div className="space-y-3">
+              {childDetail.courses.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-800 dark:text-white text-sm">{c.course?.title || 'دورة'}</p>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{ width: `${c.progress_percent}%` }} /></div>
+                  </div>
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.progress_percent}%</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${c.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}`}>{c.status === 'completed' ? 'مكتمل' : 'نشط'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {childDetail.exams.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="font-bold text-slate-800 dark:text-white mb-3">نتائج الامتحانات</h4>
+            <div className="space-y-2">
+              {childDetail.exams.map((e) => (
+                <div key={e.id} className={`flex items-center gap-3 p-3 rounded-xl ${e.passed ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-rose-50 dark:bg-rose-900/10'}`}>
+                  <span className={`text-lg font-black ${e.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{e.score}%</span>
+                  <div className="flex-1"><p className="text-sm font-medium text-slate-800 dark:text-white">{e.quiz?.title || 'امتحان'}</p><p className="text-[11px] text-slate-400">{new Date(e.created_at).toLocaleDateString('ar-EG')}</p></div>
+                  <span className={`text-xs font-bold ${e.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{e.passed ? 'نجح' : 'لم ينجح'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {childDetail.certificates.length > 0 && (
+          <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 shadow-sm dark:border-amber-700/50 dark:from-amber-900/20 dark:to-orange-900/20">
+            <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-3 flex items-center gap-2"><Award className="h-5 w-5" /> الشهادات</h4>
+            <div className="space-y-2">
+              {childDetail.certificates.map((cert) => (
+                <div key={cert.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 dark:bg-slate-800/60">
+                  <Award className="h-5 w-5 text-amber-500" />
+                  <div className="flex-1"><p className="text-sm font-bold text-slate-800 dark:text-white">{cert.course?.title || 'دورة'}</p><p className="text-[11px] text-slate-400">{new Date(cert.issued_at).toLocaleDateString('ar-EG')}</p></div>
+                  <Link to={`/certificate/${cert.id}`} className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400">عرض</Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {childDetail.history.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h4 className="font-bold text-slate-800 dark:text-white mb-3">آخر المشاهدات</h4>
+            <div className="space-y-2">
+              {childDetail.history.map((h) => (
+                <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <Play className="h-4 w-4 text-blue-500" />
+                  <div className="flex-1"><p className="text-sm font-medium text-slate-800 dark:text-white">{h.video?.title || 'فيديو'}</p></div>
+                  <span className="text-[11px] text-slate-400">{new Date(h.watched_at).toLocaleDateString('ar-EG')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (childLoading) return <Loader2 className="mx-auto mt-10 h-8 w-8 animate-spin text-emerald-600" />;
 
   return (
     <div className="space-y-6">
@@ -2538,10 +2738,11 @@ function GuardianWorkspace() {
       {loading ? <Loader2 className="mx-auto mt-10 h-8 w-8 animate-spin text-emerald-600" /> : children.length === 0 ? <EmptyState icon={UsersIcon} text="لا توجد حسابات أبناء مرتبطة حتى الآن" /> : (
         <div className="grid gap-4 lg:grid-cols-2">
           {children.map((child) => (
-            <div key={child.link_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <button key={child.link_id} type="button" onClick={() => onSelectChild(child.student_id)} className="text-left rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/50">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 text-lg font-bold text-white">{child.avatar_url ? <img src={child.avatar_url} alt={child.student_name} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : child.student_name.charAt(0)}</div>
-                <div className="min-w-0"><h4 className="font-bold text-slate-800 dark:text-white">{child.student_name}</h4><p className="truncate text-xs text-slate-500 dark:text-slate-400">{child.student_email} {child.education_stage ? `• ${child.education_stage}` : ''}</p></div>
+                <div className="flex-1 min-w-0"><h4 className="font-bold text-slate-800 dark:text-white">{child.student_name}</h4><p className="truncate text-xs text-slate-500 dark:text-slate-400">{child.student_email} {child.education_stage ? `• ${child.education_stage}` : ''}</p></div>
+                <ExternalLink className="h-4 w-4 text-slate-400 flex-shrink-0" />
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <GuardianMetric label="متوسط التقدم" value={`${Number(child.average_progress ?? 0).toLocaleString('ar-EG')}%`} />
@@ -2549,8 +2750,8 @@ function GuardianWorkspace() {
                 <GuardianMetric label="متوسط الامتحانات" value={`${Number(child.average_score ?? 0).toLocaleString('ar-EG')}%`} />
                 <GuardianMetric label="الشهادات" value={child.certificates_count} />
               </div>
-              <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-xs dark:bg-slate-900/60"><span className="text-slate-500 dark:text-slate-400">{child.exams_count} محاولات امتحان • {child.passed_exams} ناجحة</span><span className="font-bold text-emerald-600 dark:text-emerald-300">الحساب مرتبط</span></div>
-            </div>
+              <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-xs dark:bg-slate-900/60"><span className="text-slate-500 dark:text-slate-400">{child.exams_count} محاولات امتحان • {child.passed_exams} ناجحة</span><span className="font-bold text-emerald-600 dark:text-emerald-300">عرض التفاصيل ←</span></div>
+            </button>
           ))}
         </div>
       )}
