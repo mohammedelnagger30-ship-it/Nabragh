@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, Mail, AlertCircle, Loader2, Info, ShieldAlert } from 'lucide-react';
+import { GraduationCap, Mail, AlertCircle, Loader2, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { homePath, roleLabel } from '@/lib/roles';
@@ -18,7 +18,7 @@ const DEMO_ACCOUNTS = [
 ] as const;
 
 export default function SignInPage() {
-  const { signIn, user, profile, isAdmin, loading } = useAuth();
+  const { signIn, user, profile, isAdmin, loading, kickedOut, kickMessage, clearKick } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -27,8 +27,6 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState(false);
-  const [deviceBlocked, setDeviceBlocked] = useState(false);
-  const [deviceErrorMsg, setDeviceErrorMsg] = useState('');
 
   useEffect(() => {
     if (loading || !user || !profile) return;
@@ -39,17 +37,10 @@ export default function SignInPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setDeviceBlocked(false);
+    clearKick();
     setLoadingState(true);
     const result = await signIn(email, password);
     setLoadingState(false);
-
-    if (result.deviceBlocked) {
-      setDeviceBlocked(true);
-      setDeviceErrorMsg(result.deviceError ?? 'هذا الحساب مقيد بجهاز آخر');
-      return;
-    }
-
     if (result.error) {
       setError(result.error);
       toast(result.error, 'error');
@@ -77,18 +68,9 @@ export default function SignInPage() {
             )}
           </div>
 
-          {deviceBlocked && (
-            <div className="mb-4 rounded-xl border-2 border-rose-200 bg-rose-50 p-4 dark:border-rose-800 dark:bg-rose-950/40 sm:mb-6">
-              <div className="flex items-start gap-3">
-                <ShieldAlert className="h-5 w-5 flex-shrink-0 text-rose-600 dark:text-rose-400 sm:h-6 sm:w-6" />
-                <div>
-                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300 sm:text-sm">تم حظر الوصول من هذا الجهاز</p>
-                  <p className="mt-1 text-[10px] leading-4 text-rose-600 dark:text-rose-400 sm:text-xs sm:leading-5">{deviceErrorMsg}</p>
-                  <p className="mt-2 text-[10px] text-rose-500 dark:text-rose-500 sm:text-xs">
-                    إذا كنت تريد نقل حسابك لجهاز جديد، تواصل مع الإدارة.
-                  </p>
-                </div>
-              </div>
+          {kickedOut && kickMessage && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30 sm:mb-6">
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{kickMessage}</p>
             </div>
           )}
 
