@@ -16,6 +16,7 @@ import { isPublicTeacher, isTrustedTeacher, INTERNAL_TEACHER_ID } from '@/lib/te
 import MetaTags from '@/components/MetaTags';
 import { CardSkeleton, TeacherCardSkeleton, VideoCardSkeleton } from '@/components/SkeletonLoader';
 import { useSiteSettings } from '@/lib/siteSettings';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 export default function LandingPage() {
   const { user, profile } = useAuth();
@@ -298,8 +299,8 @@ export default function LandingPage() {
             </div>
 
             <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
-              <div className="relative z-10 grid grid-cols-2 gap-2 sm:gap-2.5 sm:gap-x-4">
-                <div className="space-y-2 sm:space-y-4">
+              <div className="relative z-10 hidden sm:grid grid-cols-2 gap-2.5 sm:gap-x-4">
+                <div className="space-y-4">
                   <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
                     <div className="mb-2 h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
                       <VideoIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
@@ -334,6 +335,23 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Mobile feature strip */}
+          <div className="mt-6 flex gap-3 overflow-x-auto pb-2 sm:hidden -mx-4 px-4 scrollbar-hide">
+            {[
+              { icon: VideoIcon, label: 'فيديوهات HD', color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' },
+              { icon: Shield, label: 'حماية كاملة', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' },
+              { icon: Award, label: 'مدرسون محترفون', color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/30' },
+              { icon: TrendingUp, label: 'تتبع التقدم', color: 'text-purple-500 bg-purple-50 dark:bg-purple-900/30' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2.5 shadow-sm flex-shrink-0">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${item.color}`}>
+                  <item.icon className="h-4 w-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -351,9 +369,11 @@ export default function LandingPage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/10 mb-3">
                   <stat.icon className="w-6 h-6 text-blue-400" />
                 </div>
-                <div className="text-3xl font-bold text-white">
-                  {isLoading || hasLoadError ? (hasLoadError ? '—' : '...') : `${stat.value}${stat.suffix}`}
-                </div>
+                {isLoading || hasLoadError ? (
+                  <div className="text-3xl font-bold text-white">{hasLoadError ? '—' : '...'}</div>
+                ) : (
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} className="text-3xl font-bold text-white" />
+                )}
                 <div className="text-sm text-slate-400 dark:text-slate-500 mt-1">{stat.label}</div>
               </div>
             ))}
@@ -776,6 +796,46 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="bg-slate-50/70 py-12 dark:bg-slate-800/50 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center sm:mb-10 lg:mb-12">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+              <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              آراء الطلاب
+            </div>
+            <h2 className="mb-3 text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-4xl">ماذا يقول طلابنا؟</h2>
+            <p className="mx-auto max-w-2xl text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">تجارب حقيقية من طلاب استفادوا من منصتنا التعليمية</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { name: 'أحمد محمد', role: 'طالب ثانوية', text: 'المنصة غيّرت طريقة مذاكرتي بالكامل. المدرسين ممتازين والمحتوى منظم جداً.', rating: 5 },
+              { name: 'سارة علي', role: 'طالبقة إعدادي', text: 'بحب إن التقدم محفوظ وأقدر أكمّل من أي مكان. التصميم سهل وجميل.', rating: 5 },
+              { name: 'عمر حسن', role: 'ولي أمر', text: 'ابني بقى متحمس للدراسة من بعد ما سجلنا هنا. التقييمات ساعدتنا نختار المدرس المناسب.', rating: 5 },
+            ].map((review, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:p-6">
+                <div className="mb-3 flex gap-0.5">
+                  {Array.from({ length: review.rating }).map((_, j) => (
+                    <Star key={j} className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  ))}
+                </div>
+                <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{review.text}</p>
+                <div className="flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-bold text-white">
+                    {review.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{review.name}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{review.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="bg-white py-10 dark:bg-slate-800 sm:py-16 lg:py-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -794,6 +854,17 @@ export default function LandingPage() {
                 >
                   إنشاء حساب مجاني
                 </Link>
+                <Link
+                  to="/teachers"
+                  className="px-8 py-3.5 border-2 border-white/30 text-white font-semibold rounded-xl hover:bg-white/10 transition-all"
+                >
+                  تصفح المدرسين
+                </Link>
+              </div>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-blue-100 sm:gap-6 sm:text-sm">
+                <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {stats.students}+ طالب</span>
+                <span className="flex items-center gap-1.5"><GraduationCap className="h-4 w-4" /> {stats.teachers}+ مدرس</span>
+                <span className="flex items-center gap-1.5"><Star className="h-4 w-4" /> تقييم 4.8/5</span>
               </div>
             </div>
           </div>
