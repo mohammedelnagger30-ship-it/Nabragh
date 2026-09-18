@@ -58,6 +58,7 @@ export default function Footer() {
               <li><Link to="/courses" className="transition-colors hover:text-blue-400">الدورات</Link></li>
               <li><Link to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</Link></li>
               <li><Link to="/categories" className="transition-colors hover:text-blue-400">التخصصات</Link></li>
+              <li><Link to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</Link></li>
             </ul>
           </div>
 

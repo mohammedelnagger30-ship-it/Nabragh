@@ -86,7 +86,8 @@ export default function SearchPage() {
           />
           {query && (
             <button type="button" onClick={() => { setQuery(''); setTeachers([]); setVideos([]); setCourses([]); setHasSearched(false); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              aria-label="مسح البحث">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -123,7 +124,18 @@ export default function SearchPage() {
         ) : !hasSearched ? (
           <div className="text-center py-20">
             <Search className="w-16 h-16 text-slate-300 mx-auto mb-4 dark:text-slate-600" />
-            <p className="text-slate-500 text-lg dark:text-slate-400">ابدأ البحث عن المدرسين والفيديوهات والدورات</p>
+            <p className="text-slate-500 text-lg dark:text-slate-400 mb-6">ابدأ البحث عن المدرسين والفيديوهات والدورات</p>
+            <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+              {['الرياضيات', 'الفيزياء', 'الكيمياء', 'اللغة الإنجليزية', 'علوم الحاسوب'].map((term) => (
+                <button
+                  key={term}
+                  onClick={() => { setQuery(term); performSearch(term); }}
+                  className="px-4 py-2 rounded-full text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-blue-900/30 dark:hover:border-blue-500 dark:hover:text-blue-400"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
           </div>
         ) : totalResults === 0 ? (
           <div className="text-center py-20">

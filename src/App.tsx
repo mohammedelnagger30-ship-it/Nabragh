@@ -122,12 +122,12 @@ function PublicApp() {
               <div key={transitionKey} className="route-transition">
                 <Routes>
                   <Route path="/" element={<RootLandingRoute />} />
-                  <Route path="/teachers" element={<RequireAuth><TeachersPage /></RequireAuth>} />
-                  <Route path="/teacher/:id" element={<RequireAuth><TeacherProfilePage /></RequireAuth>} />
+                  <Route path="/teachers" element={<TeachersPage />} />
+                  <Route path="/teacher/:id" element={<TeacherProfilePage />} />
                   <Route path="/academy/:slug" element={<AcademyPage />} />
                   <Route path="/video/:id" element={<VideoPlayerPage />} />
                   <Route path="/course/:id" element={<RequireAuth><CourseDetailPage /></RequireAuth>} />
-                  <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
+                  <Route path="/courses" element={<CoursesPage />} />
                   <Route path="/categories" element={<CategoriesPage />} />
                   <Route path="/competitions" element={<RequireAuth><CompetitionsPage /></RequireAuth>} />
                   <Route path="/search" element={<SearchPage />} />

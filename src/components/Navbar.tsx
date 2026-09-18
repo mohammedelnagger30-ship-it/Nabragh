@@ -171,6 +171,7 @@ export default function Navbar() {
                   onClick={handleSignOut}
                   className="rounded-xl p-2 text-slate-500 dark:text-slate-400 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400"
                   title="تسجيل الخروج"
+                  aria-label="تسجيل الخروج"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>

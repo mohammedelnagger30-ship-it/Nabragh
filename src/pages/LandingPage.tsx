@@ -441,13 +441,19 @@ export default function LandingPage() {
               );
             })}
           </div>
-          {!isLoading && categories.length === 0 && <p className="mt-6 text-center text-sm text-slate-500">لا توجد تخصصات متاحة حاليًا.</p>}
+          {!isLoading && categories.length === 0 && (
+            <div className="mt-6 flex flex-col items-center justify-center py-8 text-center">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/30"><BookOpen className="h-7 w-7 text-blue-500" /></div>
+              <p className="text-base font-bold text-slate-700 dark:text-slate-200">لا توجد تخصصات بعد</p>
+              <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">التخصصات الدراسية قادمة قريبًا.</p>
+            </div>
+          )}
         </div>
       </section>
       )}
 
       {/* Teachers directory preview */}
-      {sections.teachers && (isLoading || teachers.length > 0) && (
+      {sections.teachers && (
         <section className="bg-gradient-to-br from-slate-50 to-blue-50/30 py-14 dark:from-slate-900 dark:to-blue-900/10 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
@@ -496,13 +502,19 @@ export default function LandingPage() {
                 </Link>
               ))}
             </div>
-            {!isLoading && teachers.length === 0 && <p className="text-center text-sm text-slate-500">سيظهر المدرسون المعتمدون هنا قريبًا.</p>}
+            {!isLoading && teachers.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/30"><Users className="h-8 w-8 text-blue-500" /></div>
+                <p className="text-base font-bold text-slate-700 dark:text-slate-200">لا يوجد مدرسين بعد</p>
+                <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">سيظهر المدرسون المعتمدون هنا فور انضمامهم للمنصة.</p>
+              </div>
+            )}
           </div>
         </section>
       )}
 
       {/* Rising Teachers */}
-      {sections.teachers && (isLoading || risingTeachers.length > 0) && (
+      {sections.teachers && (
         <section className="bg-white py-14 dark:bg-slate-800 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
@@ -548,13 +560,19 @@ export default function LandingPage() {
                 </Link>
               ))}
             </div>
-            {!isLoading && risingTeachers.length === 0 && <p className="text-center text-sm text-slate-500">سيكون هناك مدرسون واعدون قريباً.</p>}
+            {!isLoading && risingTeachers.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-900/30"><Sparkles className="h-8 w-8 text-emerald-500" /></div>
+                <p className="text-base font-bold text-slate-700 dark:text-slate-200">لا يوجد مدرسون واعدون بعد</p>
+                <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">مواهب جديدة تنضم إلينا كل يوم — تابعنا!</p>
+              </div>
+            )}
           </div>
         </section>
       )}
 
       {/* Featured Courses */}
-      {sections.courses && (isLoading || courses.length > 0) && (
+      {sections.courses && (
         <section className="bg-white py-10 dark:bg-slate-800 sm:py-16 lg:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
@@ -603,13 +621,19 @@ export default function LandingPage() {
                 </Link>
               ))}
             </div>
-            {!isLoading && courses.length === 0 && <p className="text-center text-sm text-slate-500">لا توجد دورات منشورة حاليًا.</p>}
+            {!isLoading && courses.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/30"><BookOpen className="h-8 w-8 text-blue-500" /></div>
+                <p className="text-base font-bold text-slate-700 dark:text-slate-200">لا توجد دورات بعد</p>
+                <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">الدورات التدريبية قادمة قريبًا — تابعنا للتحديثات.</p>
+              </div>
+            )}
           </div>
         </section>
       )}
 
       {/* Popular Videos */}
-      {sections.videos && (isLoading || videos.length > 0) && (
+      {sections.videos && (
         <section className="bg-gradient-to-br from-slate-50 to-blue-50/30 py-10 dark:from-slate-900 dark:to-blue-900/10 sm:py-16 lg:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
@@ -655,7 +679,13 @@ export default function LandingPage() {
                 </Link>
               ))}
             </div>
-            {!isLoading && videos.length === 0 && <p className="text-center text-sm text-slate-500">لا توجد فيديوهات منشورة حاليًا.</p>}
+            {!isLoading && videos.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/30"><VideoIcon className="h-8 w-8 text-blue-500" /></div>
+                <p className="text-base font-bold text-slate-700 dark:text-slate-200">لا توجد فيديوهات بعد</p>
+                <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">فيديوهات تعليمية قادمة قريبًا — تابعنا!</p>
+              </div>
+            )}
           </div>
         </section>
       )}
