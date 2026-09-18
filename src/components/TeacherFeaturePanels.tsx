@@ -141,7 +141,7 @@ export const TeacherQA = memo(function TeacherQA({ teacherId }: { teacherId: str
             {pending.map((q) => (
               <div key={q.id} className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-900/10">
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{q.question}</p>
-                <p className="mt-1 text-xs text-slate-500">من: {q.student?.full_name ?? 'طالب'} • {new Date(q.created_at).toLocaleDateString('ar-EG')}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">من: {q.student?.full_name ?? 'طالب'} • {new Date(q.created_at).toLocaleDateString('ar-EG')}</p>
                 <div className="mt-3 flex gap-2">
                   <input value={answers[q.id] ?? ''} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))} placeholder="اكتب الإجابة..." className={inputCls} />
                   <button type="button" onClick={() => void answer(q)} disabled={busyId === q.id || !(answers[q.id] ?? '').trim()} className={btnPrimary}><Send className="h-4 w-4" /> إجابة</button>
@@ -161,7 +161,7 @@ export const TeacherQA = memo(function TeacherQA({ teacherId }: { teacherId: str
                   <button type="button" onClick={() => void remove(q)} disabled={busyId === q.id} className="shrink-0 rounded-lg p-1 text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-900/20"><Trash2 className="h-4 w-4" /></button>
                 </div>
                 <div className="mt-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">✓ {q.answer}</div>
-                <p className="mt-2 text-xs text-slate-400">من: {q.student?.full_name ?? 'طالب'} • نُشرت {q.created_at ? new Date(q.created_at).toLocaleDateString('ar-EG') : ''}</p>
+                <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">من: {q.student?.full_name ?? 'طالب'} • نُشرت {q.created_at ? new Date(q.created_at).toLocaleDateString('ar-EG') : ''}</p>
               </div>
             ))}
           </div>
@@ -303,7 +303,7 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
       </div>
 
       {loading ? <Loader2 className="mx-auto mt-16 h-8 w-8 animate-spin text-blue-600" /> : sessions.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-slate-700">لا توجد حصص مجدولة.</p>
+        <p className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center text-sm text-slate-400 dark:text-slate-500">لا توجد حصص مجدولة.</p>
       ) : (
         sessions.map((s) => (
           <div key={s.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -312,7 +312,7 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"><VideoIcon className="h-5 w-5" /></div>
                 <div>
                   <p className="font-black text-slate-900 dark:text-white">{s.title ?? 'حصة بدون عنوان'}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     <CalendarDays className="ml-1 inline h-3.5 w-3.5" />
                     {s.scheduled_at ? new Date(s.scheduled_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) : 'بدون موعد'} • {s.duration_minutes} دقيقة {statusBadge(s.status)}
                   </p>
@@ -320,8 +320,8 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {s.status !== 'live' && <button type="button" onClick={() => void setStatus(s, 'live')} disabled={busyId === s.id} className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-900/30 dark:text-rose-300">بدء البث</button>}
-                {s.status === 'live' && <button type="button" onClick={() => void setStatus(s, 'ended')} disabled={busyId === s.id} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50">إنهاء</button>}
-                {s.status === 'scheduled' && <button type="button" onClick={() => void setStatus(s, 'cancelled')} disabled={busyId === s.id} className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50">إلغاء</button>}
+                {s.status === 'live' && <button type="button" onClick={() => void setStatus(s, 'ended')} disabled={busyId === s.id} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">إنهاء</button>}
+                {s.status === 'scheduled' && <button type="button" onClick={() => void setStatus(s, 'cancelled')} disabled={busyId === s.id} className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50">إلغاء</button>}
                 <button type="button" onClick={() => void removeSession(s)} disabled={busyId === s.id} className={btnDanger}><Trash2 className="h-4 w-4" /></button>
               </div>
             </div>
@@ -333,7 +333,7 @@ export const TeacherLiveSessions = memo(function TeacherLiveSessions({ teacherId
             )}
             <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-700">
               <p className="mb-2 text-xs font-black text-slate-500 dark:text-slate-400">الحجوزات ({bookingsBySession[s.id]?.length ?? 0})</p>
-              {!bookingsBySession[s.id]?.length ? <p className="text-xs text-slate-400">لا توجد حجوزات بعد.</p> : (
+              {!bookingsBySession[s.id]?.length ? <p className="text-xs text-slate-400 dark:text-slate-500">لا توجد حجوزات بعد.</p> : (
                 <div className="flex flex-wrap gap-2">
                   {(bookingsBySession[s.id] ?? []).map((b) => (
                     <span key={b.id} className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
@@ -458,7 +458,7 @@ export const TeacherMessages = memo(function TeacherMessages({ teacherId }: { te
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800 lg:col-span-1">
           {loading ? <Loader2 className="mx-auto mt-12 h-8 w-8 animate-spin text-blue-600" /> : conversations.length === 0 ? (
-            <p className="p-8 text-center text-sm text-slate-400">لا توجد رسائل.</p>
+            <p className="p-8 text-center text-sm text-slate-400 dark:text-slate-500">لا توجد رسائل.</p>
           ) : conversations.map((c) => (
             <button key={c.studentId} type="button" onClick={() => void open(c)} className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 text-right transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50 ${active?.studentId === c.studentId ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
               <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{c.studentName}</span>

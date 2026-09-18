@@ -1038,7 +1038,7 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
                 <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <div className="mb-4 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-800 dark:text-white">اكتمال الملف</h3><p className="mt-1 text-xs text-slate-500">{profile.is_teacher ? 'كلما اكتمل الملف زادت ثقة المستخدمين بك.' : 'أكمل بياناتك ليظهر مرحلتك الدراسية في الترشيحات.'}</p></div><span className="text-xl font-extrabold text-blue-600">{profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone, guardianEmail })}%</span></div>
+                    <div className="mb-4 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-800 dark:text-white">اكتمال الملف</h3><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{profile.is_teacher ? 'كلما اكتمل الملف زادت ثقة المستخدمين بك.' : 'أكمل بياناتك ليظهر مرحلتك الدراسية في الترشيحات.'}</p></div><span className="text-xl font-extrabold text-blue-600">{profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone, guardianEmail })}%</span></div>
                     <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all" style={{ width: `${profileCompletion(profile, { fullName, bio, specialization, avatarUrl, location, profileStage, profileCurriculum, phone, guardianPhone, guardianEmail })}%` }} /></div>
                     <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">{!avatarUrl && <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">أضف صورة شخصية</span>}{!bio && <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">أضف نبذة</span>}{!location && <span className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 dark:bg-slate-700 dark:text-slate-300">أضف موقعك</span>}</div>
                   </div>
@@ -2646,7 +2646,7 @@ function StudentPlaylists() {
               {expandedId === pl.id && (
                 <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-2">
                   {expandedVideos.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-4">لا توجد فيديوهات في هذه المجموعة. أضف فيديو من صفحة المشاهدة.</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">لا توجد فيديوهات في هذه المجموعة. أضف فيديو من صفحة المشاهدة.</p>
                   ) : expandedVideos.map((v) => (
                     <div key={v.playlist_video_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <Play className="h-4 w-4 text-violet-500 flex-shrink-0" />
