@@ -117,8 +117,8 @@ function PublicApp() {
   return (
     <>
       <ScrollToTop />
-      <LoadingBar />
       <ErrorBoundary>
+        <LoadingBar />
         <div dir="rtl" className="min-h-screen bg-white dark:bg-slate-900 font-sans transition-colors duration-200">
           <Navbar />
           <main className="pt-[4rem] overflow-x-clip pb-[4.5rem] md:pt-[4.5rem] md:pb-0">
