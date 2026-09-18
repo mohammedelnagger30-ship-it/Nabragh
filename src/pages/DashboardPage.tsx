@@ -914,6 +914,33 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                   )}
                 </div>
 
+                {/* Quick Actions (teacher only) */}
+                {profile.is_teacher && (
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2 text-sm">
+                      <Zap className="w-4 h-4 text-amber-500" /> إجراءات سريعة
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { tab: 'videos' as Tab, icon: VideoIcon, label: 'رفع فيديو', color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' },
+                        { tab: 'courses' as Tab, icon: BookOpen, label: 'إنشاء دورة', color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' },
+                        { tab: 'exams' as Tab, icon: ClipboardCheck, label: 'إنشاء امتحان', color: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400' },
+                        { tab: 'analytics' as Tab, icon: BarChart3, label: 'التحليلات', color: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' },
+                      ].map((action) => (
+                        <button
+                          key={action.tab}
+                          type="button"
+                          onClick={() => setActiveTab(action.tab)}
+                          className={`flex items-center gap-2.5 rounded-xl p-3 text-right transition-all hover:-translate-y-0.5 hover:shadow-sm ${action.color}`}
+                        >
+                          <action.icon className="h-5 w-5 shrink-0" />
+                          <span className="text-xs font-bold">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Recent activity */}
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
@@ -964,6 +991,55 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
                     </div>
                   )}
                 </div>
+
+                {/* Notifications summary + Earnings chart (teacher only) */}
+                {profile.is_teacher && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Notifications Summary */}
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
+                          <Bell className="w-4 h-4 text-blue-500" /> آخر الإشعارات
+                        </h3>
+                        <button type="button" onClick={() => setActiveTab('notifications')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">عرض الكل</button>
+                      </div>
+                      <NotificationsSummary teacherId={user!.id} />
+                    </div>
+
+                    {/* Earnings Chart */}
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm mb-3">
+                        <Banknote className="w-4 h-4 text-emerald-500" /> إيرادات آخر 6 شهور
+                      </h3>
+                      <EarningsChart payouts={teacherPayouts} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent student activity (teacher only) */}
+                {profile.is_teacher && students.length > 0 && (
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm mb-3">
+                      <UsersIcon className="w-4 h-4 text-cyan-500" /> آخر نشاط الطلاب
+                    </h3>
+                    <div className="space-y-2">
+                      {students.slice(0, 5).map((s) => (
+                        <div key={s.id} className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-xs font-bold text-white shrink-0">
+                            {(s.student?.full_name ?? ' طالب').charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 line-clamp-1">{s.student?.full_name ?? 'طالب'}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{s.course?.title ?? 'دورة'} — {s.progress_percent ?? 0}%</p>
+                          </div>
+                          <div className="h-1.5 w-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0">
+                            <div className={`h-full rounded-full ${s.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(100, s.progress_percent ?? 0)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Enrollments progress (students) */}
                 {!profile.is_teacher && enrollments.length > 0 && (
@@ -3228,6 +3304,77 @@ function TeacherQuickStats({ teacherId, onOpen }: { teacherId: string; onOpen: (
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${it.color}`}><it.icon className="h-5 w-5" /></div>
           <div><div className="text-xl font-extrabold text-slate-900 dark:text-white">{it.value}</div><div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{it.label}</div></div>
         </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Notifications Summary (teacher overview) ─── */
+function NotificationsSummary({ teacherId }: { teacherId: string }) {
+  const [items, setItems] = useState<Array<{ id: string; title: string; body: string; created_at: string; read: boolean }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, title, body, created_at, read')
+        .eq('user_id', teacherId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (!cancelled) { setItems(data ?? []); setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [teacherId]);
+
+  if (loading) return <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700" />)}</div>;
+  if (items.length === 0) return <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">لا توجد إشعارات بعد</p>;
+
+  return (
+    <div className="space-y-2">
+      {items.map((n) => (
+        <div key={n.id} className={`flex items-start gap-2.5 rounded-lg p-2.5 text-sm ${n.read ? 'opacity-60' : 'bg-blue-50/50 dark:bg-blue-900/10'}`}>
+          <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.read ? 'bg-slate-300 dark:bg-slate-600' : 'bg-blue-500'}`} />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-slate-700 dark:text-slate-200 text-xs line-clamp-1">{n.title}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">{n.body}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Earnings Chart (teacher overview) ─── */
+function EarningsChart({ payouts }: { payouts: TeacherPayoutRecord[] }) {
+  const monthlyData = (() => {
+    const now = new Date();
+    const months: { label: string; amount: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleDateString('ar-EG', { month: 'short' });
+      const amount = payouts
+        .filter(p => {
+          const pd = new Date(p.created_at);
+          return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear();
+        })
+        .reduce((sum, p) => sum + (p.total_teacher_payout ?? 0), 0);
+      months.push({ label, amount });
+    }
+    return months;
+  })();
+
+  const maxVal = Math.max(...monthlyData.map(m => m.amount), 1);
+
+  return (
+    <div className="flex items-end gap-2 h-32">
+      {monthlyData.map((m, i) => (
+        <div key={i} className="flex flex-1 flex-col items-center gap-1">
+          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{m.amount > 0 ? m.amount.toLocaleString() : ''}</span>
+          <div className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-cyan-400 transition-all" style={{ height: `${Math.max(4, (m.amount / maxVal) * 100)}%` }} />
+          <span className="text-[10px] text-slate-400 dark:text-slate-500">{m.label}</span>
+        </div>
       ))}
     </div>
   );
