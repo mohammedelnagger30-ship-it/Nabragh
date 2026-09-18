@@ -108,3 +108,44 @@ export function ListSkeleton({ count = 5 }: { count?: number }) {
     </div>
   );
 }
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <SkeletonLoader variant="circular" width={56} height={56} />
+        <div className="space-y-2">
+          <SkeletonLoader variant="text" width="200px" height={24} />
+          <SkeletonLoader variant="text" width="140px" height={16} />
+        </div>
+      </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 space-y-2">
+            <SkeletonLoader variant="rectangular" className="h-8 w-8 rounded-lg" />
+            <SkeletonLoader variant="text" width="50%" height={28} />
+            <SkeletonLoader variant="text" width="70%" />
+          </div>
+        ))}
+      </div>
+      {/* Content area */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 space-y-3">
+          <SkeletonLoader variant="text" width="40%" height={20} />
+          <SkeletonLoader variant="rectangular" className="h-32 rounded-lg" />
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 space-y-3">
+          <SkeletonLoader variant="text" width="40%" height={20} />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <SkeletonLoader variant="circular" width={32} height={32} />
+              <SkeletonLoader variant="text" width="70%" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

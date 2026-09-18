@@ -18,6 +18,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { roleLabel } from '@/lib/roles';
 import { LockKeyhole } from 'lucide-react';
 import { emptyUsage, getTeacherLimits, isFreeAtLimit, parseUsageError, usagePercent } from '@/lib/limits';
+import { DashboardSkeleton } from '@/components/SkeletonLoader';
 import { uploadFile, uploadPrivateFile } from '@/lib/storage';
 import { whatsappLink } from '@/lib/contact';
 import MetaTags from '@/components/MetaTags';
@@ -639,8 +640,8 @@ export default function DashboardPage({ teacherWorkspace = false }: { teacherWor
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="min-h-screen px-4 py-8">
+        <DashboardSkeleton />
       </div>
     );
   }

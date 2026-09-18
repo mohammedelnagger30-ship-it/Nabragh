@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
-  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap,
-  Calculator, FlaskConical, Globe2, Languages, Monitor, Scale, Lightbulb, History, Landmark, Brain
+  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap, ChevronDown, MessageCircleQuestion
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -34,6 +33,7 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -790,6 +790,46 @@ export default function LandingPage() {
                 </div>
                 <h3 className="mb-1 text-sm font-bold text-white sm:mb-2 sm:text-base">{feat.title}</h3>
                 <p className="text-[11px] leading-5 text-slate-400 dark:text-slate-500 sm:text-sm sm:leading-relaxed">{feat.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="bg-white py-12 dark:bg-slate-900 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center sm:mb-10">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:mb-4 sm:px-4 sm:py-2 sm:text-sm">
+              <MessageCircleQuestion className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              أسئلة شائعة
+            </div>
+            <h2 className="mb-3 text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-4xl">عندك سؤال؟</h2>
+            <p className="text-xs leading-6 text-slate-500 dark:text-slate-400 sm:text-sm">إجابات سريعة لأكثر الاستفسارات شيوعاً</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              { q: 'كيف أسجل في المنصة؟', a: 'اضغط على "إنشاء حساب مجاني" وأدخل بياناتك. يمكنك التسجيل كطالب أو مدرس (المدرسون يحتاجون موافقة الإدارة).' },
+              { q: 'هل الدورات مجانية؟', a: 'بعض المحتوى متاح مجاناً. الدورات المميزة تحتاج اشتراك مدفوع بأسعار مناسبة للجميع.' },
+              { q: 'كيف أتواصل مع المدرس؟', a: 'يمكنك مراسلة المدرس مباشرة من صفحة الملف الشخصي أو من داخل الدورة بعد الاشتراك.' },
+              { q: 'هل أقدر أتابع من الموبايل؟', a: 'نعم! المنصة متوافقة مع جميع الأجهزة — موبايل، تابلت، أو كمبيوتر. يمكنك أيضاً تثبيت التطبيق.' },
+              { q: 'ماذا يحدث إذا نسيت كلمة المرور؟', a: 'اضغط "نسيت كلمة المرور" في صفحة تسجيل الدخول وستتلقى رابطاً لإعادة التعيين على بريدك الإلكتروني.' },
+              { q: 'هل الشهادات معتمدة؟', a: 'نعم، تحصل على شهادة إتمام رقمية بعد إنهاء كل دورة واجتياز الاختبار بنجاح.' },
+            ].map((faq, i) => (
+              <div key={i} className={`overflow-hidden rounded-xl border transition-colors ${openFaq === i ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-right sm:px-5"
+                >
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">{faq.q}</span>
+                  <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`} />
+                </button>
+                <div className={`grid transition-all duration-200 ${openFaq === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
+                    <p className="px-4 pb-4 text-sm leading-6 text-slate-600 dark:text-slate-300 sm:px-5 sm:leading-7">{faq.a}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

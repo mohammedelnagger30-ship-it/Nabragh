@@ -34,6 +34,8 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import InfoPage from '@/pages/InfoPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import CertificatePage from '@/pages/CertificatePage';
+import BecomeTeacherPage from '@/pages/BecomeTeacherPage';
+import ContactPage from '@/pages/ContactPage';
 import AdminPortalShell from '@/components/AdminPortalShell';
 import AdminEntryPage from '@/pages/AdminEntryPage';
 import TeacherAdminPage from '@/pages/TeacherAdminPage';
@@ -139,6 +141,8 @@ function PublicApp() {
                   <Route path="/about" element={<InfoPage />} />
                   <Route path="/privacy" element={<InfoPage />} />
                   <Route path="/terms" element={<InfoPage />} />
+                  <Route path="/become-teacher" element={<BecomeTeacherPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
                   <Route path="/certificate/:id" element={<CertificatePage />} />
                   <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
                   <Route path="/payment-status" element={<RequireAuth><PaymentStatusPage /></RequireAuth>} />

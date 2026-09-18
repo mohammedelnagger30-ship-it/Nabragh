@@ -58,7 +58,6 @@ export default function Footer() {
               <li><Link to="/courses" className="transition-colors hover:text-blue-400">الدورات</Link></li>
               <li><Link to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</Link></li>
               <li><Link to="/categories" className="transition-colors hover:text-blue-400">التخصصات</Link></li>
-              <li><Link to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</Link></li>
             </ul>
           </div>
 
@@ -66,6 +65,8 @@ export default function Footer() {
             <h3 className="mb-3 text-sm font-semibold text-white sm:mb-4 sm:text-base">المنصة</h3>
             <ul className="space-y-2 text-xs sm:space-y-3 sm:text-sm">
               <li><Link to="/about" className="transition-colors hover:text-blue-400">من نحن</Link></li>
+              <li><Link to="/become-teacher" className="transition-colors hover:text-blue-400">سجّل كمدرس</Link></li>
+              <li><Link to="/contact" className="transition-colors hover:text-blue-400">تواصل معنا</Link></li>
               <li><Link to="/privacy" className="transition-colors hover:text-blue-400">سياسة الخصوصية</Link></li>
               <li><Link to="/terms" className="transition-colors hover:text-blue-400">الشروط والأحكام</Link></li>
             </ul>
