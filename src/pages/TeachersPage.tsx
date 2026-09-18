@@ -298,7 +298,7 @@ export default function TeachersPage() {
                             <span className="text-slate-500 dark:text-slate-400">({review.count})</span>
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-slate-400 px-3 py-1">
+                          <span className="flex items-center gap-1 text-slate-400 dark:text-slate-500 px-3 py-1">
                             <Star className="w-4 h-4" /> لا تقييمات
                           </span>
                         )}
@@ -457,14 +457,14 @@ export default function TeachersPage() {
                   <button
                     onClick={() => setViewMode('grid')}
                     aria-label="عرض شبكي"
-                    className={`rounded-lg p-2 transition-all ${viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`rounded-lg p-2 transition-all ${viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     <Grid className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
                     aria-label="عرض قائمة"
-                    className={`rounded-lg p-2 transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`rounded-lg p-2 transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     <List className="h-5 w-5" />
                   </button>
@@ -668,7 +668,7 @@ export default function TeachersPage() {
                     : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700'
                 }`}
               >
-                <Heart className={`w-5 h-5 ${favorites.size > 0 ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
+                <Heart className={`w-5 h-5 ${favorites.size > 0 ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
                 {favoritesOnly ? 'عرض الكل' : `المفضلة (${favorites.size})`}
               </button>
             </div>
@@ -693,7 +693,7 @@ export default function TeachersPage() {
                         }}
                         className="absolute top-4 left-4 z-10 p-2 bg-white/90 dark:bg-slate-700/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
                       >
-                        <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
+                        <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
                       </button>
 
                       {/* Manager + Trusted badges (stacked top-right) */}
@@ -748,7 +748,7 @@ export default function TeachersPage() {
                                 <span className="text-slate-500 dark:text-slate-400 text-xs">({review.count})</span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 text-slate-400 px-3 py-1.5">
+                              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 px-3 py-1.5">
                                 <Star className="w-4 h-4" />
                                 <span className="text-xs">لا تقييمات</span>
                               </div>
@@ -829,7 +829,7 @@ export default function TeachersPage() {
                               }}
                               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
                             >
-                              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} />
+                              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-500'}`} />
                             </button>
                           </div>
 
@@ -864,7 +864,7 @@ export default function TeachersPage() {
 
                         {/* Arrow */}
                         <div className="flex items-center justify-center w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full group-hover:bg-blue-600 dark:group-hover:bg-blue-500 transition-colors">
-                          <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                          <ArrowRight className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-white transition-colors" />
                         </div>
                       </Link>
                     </div>

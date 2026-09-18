@@ -546,7 +546,7 @@ export default function CompetitionsPage() {
                         return (
                           <div
                             key={idx}
-                            className="rounded-2xl border border-dashed border-slate-200 bg-slate-100/50 p-5 text-center text-xs font-bold text-slate-400 opacity-40 dark:border-slate-800 dark:bg-slate-800/30"
+                            className="rounded-2xl border border-dashed border-slate-200 bg-slate-100/50 p-5 text-center text-xs font-bold text-slate-400 dark:text-slate-500 opacity-40 dark:border-slate-800 dark:bg-slate-800/30"
                           >
                             ❌ تم حذف الخيار (50:50)
                           </div>
@@ -754,7 +754,7 @@ export default function CompetitionsPage() {
                           </p>
                           <span className="text-xs" title={studentLeague.name}>{studentLeague.icon}</span>
                         </div>
-                        <p className="text-[11px] font-semibold text-slate-400">
+                        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                           {student.competitions_played} مشاركات
                         </p>
                       </div>
@@ -765,7 +765,7 @@ export default function CompetitionsPage() {
                   );
                 })}
                 {topStudents.length === 0 && (
-                  <p className="py-8 text-center text-xs font-semibold text-slate-400">
+                  <p className="py-8 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
                     شارك في المنافسات لتكون أول الأبطال المتصدرين!
                   </p>
                 )}
