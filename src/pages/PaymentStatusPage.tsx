@@ -88,11 +88,11 @@ export default function PaymentStatusPage() {
               <div className="mt-6 rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">المبلغ</span>
+                    <span className="text-slate-500 dark:text-slate-400">المبلغ</span>
                     <span className="font-bold text-slate-900 dark:text-white">{paymentData.amount as number} جنيه</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">التاريخ</span>
+                    <span className="text-slate-500 dark:text-slate-400">التاريخ</span>
                     <span className="text-slate-700 dark:text-slate-300">{paymentData.paid_at ? new Date(paymentData.paid_at as string).toLocaleString('ar-EG') : '—'}</span>
                   </div>
                 </div>

@@ -59,8 +59,8 @@ export default function CertificatePage() {
   if (!certificate || !course || !student) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 pt-[4.5rem] dark:bg-slate-900">
-        <p className="mb-4 text-slate-500">الشهادة غير موجودة</p>
-        <Link to="/dashboard" className="font-semibold text-blue-600">العودة للوحة التحكم</Link>
+        <p className="mb-4 text-slate-500 dark:text-slate-400">الشهادة غير موجودة</p>
+        <Link to="/dashboard" className="font-semibold text-blue-600 dark:text-blue-400">العودة للوحة التحكم</Link>
       </div>
     );
   }
@@ -72,12 +72,12 @@ export default function CertificatePage() {
         <Award className="mx-auto mb-4 h-14 w-14 text-amber-500" />
         <p className="text-sm font-bold text-blue-600">منصة العلم</p>
         <h1 className="mt-2 text-3xl font-extrabold text-slate-900 dark:text-white">شهادة إتمام</h1>
-        <p className="mt-6 text-slate-500">تشهد المنصة بأن</p>
+        <p className="mt-6 text-slate-500 dark:text-slate-400">تشهد المنصة بأن</p>
         <p className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">{student.full_name}</p>
-        <p className="mt-4 text-slate-500">قد أتم بنجاح دورة</p>
+        <p className="mt-4 text-slate-500 dark:text-slate-400">قد أتم بنجاح دورة</p>
         <p className="mt-2 text-xl font-bold text-blue-700 dark:text-blue-300">{course.title}</p>
-        <p className="mt-8 text-sm text-slate-400">رقم الشهادة: {certificate.certificate_number}</p>
-        <p className="mt-1 text-sm text-slate-400">تاريخ الإصدار: {new Date(certificate.issued_at).toLocaleDateString('ar-EG')}</p>
+        <p className="mt-8 text-sm text-slate-400 dark:text-slate-500">رقم الشهادة: {certificate.certificate_number}</p>
+        <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">تاريخ الإصدار: {new Date(certificate.issued_at).toLocaleDateString('ar-EG')}</p>
       </div>
       <div className="mx-auto mt-6 flex max-w-3xl justify-center gap-3">
         <button type="button" onClick={() => window.print()} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white hover:bg-blue-700">

@@ -278,7 +278,7 @@ export default function NotificationCenter({ userId, onCountChange, isTeacher }:
       )}
 
       <div className="relative">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <input
           type="text"
           value={searchQuery}
@@ -287,7 +287,7 @@ export default function NotificationCenter({ userId, onCountChange, isTeacher }:
           className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-10 pl-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
         />
         {searchQuery && (
-          <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+          <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
             ✕
           </button>
         )}
@@ -352,7 +352,7 @@ export default function NotificationCenter({ userId, onCountChange, isTeacher }:
                     type="checkbox"
                     checked={selectedIds.has(n.id)}
                     onChange={() => toggleSelect(n.id)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 dark:border-slate-600"
                   />
                 )}
 
