@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
-  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap
+  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap,
+  Calculator, FlaskConical, Globe2, Languages, Monitor, Scale, Lightbulb, History, Landmark, Brain
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -217,6 +218,22 @@ export default function LandingPage() {
     rose: 'from-rose-500 to-rose-600 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300',
   };
 
+  const categoryIconMap: Record<string, typeof BookOpen> = {
+    'الرياضيات': Calculator,
+    'الفيزياء': FlaskConical,
+    'الكيمياء': FlaskConical,
+    'الأحياء': Lightbulb,
+    'الجغرافيا': Globe2,
+    'التاريخ': History,
+    'اللغة العربية': Languages,
+    'الإنجليزية': Languages,
+    'الفرنسية': Languages,
+    'علوم الحاسوب': Monitor,
+    'القانون': Scale,
+    'الفلسفة': Brain,
+    'الاقتصاد': Landmark,
+  };
+
   return (
     <>
       <MetaTags
@@ -282,36 +299,36 @@ export default function LandingPage() {
 
             <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
               <div className="relative z-10 grid grid-cols-2 gap-2 sm:gap-2.5 sm:gap-x-4">
-                <div className="space-y-2 sm:space-y-3 sm:space-y-4">
+                <div className="space-y-2 sm:space-y-4">
                   <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
                     <div className="mb-2 h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
                       <VideoIcon className="h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
                     </div>
                     <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">فيديوهات HD</h3>
-                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">جودة عالية مع حماية كاملة للمحتوى</p>
+                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-6">جودة عالية مع حماية كاملة للمحتوى</p>
                   </div>
                   <div className="rounded-2xl bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 p-3 text-white shadow-xl shadow-blue-700/25 sm:p-6 transition-all hover:-translate-y-1">
                     <div className="mb-2 h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
                       <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                     <h3 className="mb-1 text-sm font-bold sm:text-base">حماية كاملة</h3>
-                    <p className="text-[10px] leading-4 text-blue-50 sm:text-xs sm:leading-5 sm:leading-6">حماية الفيديوهات والبيانات بأعلى المعايير</p>
+                    <p className="text-[10px] leading-4 text-blue-50 sm:text-xs sm:leading-6">حماية الفيديوهات والبيانات بأعلى المعايير</p>
                   </div>
                 </div>
-                <div className="space-y-2 pt-4 sm:space-y-3 sm:space-y-4 sm:pt-8">
+                <div className="space-y-2 pt-4 sm:space-y-4 sm:pt-8">
                   <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
                     <div className="mb-2 h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
                       <Award className="h-4 w-4 text-emerald-600 dark:text-emerald-400 sm:h-5 sm:w-5" />
                     </div>
                     <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">مدرسون محترفون</h3>
-                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">نخبة من أفضل المدرسين في كل تخصص</p>
+                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-6">نخبة من أفضل المدرسين في كل تخصص</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 shadow-[0_4px_20px_-4px_rgba(30,58,138,0.08)] dark:shadow-black/40 sm:p-6 transition-all hover:-translate-y-1">
                     <div className="mb-2 h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center sm:mb-3 sm:h-11 sm:w-11">
                       <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400 sm:h-5 sm:w-5" />
                     </div>
                     <h3 className="mb-1 text-sm font-bold text-slate-800 dark:text-slate-100 sm:text-base">تتبع التقدم</h3>
-                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-5 sm:leading-6">تابع تقدمك في كل مادة وكل درس</p>
+                    <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400 sm:text-xs sm:leading-6">تابع تقدمك في كل مادة وكل درس</p>
                   </div>
                 </div>
               </div>
@@ -372,7 +389,7 @@ export default function LandingPage() {
                 <Link
                   key={h.id}
                   to={`/video/${h.video_id}`}
-                  className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                 >
                   <div className="aspect-video bg-slate-100 dark:bg-slate-700 flex items-center justify-center relative">
                     {h.video?.thumbnail_url ? (
@@ -416,7 +433,7 @@ export default function LandingPage() {
                   className="group bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-2xl p-5 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all hover:-translate-y-1"
                 >
                   <div className={`w-12 h-12 rounded-xl ${bgClass} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                    <BookOpen className={`w-6 h-6 ${textClass}`} />
+                    {(() => { const Icon = categoryIconMap[cat.name_ar] ?? BookOpen; return <Icon className={`w-6 h-6 ${textClass}`} />; })()}
                   </div>
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1">{cat.name_ar}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{cat.description}</p>
@@ -455,7 +472,7 @@ export default function LandingPage() {
                 <Link
                   key={teacher.id}
                   to={`/teacher/${teacher.id}`}
-                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-md shadow-slate-200/50 dark:shadow-black/40 border border-slate-100 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-md shadow-slate-200/50 dark:shadow-black/40 border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
                 >
                   <div className="relative aspect-[1.15] overflow-hidden bg-gradient-to-br from-blue-700 via-cyan-600 to-slate-900">
                     {(teacher.cover_url ?? teacher.avatar_url) ? <div className="absolute inset-0 scale-110 bg-cover bg-center opacity-70 blur-xl transition-transform duration-500 group-hover:scale-125" style={{ backgroundImage: `url(${(teacher.cover_url ?? teacher.avatar_url)})` }} /> : <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,.35) 0 2px, transparent 3px), linear-gradient(135deg, transparent 25%, rgba(255,255,255,.12) 25% 50%, transparent 50% 75%, rgba(255,255,255,.12) 75%)', backgroundSize: '28px 28px, 80px 80px' }} />}
@@ -555,7 +572,7 @@ export default function LandingPage() {
                 <Link
                   key={course.id}
                   to={`/course/${course.id}`}
-                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                 >
                   <div className="aspect-video bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center relative">
                     {course.thumbnail_url ? (
@@ -613,7 +630,7 @@ export default function LandingPage() {
                 <Link
                   key={v.id}
                   to={`/video/${v.id}`}
-                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
+                  className="group bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-1"
                 >
                   <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
                     {v.thumbnail_url ? (

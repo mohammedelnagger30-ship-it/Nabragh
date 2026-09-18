@@ -82,7 +82,7 @@ export default function SignUpPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none sm:p-5 sm:p-8">
+          <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none sm:p-8">
           <div className="flex flex-col items-center mb-6 sm:mb-8">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30 mb-3 sm:w-14 sm:h-14 sm:mb-4">
               <GraduationCap className="w-7 h-7 text-white sm:w-8 sm:h-8" />
@@ -109,7 +109,7 @@ export default function SignUpPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:py-2.5 sm:pr-11 sm:text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 min-h-11 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:min-h-12 sm:py-2.5 sm:pr-11 sm:text-sm"
                   placeholder="محمد أحمد"
                 />
               </div>
@@ -145,7 +145,7 @@ export default function SignUpPage() {
                   onChange={(e) => setPhone(e.target.value)}
                   required
                   dir="ltr"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:py-2.5 sm:pr-11 sm:text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 min-h-11 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:min-h-12 sm:py-2.5 sm:pr-11 sm:text-sm"
                   placeholder="+20..."
                 />
               </div>
@@ -163,7 +163,7 @@ export default function SignUpPage() {
                     onChange={(e) => setGuardianPhone(e.target.value)}
                     required
                     dir="ltr"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:py-2.5 sm:pr-11 sm:text-sm"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 min-h-11 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:min-h-12 sm:py-2.5 sm:pr-11 sm:text-sm"
                     placeholder="+20..."
                   />
                 </div>
@@ -180,7 +180,7 @@ export default function SignUpPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:py-2.5 sm:pr-11 sm:text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 min-h-11 py-2 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:min-h-12 sm:py-2.5 sm:pr-11 sm:text-sm"
                   placeholder="you@example.com"
                   dir="ltr"
                 />
@@ -201,7 +201,7 @@ export default function SignUpPage() {
                   onClick={() => { setIsTeacher(false); setIsGuardian(false); }}
                   className={`px-3 py-2.5 rounded-xl border-2 text-xs font-medium transition-all sm:px-4 sm:py-3 sm:text-sm ${
                     !isTeacher && !isGuardian
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/30 dark:text-blue-300'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
@@ -212,7 +212,7 @@ export default function SignUpPage() {
                   onClick={() => { setIsTeacher(true); setIsGuardian(false); }}
                   className={`px-3 py-2.5 rounded-xl border-2 text-xs font-medium transition-all sm:px-4 sm:py-3 sm:text-sm ${
                     isTeacher && !isGuardian
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/30 dark:text-blue-300'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
@@ -223,7 +223,7 @@ export default function SignUpPage() {
                   onClick={() => { setIsTeacher(false); setIsGuardian(true); }}
                   className={`px-3 py-2.5 rounded-xl border-2 text-xs font-medium transition-all sm:px-4 sm:py-3 sm:text-sm ${
                     isGuardian
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-300'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500'
                   }`}
                 >
@@ -235,7 +235,7 @@ export default function SignUpPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs sm:py-3 sm:text-sm"
+              className="w-full min-h-11 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs sm:min-h-12 sm:py-3 sm:text-sm"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin sm:w-5 sm:h-5" />}
               إنشاء الحساب

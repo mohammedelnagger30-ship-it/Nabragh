@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, ArrowLeft } from 'lucide-react';
+import { BookOpen, ArrowLeft, Calculator, FlaskConical, Globe2, Languages, Monitor, Scale, Lightbulb, History, Landmark, Brain } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import MetaTags from '@/components/MetaTags';
 import type { Category } from '@/types';
@@ -39,6 +39,22 @@ export default function CategoriesPage() {
     rose: { bg: 'bg-rose-50', text: 'text-rose-600', gradient: 'from-rose-500 to-rose-600' },
   };
 
+  const categoryIconMap: Record<string, typeof BookOpen> = {
+    'الرياضيات': Calculator,
+    'الفيزياء': FlaskConical,
+    'الكيمياء': FlaskConical,
+    'الأحياء': Lightbulb,
+    'الجغرافيا': Globe2,
+    'التاريخ': History,
+    'اللغة العربية': Languages,
+    'الإنجليزية': Languages,
+    'الفرنسية': Languages,
+    'علوم الحاسوب': Monitor,
+    'القانون': Scale,
+    'الفلسفة': Brain,
+    'الاقتصاد': Landmark,
+  };
+
   return (
     <div className="pt-[4.5rem] min-h-screen bg-slate-50/70 dark:bg-slate-900">
       <MetaTags title="التخصصات الدراسية | منصة العلم" description="تصفح جميع التخصصات الدراسية وابدأ التعلم مع أفضل المدرسين" />
@@ -74,7 +90,7 @@ export default function CategoriesPage() {
                   className="group rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm shadow-blue-500/5 transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 sm:p-7 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500/50 dark:shadow-black/30"
                 >
                   <div className={`w-14 h-14 rounded-xl ${colors.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${colors.text}`}>
-                    <BookOpen className={`w-7 h-7 ${colors.text}`} />
+                    {(() => { const Icon = categoryIconMap[cat.name_ar] ?? BookOpen; return <Icon className={`w-7 h-7 ${colors.text}`} />; })()}
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{cat.name_ar}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">{cat.description}</p>

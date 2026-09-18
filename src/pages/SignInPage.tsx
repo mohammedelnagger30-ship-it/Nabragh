@@ -54,7 +54,7 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 px-4 pb-8 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 sm:pb-10">
       <MetaTags title="تسجيل الدخول" description="سجّل دخولك إلى Noona" />
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none sm:p-5 sm:p-8">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none sm:p-8">
           <div className="mb-6 flex flex-col items-center sm:mb-8">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-lg shadow-blue-500/30 sm:mb-4 sm:h-14 sm:w-14">
               <GraduationCap className="h-7 w-7 text-white sm:h-8 sm:w-8" />

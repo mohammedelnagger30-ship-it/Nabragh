@@ -299,7 +299,7 @@ export default function TeacherProfilePage() {
                   <h1 className="text-2xl font-extrabold sm:text-3xl">{teacher.full_name}</h1>
                   {trust.trusted && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold ring-1 ring-white/30 sm:px-2.5 sm:py-1 sm:text-xs"><BadgeCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> مدرس موثق</span>}
                 </div>
-                <p className="text-sm font-medium text-blue-50 dark:text-slate-300 sm:text-base sm:lg">{teacher.specialization ?? 'مدرس محترف'}</p>
+                <p className="text-sm font-medium text-blue-50 dark:text-slate-300 sm:text-base sm:text-lg">{teacher.specialization ?? 'مدرس محترف'}</p>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:mt-3 sm:justify-start sm:gap-2">
                   <TrustedTeacherBadge teacher={teacher} avgRating={averageRating} reviewCount={reviews.length} className="bg-white/15 text-white ring-1 ring-white/20 dark:bg-white/10" />
                   {teacher.location && <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-blue-50 ring-1 ring-white/15 dark:text-slate-300 dark:ring-slate-700 sm:px-3 sm:py-1 sm:text-xs"><MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {teacher.location}</span>}
@@ -409,7 +409,7 @@ export default function TeacherProfilePage() {
               {teacherCompetitions.length > 0 && (
                 <>
                   <div className="mb-6 mt-12 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-blue-600 to-cyan-500 text-white shadow-md">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-md">
                       <Swords className="h-5 w-5" />
                     </div>
                     <div>
@@ -496,7 +496,7 @@ export default function TeacherProfilePage() {
                   {courses.map((course) => (
                     <Link key={course.id} to={`/course/${course.id}`} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900">
                       <h3 className="font-bold text-slate-800 group-hover:text-blue-600 dark:text-white">{course.title}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-slate-500">{course.description || 'دورة تعليمية متخصصة'}</p>
+                      <p className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{course.description || 'دورة تعليمية متخصصة'}</p>
                       <div className="mt-4 flex items-center justify-between">
                         <div className="flex flex-wrap items-center gap-2">
                           {course.price === 0 ? (
@@ -513,7 +513,7 @@ export default function TeacherProfilePage() {
                     </Link>
                   ))}
                 </div>
-              ) : <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">لا توجد دورات منشورة حاليًا.</p>}
+              ) : <p className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center text-sm text-slate-500 dark:text-slate-400">لا توجد دورات منشورة حاليًا.</p>}
 
               {/* ===== Videos ===== */}
               <div className="mb-6 mt-12 flex items-center gap-3">
@@ -537,7 +537,7 @@ export default function TeacherProfilePage() {
                     </Link>
                   ))}
                 </div>
-              ) : <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">لا توجد فيديوهات منشورة حاليًا.</p>}
+              ) : <p className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center text-sm text-slate-500 dark:text-slate-400">لا توجد فيديوهات منشورة حاليًا.</p>}
 
               {/* ===== Reviews ===== */}
               <div className="mb-6 mt-12 flex items-center gap-3">
@@ -559,7 +559,7 @@ export default function TeacherProfilePage() {
                     </div>
                   ))}
                 </div>
-              ) : <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">لا توجد تقييمات حتى الآن.</p>}
+              ) : <p className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center text-sm text-slate-500 dark:text-slate-400">لا توجد تقييمات حتى الآن.</p>}
 
               {/* ===== Upcoming sessions ===== */}
               {(() => {
@@ -667,16 +667,16 @@ export default function TeacherProfilePage() {
                         <p className="mt-2 text-xs text-slate-400">سؤال من {q.student?.full_name ?? 'طالب'} • {new Date(q.created_at).toLocaleDateString('ar-EG')}</p>
                       </div>
                     ))}
-                    {questions.length === 0 && <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">لا توجد أسئلة مُجابة بعد.</p>}
+                    {questions.length === 0 && <p className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center text-sm text-slate-500 dark:text-slate-400">لا توجد أسئلة مُجابة بعد.</p>}
                   </div>
                 </div>
               )}
 
               {/* ===== Summary stats ===== */}
               <div className="mt-12 grid gap-4 rounded-3xl border border-slate-200 bg-gradient-to-l from-blue-50 to-cyan-50 p-6 sm:grid-cols-3 dark:border-slate-700 dark:from-slate-900 dark:to-slate-900">
-                <div><p className="text-3xl font-extrabold text-blue-700 dark:text-blue-400">{formatViews(totalViews)}</p><p className="mt-1 text-sm font-bold text-slate-500">إجمالي المشاهدات</p></div>
-                <div><p className="text-3xl font-extrabold text-cyan-700 dark:text-cyan-400">{followersCount}</p><p className="mt-1 text-sm font-bold text-slate-500">متابع للمدرس</p></div>
-                <div><p className="text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">{reviews.length}</p><p className="mt-1 text-sm font-bold text-slate-500">تقييم الطلاب</p></div>
+                <div><p className="text-3xl font-extrabold text-blue-700 dark:text-blue-400">{formatViews(totalViews)}</p><p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">إجمالي المشاهدات</p></div>
+                <div><p className="text-3xl font-extrabold text-cyan-700 dark:text-cyan-400">{followersCount}</p><p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">متابع للمدرس</p></div>
+                <div><p className="text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">{reviews.length}</p><p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">تقييم الطلاب</p></div>
               </div>
             </div>
 
