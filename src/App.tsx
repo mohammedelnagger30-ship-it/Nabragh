@@ -4,6 +4,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import ScrollToTop from '@/components/ScrollToTop';
+import LoadingBar from '@/components/LoadingBar';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -116,6 +117,7 @@ function PublicApp() {
   return (
     <>
       <ScrollToTop />
+      <LoadingBar />
       <ErrorBoundary>
         <div dir="rtl" className="min-h-screen bg-white dark:bg-slate-900 font-sans transition-colors duration-200">
           <Navbar />

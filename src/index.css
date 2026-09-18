@@ -10,6 +10,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 .dark {
@@ -170,6 +171,8 @@ img {
 
 .route-transition {
   animation: fadeIn 0.22s ease-out;
+}
+.route-transition.animating {
   will-change: opacity;
 }
 

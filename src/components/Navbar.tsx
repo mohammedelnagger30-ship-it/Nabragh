@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import PrefetchLink from '@/components/PrefetchLink';
 import { GraduationCap, Menu, X, User, LogOut, LayoutDashboard, Search, Moon, Sun, Bell, Home, BookOpen, Layers } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -69,7 +70,7 @@ export default function Navbar() {
             const Icon = item.icon;
             const active = location.pathname === item.to;
             return (
-              <Link
+              <PrefetchLink
                 key={item.to}
                 to={item.to}
                 aria-current={active ? 'page' : undefined}
@@ -89,7 +90,7 @@ export default function Navbar() {
                   )}
                 </div>
                 <span className="text-[10px] font-bold">{item.label}</span>
-              </Link>
+              </PrefetchLink>
             );
           })}
         </div>
@@ -111,7 +112,7 @@ export default function Navbar() {
 
           <div className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => (
-              <Link
+              <PrefetchLink
                 key={link.to}
                 to={link.to}
                 aria-label={link.label}
@@ -121,7 +122,7 @@ export default function Navbar() {
                 }`}
               >
                 {link.to === '/search' ? <span className="flex items-center"><Search className="h-5 w-5" aria-hidden="true" /><span className="sr-only">البحث</span></span> : link.label}
-              </Link>
+              </PrefetchLink>
             ))}
           </div>
 

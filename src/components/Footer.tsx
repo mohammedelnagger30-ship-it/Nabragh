@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import PrefetchLink from '@/components/PrefetchLink';
 import { GraduationCap, Facebook, Youtube, Instagram, Mail, Phone, MapPin, MessageCircle, X, Music2, Send, Twitter } from 'lucide-react';
 import { useSiteSettings, contact as settingsContact, whatsappHref } from '@/lib/siteSettings';
 
@@ -53,11 +54,11 @@ export default function Footer() {
           <div>
             <h3 className="mb-3 text-sm font-semibold text-white sm:mb-4 sm:text-base">روابط سريعة</h3>
             <ul className="space-y-2 text-xs sm:space-y-3 sm:text-sm">
-              <li><Link to="/" className="transition-colors hover:text-blue-400">الرئيسية</Link></li>
-              <li><Link to="/teachers" className="transition-colors hover:text-blue-400">المدرسون</Link></li>
-              <li><Link to="/courses" className="transition-colors hover:text-blue-400">الدورات</Link></li>
-              <li><Link to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</Link></li>
-              <li><Link to="/categories" className="transition-colors hover:text-blue-400">التخصصات</Link></li>
+              <li><PrefetchLink to="/" className="transition-colors hover:text-blue-400">الرئيسية</PrefetchLink></li>
+              <li><PrefetchLink to="/teachers" className="transition-colors hover:text-blue-400">المدرسون</PrefetchLink></li>
+              <li><PrefetchLink to="/courses" className="transition-colors hover:text-blue-400">الدورات</PrefetchLink></li>
+              <li><PrefetchLink to="/competitions" className="transition-colors hover:text-blue-400">المنافسات</PrefetchLink></li>
+              <li><PrefetchLink to="/categories" className="transition-colors hover:text-blue-400">التخصصات</PrefetchLink></li>
             </ul>
           </div>
 
