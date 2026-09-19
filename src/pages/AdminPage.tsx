@@ -45,6 +45,8 @@ import {
   Swords,
   Clock,
   Trophy,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SITE_SETTINGS_DEFAULTS, invalidateSiteSettingsCache, type SiteSettings } from '@/lib/siteSettings';
@@ -56,7 +58,7 @@ import { useToast } from '../context/ToastContext';
 import AdminConfirmModal from '@/components/AdminConfirmModal';
 import AdminPagination from '@/components/AdminPagination';
 
-type TabId = 'home' | 'overview' | 'analytics' | 'teachers' | 'students' | 'courses' | 'videos' | 'exams' | 'moderation' | 'subscriptions' | 'broadcast' | 'admins' | 'reports' | 'settings' | 'performance' | 'audit' | 'devices';
+type TabId = 'home' | 'overview' | 'analytics' | 'teachers' | 'students' | 'courses' | 'videos' | 'exams' | 'moderation' | 'subscriptions' | 'broadcast' | 'admins' | 'reports' | 'settings' | 'performance' | 'audit' | 'devices' | 'testimonials';
 
 interface AdminSubscriptionRow {
   id: string;
@@ -218,6 +220,7 @@ const TABS: Array<{ id: TabId; label: string; icon: LucideIcon }> = [
   { id: 'admins', label: 'الإداريون', icon: Shield },
   { id: 'audit', label: 'سجل العمليات', icon: Clock },
   { id: 'devices', label: 'الأجهزة والحماية', icon: Shield },
+  { id: 'testimonials', label: 'شهادات الطلاب', icon: Star },
   { id: 'reports', label: 'التقارير', icon: FileDown },
   { id: 'settings', label: 'الإعدادات', icon: Settings },
 ];
@@ -332,6 +335,7 @@ export default function AdminPage() {
       {tab === 'admins' && <AdminUsersPanel />}
       {tab === 'audit' && <AuditLogPanel />}
       {tab === 'devices' && <DeviceSecurityPanel />}
+      {tab === 'testimonials' && <TestimonialsPanel />}
       {tab === 'reports' && <ReportsPanel />}
       {tab === 'settings' && <SiteSettingsPanel />}
     </AdminPortalShell>
@@ -2644,6 +2648,108 @@ function InsightCard({ icon: Icon, label, value, tone }: { icon: typeof Users; l
     <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${TONE_MAP[tone] ?? TONE_MAP.cyan}`}><Icon className="h-5 w-5" /></div>
       <div><div className="text-xl font-extrabold text-slate-900 dark:text-white">{value}</div><div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</div></div>
+    </div>
+  );
+}
+
+/* ─── Testimonials Panel ─── */
+function TestimonialsPanel() {
+  const [items, setItems] = useState<Array<{ id: string; student_name: string; student_role: string; review_text: string; rating: number; is_visible: boolean; sort_order: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ student_name: '', student_role: 'طالب', review_text: '', rating: 5 });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    const { data } = await supabase.from('testimonials').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: false });
+    setItems(data ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const handleSave = async () => {
+    if (!form.student_name.trim() || !form.review_text.trim()) return;
+    setSaving(true);
+    if (editingId) {
+      await supabase.from('testimonials').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editingId);
+    } else {
+      await supabase.from('testimonials').insert({ ...form, sort_order: items.length });
+    }
+    setForm({ student_name: '', student_role: 'طالب', review_text: '', rating: 5 });
+    setEditingId(null);
+    await load();
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الشهادة؟')) return;
+    await supabase.from('testimonials').delete().eq('id', id);
+    await load();
+  };
+
+  const handleToggle = async (id: string, visible: boolean) => {
+    await supabase.from('testimonials').update({ is_visible: visible }).eq('id', id);
+    await load();
+  };
+
+  const handleEdit = (item: typeof items[0]) => {
+    setEditingId(item.id);
+    setForm({ student_name: item.student_name, student_role: item.student_role, review_text: item.review_text, rating: item.rating });
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h3 className="mb-4 text-lg font-bold text-slate-800 dark:text-white">{editingId ? 'تعديل شهادة' : 'إضافة شهادة جديدة'}</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input type="text" placeholder="اسم الطالب" value={form.student_name} onChange={(e) => setForm({ ...form, student_name: e.target.value })} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+          <input type="text" placeholder="الدور (مثال: طالب ثانوية)" value={form.student_role} onChange={(e) => setForm({ ...form, student_role: e.target.value })} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+          <textarea placeholder="نص الشهادة" rows={3} value={form.review_text} onChange={(e) => setForm({ ...form, review_text: e.target.value })} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm sm:col-span-2 dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-bold text-slate-600 dark:text-slate-300">التقييم:</label>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((r) => (
+                <button key={r} type="button" onClick={() => setForm({ ...form, rating: r })} className="p-0.5">
+                  <Star className={`h-6 w-6 ${r <= form.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-600'}`} />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void handleSave()} disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50">
+              {saving ? <Loader2 className="inline h-4 w-4 animate-spin" /> : editingId ? 'تحديث' : 'إضافة'}
+            </button>
+            {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({ student_name: '', student_role: 'طالب', review_text: '', rating: 5 }); }} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold dark:border-slate-600">إلغاء</button>}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-bold text-white">{item.student_name.charAt(0)}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-slate-800 dark:text-white">{item.student_name}</p>
+                <span className="text-xs text-slate-400">{item.student_role}</span>
+                <div className="flex gap-0.5">{Array.from({ length: item.rating }).map((_, j) => <Star key={j} className="h-3 w-3 text-amber-400 fill-amber-400" />)}</div>
+              </div>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{item.review_text}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button type="button" onClick={() => void handleToggle(item.id, !item.is_visible)} className={`rounded-lg px-2 py-1 text-xs font-bold transition ${item.is_visible ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
+                {item.is_visible ? 'مرئي' : 'مخفي'}
+              </button>
+              <button type="button" onClick={() => handleEdit(item)} className="rounded-lg bg-blue-50 p-1.5 text-blue-600 transition hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400"><Edit className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => void handleDelete(item.id)} className="rounded-lg bg-red-50 p-1.5 text-red-500 transition hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && <p className="py-8 text-center text-sm text-slate-400">لا توجد شهادات بعد</p>}
+      </div>
     </div>
   );
 }

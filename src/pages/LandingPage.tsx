@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, Play, Users, Video as VideoIcon, Shield, Award, BookOpen, Trophy, Medal,
-  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap, ChevronDown, MessageCircleQuestion
+  ArrowLeft, Star, Sparkles, TrendingUp, Lock, Zap, ChevronDown, MessageCircleQuestion,
+  Calculator, FlaskConical, Lightbulb, Globe2, History, Languages, Monitor, Scale, Brain, Landmark
 } from 'lucide-react';
 import { supabase, PROFILE_PUBLIC_COLUMNS, VIDEO_PUBLIC_COLUMNS } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -10,6 +11,8 @@ import SearchSuggestions from '@/components/SearchSuggestions';
 import LazyImage from '@/components/LazyImage';
 import { cache, generateCacheKey } from '@/lib/cache';
 import type { Profile, Category, Video, Course, WatchHistoryItem, StudentSubjectLeaderboard } from '@/types';
+
+type Testimonial = { id: string; student_name: string; student_role: string; review_text: string; rating: number };
 import { getCurriculumLabel, getEducationStageLabel } from '@/lib/education';
 import { isPublicTeacher, isTrustedTeacher, INTERNAL_TEACHER_ID } from '@/lib/teachers';
 import MetaTags from '@/components/MetaTags';
@@ -34,6 +37,7 @@ export default function LandingPage() {
   const [hasLoadError, setHasLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -186,6 +190,15 @@ export default function LandingPage() {
         setContinueWatching(historyData);
         setChampions((championResult.data as StudentSubjectLeaderboard[] | null) ?? []);
         setHasLoadError(coreFailed);
+
+        const { data: testimonialData } = await supabase
+          .from('testimonials')
+          .select('id, student_name, student_role, review_text, rating')
+          .eq('is_visible', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(6);
+        if (isMounted) setTestimonials((testimonialData as Testimonial[] | null) ?? []);
       } catch (loadError) {
         console.error('homepage load failed', loadError);
         if (isMounted) setHasLoadError(true);
@@ -849,29 +862,29 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { name: 'أحمد محمد', role: 'طالب ثانوية', text: 'المنصة غيّرت طريقة مذاكرتي بالكامل. المدرسين ممتازين والمحتوى منظم جداً.', rating: 5 },
-              { name: 'سارة علي', role: 'طالبقة إعدادي', text: 'بحب إن التقدم محفوظ وأقدر أكمّل من أي مكان. التصميم سهل وجميل.', rating: 5 },
-              { name: 'عمر حسن', role: 'ولي أمر', text: 'ابني بقى متحمس للدراسة من بعد ما سجلنا هنا. التقييمات ساعدتنا نختار المدرس المناسب.', rating: 5 },
-            ].map((review, i) => (
-              <div key={i} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:p-6">
+            {testimonials.length > 0 ? testimonials.map((review) => (
+              <div key={review.id} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:p-6">
                 <div className="mb-3 flex gap-0.5">
                   {Array.from({ length: review.rating }).map((_, j) => (
                     <Star key={j} className="h-4 w-4 text-amber-400 fill-amber-400" />
                   ))}
                 </div>
-                <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{review.text}</p>
+                <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{review.review_text}</p>
                 <div className="flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-bold text-white">
-                    {review.name.charAt(0)}
+                    {review.student_name.charAt(0)}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{review.name}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{review.role}</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{review.student_name}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{review.student_role}</p>
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="col-span-full py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                لا توجد شهادات بعد
+              </div>
+            )}
           </div>
         </div>
       </section>
